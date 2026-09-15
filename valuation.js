@@ -40,6 +40,14 @@ var METRICS = [
 ];
 // 卡片墙与热力图只用得上这三个原始指标（相对估值要两条序列对齐，只在详情页算）
 var BASE_METRICS = METRICS.slice(0, 3);
+
+/* 黄金这类标的没有盈利和净资产，市盈率市净率不适用，它在 meta 里自带一套指标定义。
+   凡是自带 metrics 的，就用它那套，不要套股票的模板。 */
+function metricsFor(t) {
+  var m = D.meta[t] || {};
+  return (m.metrics && m.metrics.length) ? m.metrics : METRICS;
+}
+function isMacro(t) { return !!((D.meta[t] || {}).metrics); }
 var RANGES = [
   { key: "all", label: "全部", years: null },
   { key: "20y", label: "20Y", years: 20 },
@@ -164,8 +172,10 @@ function snapshotCard(ticker) {
 function card(ticker) {
   var m = D.meta[ticker];
   var c = m.cur || {};
-  var pe = c.pe, fwd = c.fwd_pe, pb = c.pb;
-  var p10 = (m.pct10y && m.pct10y.pe) || {};
+  var mts = metricsFor(ticker);
+  var main = mts[0], m2 = mts[1], m3 = mts[2];
+  var pe = c[main.key], fwd = c[m2 ? m2.key : ""], pb = c[m3 ? m3.key : ""];
+  var p10 = (m.pct10y && m.pct10y[main.key]) || {};
   var st = statusOf(p10.pct, p10.neg);
   var chg = m.pe_chg_1y;
   // 上市不足十年的标的，标签要写真实年限，不能照抄「近十年」
@@ -176,26 +186,27 @@ function card(ticker) {
   el.innerHTML =
     '<div class="top"><span class="nm"></span><span class="badge ' + st.cls + '"></span></div>' +
     '<div class="tk"></div>' +
-    '<div class="big"><span class="lab">PE · TTM</span><span class="num"></span></div>' +
+    '<div class="big"><span class="lab">' + main.label + '</span><span class="num"></span></div>' +
     '<div class="tri">' +
-      '<div><div class="k">PE · FWD</div><div class="v f"></div></div>' +
-      '<div><div class="k">PB</div><div class="v b"></div></div>' +
-      '<div><div class="k">PEG</div><div class="v g"></div></div>' +
+      '<div><div class="k">' + (m2 ? m2.label : "") + '</div><div class="v f"></div></div>' +
+      '<div><div class="k">' + (m3 ? m3.label : "") + '</div><div class="v b"></div></div>' +
+      '<div><div class="k">' + (isMacro(ticker) ? "" : "PEG") + '</div><div class="v g"></div></div>' +
     '</div>' +
-    '<div class="kv"><span>1Y PE 变化</span><b class="c"></b></div>' +
-    '<div class="kv"><span>PE 分位 · ' + winTxt + '</span><b class="p"></b></div>' +
+    '<div class="kv"><span>1Y ' + main.label + ' 变化</span><b class="c"></b></div>' +
+    '<div class="kv"><span>' + main.label + ' 分位 · ' + winTxt + '</span><b class="p"></b></div>' +
     '<div class="gradbar" style="margin-top:8px"><div class="knob"></div></div>' +
-    '<div class="kv"><span>市值 USD</span><b class="mc"></b></div>';
+    (isMacro(ticker) ? "" : '<div class="kv"><span>市值 USD</span><b class="mc"></b></div>');
 
   el.querySelector(".nm").textContent = m.name || ticker;
   el.querySelector(".badge").textContent = st.txt;
   el.querySelector(".tk").textContent = ticker +
-    ((m.kind && m.kind !== "stock") ? " · ETF / 指数" : " · 美股");
+    (m.kind === "macro" ? " · 商品"
+     : (m.kind && m.kind !== "stock") ? " · ETF / 指数" : " · 美股");
   el.querySelector(".num").textContent = fmt(pe);
   el.querySelector(".f").textContent = fmt(fwd);
   el.querySelector(".b").textContent = fmt(pb);
   var pegTxt = (m.peg && m.peg !== "n/a" && m.peg !== "N/A") ? m.peg : "—";
-  el.querySelector(".g").textContent = pegTxt;
+  el.querySelector(".g").textContent = isMacro(ticker) ? "" : pegTxt;
   var chgEl = el.querySelector(".c");
   chgEl.textContent = (chg === null || chg === undefined) ? "—" : (chg > 0 ? "+" : "") + chg + "%";
   chgEl.className = "c " + (chg === null ? "" : chg < 0 ? "good" : "bad");
@@ -203,7 +214,8 @@ function card(ticker) {
     p10.pct === null || p10.pct === undefined ? "样本不足" : p10.pct + "%";
   el.querySelector(".knob").style.left = (p10.pct === null || p10.pct === undefined ? 0 : p10.pct) + "%";
   if (p10.pct === null || p10.pct === undefined) el.querySelector(".knob").style.display = "none";
-  el.querySelector(".mc").textContent = (m.mcap && m.mcap !== "n/a") ? m.mcap : "—";
+  var mcEl = el.querySelector(".mc");
+  if (mcEl) mcEl.textContent = (m.mcap && m.mcap !== "n/a") ? m.mcap : "—";
 
   if (m.note) {
     var nt = document.createElement("div");
@@ -386,17 +398,46 @@ function renderViewBar() {
   box.appendChild(mg);
 }
 
+var heatGroup = "none";   // none / sector
+
+/* 一个标的的色块 */
+function heatCell(r) {
+  var c = pctColor(r.pct);
+  var el = document.createElement("div");
+  el.className = "hc";
+  el.style.background = c.bg;
+  el.innerHTML = "<div class='t'></div><div class='p'></div><div class='v'></div>";
+  el.querySelector(".t").textContent = r.t;
+  var p = el.querySelector(".p");
+  p.textContent = (r.pct === null || r.pct === undefined) ? "—" : r.pct.toFixed(1) + "%";
+  p.style.color = c.fg;
+  el.querySelector(".v").textContent =
+    (r.cur === null || r.cur === undefined ? "—" : r.cur.toFixed(2) + "×") +
+    (r.years && r.years < 9.5 ? "  近" + r.years + "年" : "");
+  el.title = r.name + "：" + BASE_METRICS.filter(function (x) { return x.key === heatMetric; })[0].label +
+             " 分位 " + (r.pct == null ? "样本不足" : r.pct + "%") +
+             (r.sector ? "　板块：" + r.sector : "");
+  el.addEventListener("click", function () { openDetail(r.t); });
+  return el;
+}
+
 function renderHeat() {
   seg($("#heatMetric"), BASE_METRICS, function (it) { return it.key === heatMetric; },
       function (it) { heatMetric = it.key; renderHeat(); });
+  seg($("#heatGroup"), [{ key: "none", label: "不分组" }, { key: "sector", label: "按板块" }],
+      function (it) { return it.key === heatGroup; },
+      function (it) { heatGroup = it.key; renderHeat(); });
   var box = $("#heatGrid");
   box.innerHTML = "";
-  var rows = Object.keys(D.meta).filter(function (t) { return D.meta[t].has_series && !isHidden(t); })
+  var rows = Object.keys(D.meta).filter(function (t) {
+      return D.meta[t].has_series && !isHidden(t) && !isMacro(t);   // 黄金那套指标跟股票不同轴，不混在一起比
+    })
     .map(function (t) {
       var m = D.meta[t];
       var info = (m.pct10y || {})[heatMetric] || {};
       return { t: t, name: m.name || t, pct: info.neg ? null : info.pct,
-               years: info.years, cur: (m.cur || {})[heatMetric] };
+               years: info.years, cur: (m.cur || {})[heatMetric],
+               sector: m.sector || "", sectorZh: m.sector_zh || "未分类" };
     });
   // 便宜的排前面；没有分位的垫底
   rows.sort(function (a, b) {
@@ -404,23 +445,48 @@ function renderHeat() {
     if (b.pct === null || b.pct === undefined) return -1;
     return a.pct - b.pct;
   });
+  if (heatGroup === "none") {
+    box.className = "heat";
+    rows.forEach(function (r) { box.appendChild(heatCell(r)); });
+    return;
+  }
+
+  // 按板块分组：每组自己一个网格，组标题带该板块的中位分位，便于横向比较板块贵贱
+  box.className = "";
+  var groups = {};
   rows.forEach(function (r) {
-    var c = pctColor(r.pct);
-    var el = document.createElement("div");
-    el.className = "hc";
-    el.style.background = c.bg;
-    el.innerHTML = "<div class='t'></div><div class='p'></div><div class='v'></div>";
-    el.querySelector(".t").textContent = r.t;
-    var p = el.querySelector(".p");
-    p.textContent = (r.pct === null || r.pct === undefined) ? "—" : r.pct.toFixed(1) + "%";
-    p.style.color = c.fg;
-    el.querySelector(".v").textContent =
-      (r.cur === null || r.cur === undefined ? "—" : r.cur.toFixed(2) + "×") +
-      (r.years && r.years < 9.5 ? "  近" + r.years + "年" : "");
-    el.title = r.name + "：" + METRICS.filter(function (x) { return x.key === heatMetric; })[0].label +
-               " 分位 " + (r.pct == null ? "样本不足" : r.pct + "%");
-    el.addEventListener("click", function () { openDetail(r.t); });
-    box.appendChild(el);
+    var k = r.sectorZh || "未分类";
+    (groups[k] = groups[k] || []).push(r);
+  });
+  function median(a) {
+    var v = a.filter(function (x) { return x !== null && x !== undefined; })
+             .sort(function (x, y) { return x - y; });
+    if (!v.length) return null;
+    var m = Math.floor(v.length / 2);
+    return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+  }
+  Object.keys(groups).map(function (k) {
+    return { k: k, rows: groups[k], med: median(groups[k].map(function (r) { return r.pct; })) };
+  }).sort(function (a, b) {
+    if (a.med === null) return 1;
+    if (b.med === null) return -1;
+    return a.med - b.med;          // 板块也按便宜到贵排
+  }).forEach(function (g) {
+    var sec = document.createElement("div");
+    sec.className = "heatsec";
+    var h = document.createElement("h3");
+    h.innerHTML = "";
+    h.appendChild(document.createTextNode(g.k));
+    var sub = document.createElement("span");
+    sub.textContent = g.rows.length + " 只　中位分位 " +
+                      (g.med === null ? "—" : g.med.toFixed(1) + "%");
+    h.appendChild(sub);
+    sec.appendChild(h);
+    var grid = document.createElement("div");
+    grid.className = "heat";
+    g.rows.forEach(function (r) { grid.appendChild(heatCell(r)); });
+    sec.appendChild(grid);
+    box.appendChild(sec);
   });
 }
 
@@ -439,8 +505,9 @@ function renderCompare() {
   // 可选标的
   var pick = $("#cmpPick");
   pick.innerHTML = "";
-  Object.keys(D.meta).filter(function (t) { return D.meta[t].has_series && !isHidden(t); }).sort()
-    .forEach(function (t) {
+  Object.keys(D.meta).filter(function (t) {
+      return D.meta[t].has_series && !isHidden(t) && !isMacro(t);
+    }).sort().forEach(function (t) {
       var b = document.createElement("button");
       b.textContent = t;
       if (cmpSel.indexOf(t) >= 0) b.className = "on";
@@ -631,7 +698,11 @@ function expandFlags(rle, n) {
 }
 
 function openDetail(ticker) {
-  if (cur.ticker !== ticker) { cur.i0 = null; cur.i1 = null; }   // 换标的不沿用上一只的自定义区间
+  if (cur.ticker !== ticker) {
+    cur.i0 = null; cur.i1 = null;   // 换标的不沿用上一只的自定义区间
+    var mts0 = metricsFor(ticker);
+    if (!mts0.some(function (x) { return x.key === cur.metric; })) cur.metric = mts0[0].key;
+  }
   cur.ticker = ticker;
   $("#valGrid").hidden = true;
   $("#valDetail").hidden = false;
@@ -679,7 +750,9 @@ function redrawDetail() {
   var dates = expandDates(part);
   var s = part;
 
-  var metNow = METRICS.filter(function (x) { return x.key === cur.metric; })[0];
+  var MTS = metricsFor(cur.ticker);
+  if (!MTS.some(function (x) { return x.key === cur.metric; })) cur.metric = MTS[0].key;
+  var metNow = MTS.filter(function (x) { return x.key === cur.metric; })[0];
   if (metNow && metNow.base) {
     if (cur.ticker === metNow.base) {           // 自己跟自己比没意义
       cur.metric = "pe";
@@ -692,10 +765,10 @@ function redrawDetail() {
       return;
     }
   }
-  var met = METRICS.filter(function (x) { return x.key === cur.metric; })[0];
+  var met = MTS.filter(function (x) { return x.key === cur.metric; })[0];
   var rng = RANGES.filter(function (x) { return x.key === cur.range; })[0] || null;
 
-  seg($("#valMetrics"), METRICS, function (it) { return it.key === cur.metric; },
+  seg($("#valMetrics"), MTS, function (it) { return it.key === cur.metric; },
       function (it) { cur.metric = it.key; redrawDetail(); });
   seg($("#valRanges"), RANGES, function (it) { return it.key === cur.range; },   // custom 时一个都不亮
       function (it) { cur.range = it.key; cur.i0 = null; cur.i1 = null; redrawDetail(); });

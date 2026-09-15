@@ -170,6 +170,10 @@ main{max-width:1360px;margin:0 auto;padding:16px}
 #view-val .hc .p{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25}
 #view-val .hc .v{font-size:11px;opacity:.85}
 #view-val .heatlegend{display:flex;align-items:center;margin-top:14px;font-size:11px;color:var(--ink3)}
+#view-val .heatsec{margin-bottom:16px}
+#view-val .heatsec>h3{margin:0 0 7px;font-size:12px;font-weight:600;color:var(--ink2);
+  display:flex;align-items:baseline;gap:8px}
+#view-val .heatsec>h3 span{font-size:11px;color:var(--ink3);font-weight:400}
 
 /* 多标的对比 */
 #view-val .cmptop{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px}
@@ -448,7 +452,10 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
 
     <!-- 热力图：一眼看完谁贵谁便宜，不用翻卡片 -->
     <div id="valHeat" hidden>
-      <div class="seg" id="heatMetric" style="margin-bottom:12px"></div>
+      <div class="segrow" style="margin-bottom:12px">
+        <div class="seg" id="heatMetric"></div>
+        <div class="seg" id="heatGroup"></div>
+      </div>
       <div class="heat" id="heatGrid"></div>
       <div class="heatlegend">
         <span>0% 低估</span><div class="gradbar" style="flex:1;margin:0 10px"></div><span>100% 高估</span>
