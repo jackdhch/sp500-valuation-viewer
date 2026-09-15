@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>股票查看器 · 低点信号</title>
+<style>
+:root{
+  --bg:#f9fafb; --panel:#ffffff; --line:#e5e7eb; --line2:#f1f3f5;
+  --ink:#111827; --ink2:#4b5563; --ink3:#9ca3af;
+  --brand:#667eea; --brand-d:#4f5fd4; --sig:#764ba2;
+  --buy:#059669; --sell:#dc2626; --warn:#b45309;
+  --ma1:#f59e0b; --ma2:#0ea5e9; --band:rgba(118,75,162,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;}
+button,select,input{font:inherit;color:inherit}
+a{color:var(--brand-d)}
+
+/* ---------- 顶栏 ---------- */
+header{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.hdr{max-width:1360px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-size:16px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--brand)}
+.spacer{flex:1}
+.tickerbox{position:relative}
+.tickerbox input{width:230px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.tickerbox input:focus{outline:2px solid rgba(102,126,234,.35);outline-offset:0;border-color:var(--brand)}
+.sugg{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:#fff;border:1px solid var(--line);
+  border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.08);max-height:280px;overflow:auto;z-index:30}
+.sugg div{padding:8px 10px;cursor:pointer;display:flex;gap:8px;align-items:baseline}
+.sugg div:hover,.sugg div.on{background:#f3f4f6}
+.sugg b{font-weight:600}
+.sugg span{color:var(--ink3);font-size:12px}
+.langbtn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
+.langbtn:hover{background:#f3f4f6}
+
+/* ---------- 布局 ---------- */
+main{max-width:1360px;margin:0 auto;padding:16px}
+/* 信号页保持原来的「主图 + 右侧栏」两列；估值页是自己的布局，所以 grid 下移到视图容器上 */
+#view-signal{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+/* hidden 属性只是 display:none 的一个低优先级默认值，会被上面这条 display:grid 盖掉，
+   所以切页签时必须显式把它压回去，否则两个视图会同时出现 */
+#view-signal[hidden],#view-val[hidden]{display:none}
+@media(max-width:1000px){#view-signal{grid-template-columns:1fr}}
+
+/* ---------- 页签 ---------- */
+.tabs{display:flex;gap:6px}
+.tabs button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px}
+.tabs button:hover{background:#f3f4f6}
+.tabs button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+
+/* ---------- 估值面板（暗色）----------
+   色值取自 data/source_docs/wechat_valuation/估值网站界面规格_从截图逆向_20260915.md。
+   变量全部定义在 #view-val 这个容器上，不动 :root——上面的信号页仍是亮色，切页签零副作用。 */
+#view-val{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c2128; --line:#262d38; --line2:#1e242e;
+  --ink:#e6edf7; --ink2:#9aa7b8; --ink3:#6b7685;
+  --accent:#2fd39b; --accent-d:#1f9c73; --pctline:#6b8afd; --amber:#e3b341;
+  --cheap:#2fd39b; --fair:#e3b341; --rich:#f85149;
+  background:var(--bg);color:var(--ink);border-radius:14px;padding:16px;
+}
+#view-val a{color:var(--accent)}
+#view-val h1{font-size:24px;margin:2px 0 0;font-weight:650;letter-spacing:-.01em}
+#view-val h2{font-size:15px;margin:0;font-weight:600}
+#view-val .valbar{display:flex;align-items:flex-end;gap:12px;margin-bottom:12px}
+#view-val .spacer{flex:1}
+#view-val .vnote{color:var(--ink3);font-size:12px}
+#view-val .crumb{color:var(--ink3);font-size:12px;margin-bottom:6px}
+#view-val .crumb .sep{margin:0 6px}
+#view-val .vcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+#view-val .vhd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:13px;font-weight:600}
+
+/* 指标 / 区间 分段按钮 */
+#view-val .segrow{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0 14px}
+#view-val .seg{display:flex;gap:6px;flex-wrap:wrap}
+#view-val .seg button{border:1px solid var(--line);background:var(--panel2);color:var(--ink2);
+  border-radius:8px;padding:6px 13px;cursor:pointer;font-size:13px}
+#view-val .seg button:hover{border-color:var(--accent-d);color:var(--ink)}
+#view-val .seg button.on{background:rgba(47,211,155,.14);border-color:var(--accent-d);color:var(--accent);font-weight:600}
+
+/* 四张 KPI 卡 */
+#view-val .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+@media(max-width:820px){#view-val .kpis{grid-template-columns:repeat(2,1fr)}}
+#view-val .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+#view-val .kpi.hi{border-top:2px solid var(--accent)}
+#view-val .kpi .k{font-size:12px;color:var(--ink3);margin-bottom:6px}
+#view-val .kpi .v{font-size:26px;font-weight:650;font-variant-numeric:tabular-nums}
+#view-val .kpi.hi .v{color:var(--accent)}
+#view-val .kpi .v.amber{color:var(--amber)}
+
+/* 双图 */
+#view-val .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:980px){#view-val .duo{grid-template-columns:1fr}}
+#view-val .plotbox{position:relative;width:100%}
+#view-val .plotbox canvas{position:absolute;inset:0;width:100%;height:100%}
+
+/* 五段渐变分位条 */
+#view-val .posrow{display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);margin-top:10px}
+#view-val .posrow span:last-child{color:var(--ink);font-weight:600}
+#view-val .gradbar{position:relative;height:7px;border-radius:4px;margin:6px 0 4px;
+  background:linear-gradient(90deg,#2fd39b 0%,#8fce4a 20%,#e3b341 50%,#f0883e 80%,#f85149 100%)}
+#view-val .gradbar .knob{position:absolute;top:-3px;width:13px;height:13px;border-radius:50%;
+  background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.45);transform:translateX(-50%)}
+#view-val .gradtick{display:flex;justify-content:space-between;font-size:10px;color:var(--ink3)}
+
+/* 估值卡网格 */
+#view-val .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:12px}
+#view-val .vc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer}
+#view-val .vc:hover{border-color:var(--accent-d)}
+#view-val .vc .top{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+#view-val .vc .nm{font-size:15px;font-weight:650}
+#view-val .vc .tk{font-size:11px;color:var(--ink3);margin-bottom:10px}
+#view-val .vc .badge{margin-left:auto;font-size:11px;padding:3px 9px;border-radius:7px;font-weight:600;white-space:nowrap;flex:none}
+#view-val .vc .top{gap:8px}
+#view-val .vc .nm{line-height:1.25}
+#view-val .vc .badge.cheap{background:rgba(47,211,155,.15);color:var(--cheap)}
+#view-val .vc .badge.fair{background:rgba(227,179,65,.15);color:var(--fair)}
+#view-val .vc .badge.rich{background:rgba(248,81,73,.15);color:var(--rich)}
+#view-val .vc .badge.na{background:rgba(155,167,184,.13);color:var(--ink3)}
+#view-val .vc .big{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+#view-val .vc .big .lab{font-size:12px;color:var(--ink3)}
+#view-val .vc .big .num{font-size:30px;font-weight:650;font-variant-numeric:tabular-nums}
+#view-val .vc .tri{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+  padding-bottom:10px;border-bottom:1px solid var(--line2)}
+#view-val .vc .tri .k{font-size:11px;color:var(--ink3)}
+#view-val .vc .tri .v{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+#view-val .vc .kv{display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);margin-top:8px}
+#view-val .vc .kv b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+#view-val .vc .kv b.good{color:var(--cheap)} #view-val .vc .kv b.bad{color:var(--rich)}
+#view-val .vc .why{margin-top:10px;padding-top:9px;border-top:1px solid var(--line2);
+  font-size:11px;color:var(--ink3);line-height:1.6}
+#view-val .vc.nohist{cursor:default;opacity:.92}
+#view-val .vc.nohist:hover{border-color:var(--line)}
+#view-val .vfoot{margin-top:14px;font-size:11px;color:var(--ink3);line-height:1.7}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.card>h2{margin:0;padding:12px 14px;border-bottom:1px solid var(--line2);font-size:14px;font-weight:600}
+.card>.body{padding:14px}
+
+/* ---------- 读数条 ---------- */
+.quote{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:14px 14px 10px}
+.quote .name{font-size:18px;font-weight:600}
+.quote .code{color:var(--ink3);font-size:13px;font-weight:500}
+.stats{display:flex;gap:22px;flex-wrap:wrap;padding:0 14px 12px}
+.stat{min-width:84px}
+.stat .k{font-size:11px;color:var(--ink3);letter-spacing:.02em}
+.stat .v{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.up{color:var(--buy)} .down{color:var(--sell)}
+
+/* ---------- 时间范围 ---------- */
+.ranges{display:flex;gap:6px;padding:0 14px 12px;flex-wrap:wrap}
+.ranges button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 11px;cursor:pointer;font-size:13px}
+.ranges button:hover{background:#f3f4f6}
+.ranges button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+
+/* ---------- 图 ---------- */
+.chartwrap{position:relative;padding:0 8px 8px}
+canvas{display:block;width:100%;touch-action:none}
+#tip{position:absolute;pointer-events:none;background:rgba(17,24,39,.93);color:#fff;border-radius:8px;
+  padding:8px 10px;font-size:12px;line-height:1.55;opacity:0;transition:opacity .08s;white-space:nowrap;z-index:10}
+#tip .r{display:flex;justify-content:space-between;gap:14px}
+#tip .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;padding:2px 14px 12px;font-size:12px;color:var(--ink2)}
+.legend i{display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.legend .pt{width:9px;height:9px;border-radius:50%}
+
+/* ---------- 信号面板 ---------- */
+.addrow{display:flex;gap:8px;padding:0 14px 14px}
+.addrow select{flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.addrow button{padding:8px 14px;border:0;border-radius:8px;background:var(--brand);color:#fff;cursor:pointer;font-weight:500}
+.addrow button:hover{background:var(--brand-d)}
+.sig{border:1px solid var(--line);border-radius:10px;margin:0 14px 10px;overflow:hidden}
+.sig.off{opacity:.55}
+.sig .top{display:flex;align-items:center;gap:8px;padding:9px 10px;background:#fafafa;border-bottom:1px solid var(--line2)}
+.sig .top .ttl{flex:1;font-weight:600;font-size:13px}
+.sig .tag{font-size:11px;padding:1px 6px;border-radius:999px;font-weight:600}
+.tag.buy{background:#d1fae5;color:#065f46}
+.tag.sell{background:#fee2e2;color:#991b1b}
+.sig .x{border:0;background:none;cursor:pointer;color:var(--ink3);font-size:16px;line-height:1;padding:2px 4px}
+.sig .x:hover{color:var(--sell)}
+.sig .params{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sig .params label{font-size:11px;color:var(--ink3);display:block;margin-bottom:3px}
+.sig .params select,.sig .params input{width:100%;padding:6px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.sig .params label span{white-space:nowrap}
+.metricgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px 6px}
+.metricgrid label{display:flex;align-items:center;gap:4px;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.metricgrid input{width:auto;flex:0 0 auto;margin:0}
+.sig .desc{padding:0 10px 10px;font-size:12px;color:var(--ink2)}
+.sig .hit{padding:8px 10px;border-top:1px solid var(--line2);font-size:12px;display:flex;justify-content:space-between;gap:8px}
+.hit.fire{background:#ecfdf5;color:#065f46;font-weight:600}
+.hit.fire.sellfire{background:#fef2f2;color:#991b1b}
+.switch{position:relative;width:34px;height:19px;flex:0 0 auto}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch span{position:absolute;inset:0;background:#d1d5db;border-radius:999px;cursor:pointer;transition:.15s}
+.switch span:before{content:"";position:absolute;width:15px;height:15px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.15s}
+.switch input:checked+span{background:var(--brand)}
+.switch input:checked+span:before{transform:translateX(15px)}
+
+/* ---------- 表 ---------- */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line2);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--ink3);font-weight:500;font-size:11px;white-space:nowrap}
+tbody tr:hover{background:#fafafa}
+td.date{cursor:pointer;color:var(--brand-d)}
+td.date:hover{text-decoration:underline}
+.empty{padding:22px 14px;text-align:center;color:var(--ink3);font-size:13px}
+.note{padding:10px 14px 14px;font-size:12px;color:var(--ink2);line-height:1.65}
+.note b{color:var(--ink)}
+.scroll{max-height:340px;overflow:auto}
+footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);font-size:12px;line-height:1.7}
+.warnbox{margin:0 14px 14px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:9px;
+  font-size:12px;color:#78350f;line-height:1.6}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr">
+    <div class="brand"><span class="dot"></span><span data-t="title">股票查看器</span></div>
+    <div class="tickerbox">
+      <input id="search" autocomplete="off" data-tph="searchPh" placeholder="搜索股票代码…">
+      <div class="sugg" id="sugg" hidden></div>
+    </div>
+    <div class="tabs">
+      <button id="tabSignal" class="on">低点信号</button>
+      <button id="tabVal">估值面板</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="langbtn" id="lang">EN</button>
+  </div>
+</header>
+
+<main>
+<div id="view-signal">
+  <!-- 左：图 -->
+  <div>
+    <section class="card" style="margin-bottom:16px">
+      <div class="quote">
+        <span class="name" id="qName">—</span><span class="code" id="qCode"></span>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k" data-t="mCur">当前价格</div><div class="v" id="mCur">—</div></div>
+        <div class="stat"><div class="k" data-t="mChg">总涨跌幅</div><div class="v" id="mChg">—</div></div>
+        <div class="stat"><div class="k" data-t="mHigh">最高价</div><div class="v" id="mHigh">—</div></div>
+        <div class="stat"><div class="k" data-t="mLow">最低价</div><div class="v" id="mLow">—</div></div>
+        <div class="stat"><div class="k" data-t="mAvg">平均价</div><div class="v" id="mAvg">—</div></div>
+        <div class="stat"><div class="k" data-t="mSig">信号触发</div><div class="v" id="mSig">—</div></div>
+      </div>
+      <div class="ranges" id="ranges"></div>
+      <div class="chartwrap">
+        <canvas id="chart"></canvas>
+        <div id="tip"></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="card" style="margin-bottom:16px">
+      <h2 data-t="hitsTitle">触发记录</h2>
+      <div class="scroll"><table id="hitsTable"></table></div>
+      <div class="empty" id="hitsEmpty">左侧还没有启用任何信号。</div>
+    </section>
+
+    <section class="card" style="margin-bottom:16px">
+      <h2 data-t="markTitle">标注低点的覆盖情况</h2>
+      <div class="addrow" style="align-items:center;gap:10px">
+        <span style="font-size:12px;color:#9ca3af" data-t="covWindow">容差(交易日)</span>
+        <select id="covWin" style="flex:0 0 90px"></select>
+        <span id="covSum" style="font-size:13px;font-weight:600"></span>
+      </div>
+      <div class="scroll"><table id="markTable"></table></div>
+      <div class="empty" id="markEmpty" hidden></div>
+      <div class="note" data-t="markNote"></div>
+    </section>
+
+    <section class="card">
+      <h2 data-t="statTitle">各信号的历史表现（全部历史，非当前时间范围）</h2>
+      <div class="scroll"><table id="statTable"></table></div>
+      <div class="note" data-t="statNote"></div>
+    </section>
+  </div>
+
+  <!-- 右：信号 -->
+  <div>
+    <section class="card" style="margin-bottom:16px">
+      <h2 data-t="sigTitle">信号</h2>
+      <div class="addrow">
+        <select id="addSel"></select>
+        <button id="addBtn" data-t="add">添加</button>
+      </div>
+      <div id="sigList"></div>
+      <div class="empty" id="sigEmpty" data-t="noSig">还没有添加信号。</div>
+    </section>
+
+    <section class="card" style="margin-bottom:16px">
+      <h2 data-t="watchTitle">我的提醒</h2>
+      <div id="watchList"></div>
+      <div class="empty" id="watchEmpty" data-t="noWatch">暂无提醒。</div>
+      <div class="addrow"><button id="watchAdd" style="flex:1" data-t="watchAddBtn">把当前配置存为提醒</button></div>
+      <div class="note" data-t="watchNote"></div>
+    </section>
+  </div>
+</div><!-- /#view-signal -->
+
+<!-- ============ 估值面板（暗色，变量作用域只在本容器内，不影响上面的信号页） ============ -->
+<div id="view-val" hidden>
+
+  <!-- 网格视图：自选清单的估值卡 -->
+  <section id="valGrid">
+    <div class="valbar">
+      <h2>自选清单估值</h2>
+      <div class="seg" id="valSort"></div>
+      <div class="spacer"></div>
+      <div class="vnote" id="valBuilt"></div>
+    </div>
+    <div class="cards" id="valCards"></div>
+    <div class="vfoot" id="valGridFoot"></div>
+  </section>
+
+  <!-- 详情视图：单个标的的估值走势 + 历史分位 -->
+  <section id="valDetail" hidden>
+    <div class="crumb"><a href="#" id="valBack">← <span>返回清单</span></a>
+      <span class="sep">·</span><span id="valCrumb"></span></div>
+    <div class="valbar">
+      <h1 id="valName">—</h1>
+      <div class="spacer"></div>
+      <div class="vnote" id="valSpan"></div>
+    </div>
+
+    <div class="segrow">
+      <div class="seg" id="valMetrics"></div>
+      <div class="seg" id="valRanges"></div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi hi"><div class="k" id="kpi1k">—</div><div class="v" id="kpi1v">—</div></div>
+      <div class="kpi"><div class="k">百分位（当前区间）</div><div class="v amber" id="kpi2v">—</div></div>
+      <div class="kpi"><div class="k">估值状态 · 当前区间</div><div class="v" id="kpi3v">—</div></div>
+      <div class="kpi"><div class="k">区间变动</div><div class="v" id="kpi4v">—</div></div>
+    </div>
+
+    <div class="duo">
+      <div class="vcard">
+        <div class="vhd"><span>估值走势</span><span class="vnote" id="trendNote"></span></div>
+        <div class="plotbox" id="p-val"></div>
+      </div>
+      <div class="vcard">
+        <div class="vhd"><span>历史分位</span><span class="vnote">当前区间滚动百分位</span></div>
+        <div class="plotbox" id="p-valpct"></div>
+        <div class="posrow"><span>当前区间位置</span><span id="posVal">—</span></div>
+        <div class="gradbar"><div class="knob" id="posKnob"></div></div>
+        <div class="gradtick"><span>0% <span>低估</span></span><span>20%</span><span>50%</span><span>80%</span><span>100% <span>高估</span></span></div>
+      </div>
+    </div>
+    <div class="vfoot" id="valDetailFoot"></div>
+  </section>
+</div><!-- /#view-val -->
+</main>
+
+<footer>
+  <div data-t="foot1"></div>
+  <div id="built" style="margin-top:4px"></div>
+</footer>
+
+<script src="viewer_data.js"></script>
+<script src="viewer.js"></script>
+<script src="valuation_data.js"></script>
+<script src="plot.js"></script>
+<script src="valuation.js"></script>
+</body>
+</html>
