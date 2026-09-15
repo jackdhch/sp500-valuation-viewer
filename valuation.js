@@ -12,8 +12,16 @@
 (function () {
 "use strict";
 
-var D = window.VAL_DATA;
+/* 数据分两层加载：
+ *   valuation_index.js  —— 卡片墙要的摘要，十几 KB，页面一打开就有
+ *   v/<TICKER>.js       —— 单只标的的日频序列，点进详情页时才去取
+ * 以前是一个 4 MB 的 valuation_data.js 同步加载，跨境访问 GitHub Pages 要等很久，
+ * 在那之前整页是空白的。 */
+var D = window.VAL_INDEX;
 if (!D) return;
+
+var PARTS = {};                       // ticker -> 已加载的日频序列
+window.__valPart = function (t, part) { PARTS[t] = part; };
 
 var $ = function (s) { return document.querySelector(s); };
 var wrap = document.getElementById("view-val");
@@ -136,12 +144,12 @@ function snapshotCard(ticker) {
 }
 
 function card(ticker) {
-  var m = D.meta[ticker], d = D.data[ticker];
-  var s = d.series;
-  var pe = lastValid(s.pe), fwd = lastValid(s.fwd_pe), pb = lastValid(s.pb);
-  var p10 = (d.pct10y && d.pct10y.pe) || {};
+  var m = D.meta[ticker];
+  var c = m.cur || {};
+  var pe = c.pe, fwd = c.fwd_pe, pb = c.pb;
+  var p10 = (m.pct10y && m.pct10y.pe) || {};
   var st = statusOf(p10.pct, p10.neg);
-  var chg = d.pe_chg_1y;
+  var chg = m.pe_chg_1y;
   // 上市不足十年的标的，标签要写真实年限，不能照抄「近十年」
   var winTxt = (p10.years && p10.years < 9.5) ? ("近" + p10.years + "年") : "近十年";
 
@@ -170,9 +178,9 @@ function card(ticker) {
   el.querySelector(".b").textContent = fmt(pb);
   var pegTxt = (m.peg && m.peg !== "n/a" && m.peg !== "N/A") ? m.peg : "—";
   el.querySelector(".g").textContent = pegTxt;
-  var c = el.querySelector(".c");
-  c.textContent = (chg === null || chg === undefined) ? "—" : (chg > 0 ? "+" : "") + chg + "%";
-  c.className = "c " + (chg === null ? "" : chg < 0 ? "good" : "bad");
+  var chgEl = el.querySelector(".c");
+  chgEl.textContent = (chg === null || chg === undefined) ? "—" : (chg > 0 ? "+" : "") + chg + "%";
+  chgEl.className = "c " + (chg === null ? "" : chg < 0 ? "good" : "bad");
   el.querySelector(".p").textContent =
     p10.pct === null || p10.pct === undefined ? "样本不足" : p10.pct + "%";
   el.querySelector(".knob").style.left = (p10.pct === null || p10.pct === undefined ? 0 : p10.pct) + "%";
@@ -192,14 +200,14 @@ function card(ticker) {
 /* 取某个标的用来排序的数值。拿不到就返回 null，这类一律排到最后，
    免得「没有数据」被排成「最便宜」。 */
 function sortValue(t, key) {
-  var m = D.meta[t] || {}, d = D.data[t];
+  var m = D.meta[t] || {};
   if (key === "mcap") return mcapNum(m.mcap);
-  if (!d) return null;                       // 只有当前值的 ETF 没有历史，参与不了后两种排序
-  var p10 = (d.pct10y && d.pct10y.pe) || {};
+  if (!m.has_series) return null;            // 只有当前值的 ETF 参与不了后两种排序
+  var p10 = (m.pct10y && m.pct10y.pe) || {};
   if (key === "pct") return (p10.neg ? null : p10.pct);
   if (key === "pe") {
-    var v = lastValid(d.series.pe);
-    return (v === null || v < 0) ? null : v;  // 负市盈率不参与排序，见分位口径说明
+    var v = (m.cur || {}).pe;
+    return (v === null || v === undefined || v < 0) ? null : v;  // 负市盈率不参与排序
   }
   return null;
 }
@@ -255,7 +263,7 @@ function renderGrid() {
   var box = $("#valCards");
   box.innerHTML = "";
   sortedTickers().forEach(function (t) {
-    box.appendChild(D.data[t] ? card(t) : snapshotCard(t));
+    box.appendChild(D.meta[t].has_series ? card(t) : snapshotCard(t));
   });
   renderSortBar();
   $("#valBuilt").textContent = "数据生成于 " + D.built;
@@ -288,6 +296,40 @@ function rangeIdx(dates, years) {
   return 0;
 }
 
+/* 按需拉取单只标的的日频序列。加载期间给个提示，别让详情页干晾在那。 */
+function loadPart(ticker, cb) {
+  if (PARTS[ticker]) return cb(true);
+  var s = document.createElement("script");
+  s.src = "v/" + encodeURIComponent(ticker) + ".js";
+  s.onload = function () { cb(!!PARTS[ticker]); };
+  s.onerror = function () { cb(false); };
+  document.head.appendChild(s);
+}
+
+/* 分片里日期存的是「起始日 + 逐日增量」，画图要的是日期字符串数组，这里还原一次并缓存 */
+function expandDates(part) {
+  if (part._d) return part._d;
+  var out = [part.d0], t = Date.parse(part.d0 + "T00:00:00Z");
+  for (var i = 0; i < part.dd.length; i++) {
+    t += part.dd[i] * 86400000;
+    out.push(new Date(t).toISOString().slice(0, 10));
+  }
+  part._d = out;
+  return out;
+}
+
+/* 外推标记是游程编码过的 [首值, 段长, 段长, ...]，还原成布尔数组 */
+function expandFlags(rle, n) {
+  if (!rle || !rle.length) return null;
+  var out = [], v = !!rle[0];
+  for (var i = 1; i < rle.length; i++) {
+    for (var k = 0; k < rle[i]; k++) out.push(v);
+    v = !v;
+  }
+  while (out.length < n) out.push(false);
+  return out;
+}
+
 function openDetail(ticker) {
   cur.ticker = ticker;
   $("#valGrid").hidden = true;
@@ -307,11 +349,19 @@ function openDetail(ticker) {
       yfmt: function (v) { return v.toFixed(0) + "%"; }
     });
   }
-  redrawDetail();
+  $("#valSpan").textContent = "加载中…";
+  loadPart(ticker, function (ok) {
+    if (cur.ticker !== ticker) return;           // 用户已经点去别的标的了
+    if (!ok) { $("#valSpan").textContent = "这只标的的历史数据加载失败"; return; }
+    redrawDetail();
+  });
 }
 
 function redrawDetail() {
-  var d = D.data[cur.ticker], s = d.series, dates = s.d;
+  var part = PARTS[cur.ticker];
+  if (!part) return;
+  var dates = expandDates(part);
+  var s = part;
   var met = METRICS.filter(function (x) { return x.key === cur.metric; })[0];
   var rng = RANGES.filter(function (x) { return x.key === cur.range; })[0];
 
@@ -357,14 +407,14 @@ function redrawDetail() {
   if (curPct !== null) knob.style.left = curPct + "%";
 
   trendPlot.o.series[0].data = vals;
-  trendPlot.o.series[0].extrap = (d.extrap && d.extrap[met.key]) || null;
+  trendPlot.o.series[0].extrap = expandFlags((part.extrap || {})[met.key], dates.length);
   pctPlot.o.series[0].data = full;
   window.VPlot.setDates(dates);
   window.VPlot.setRange(i0, i1);
   trendPlot.render();
   pctPlot.render();
 
-  var p10 = (d.pct10y && d.pct10y[met.key]) || {};
+  var p10 = ((D.meta[cur.ticker].pct10y) || {})[met.key] || {};
   renderWhatIf(vals, i0, i1, met, curVal, curPct);
 
   var kindNote = D.meta[cur.ticker].note ? ("口径：" + D.meta[cur.ticker].note + "<br>") : "";

@@ -455,14 +455,103 @@ def main():
               f"十年分位={p10.get('pct')}({p10.get('years')}年,{p10.get('n')}点) "
               f"{p10.get('status')}  1YΔ={r['pe_chg_1y']}%")
 
+    write_payload(payload)
+
+
+def _compact_dates(iso_dates):
+    """日期数组压缩成「起始日 + 逐日增量」。
+
+    5000 个 "2006-03-31" 要 60 KB，换成相对前一天的天数差（多数是 1 或 3）只要 10 KB 出头。
+    前端在 valuation.js 的 expandDates() 里还原。
+    """
+    if not iso_dates:
+        return "", []
+    prev = datetime.date.fromisoformat(iso_dates[0])
+    deltas = []
+    for x in iso_dates[1:]:
+        d = datetime.date.fromisoformat(x)
+        deltas.append((d - prev).days)
+        prev = d
+    return iso_dates[0], deltas
+
+
+def write_payload(payload):
+    """拆成「一个索引 + 每只标的一个分片」，这样首屏不用等 4 MB。
+
+    页面刚打开只需要卡片墙的那点摘要（索引约几十 KB），点进某只标的的详情页时
+    才去取它自己的那份日频序列。原来是一个 4 MB 的 valuation_data.js 同步加载，
+    跨境访问 GitHub Pages 要等很久，页面在那之前是空白的。
+    """
     os.makedirs(SITE, exist_ok=True)
-    with open(f"{SITE}/valuation_data.js", "w") as f:
-        f.write("window.VAL_DATA=")
-        json.dump(payload, f, separators=(",", ":"), ensure_ascii=False)
+    part_dir = f"{SITE}/v"
+    os.makedirs(part_dir, exist_ok=True)
+
+    index = {"built": payload["built"], "meta": {}}
+    total_part = 0
+    for t, meta in payload["meta"].items():
+        d = payload["data"].get(t)
+        m = dict(meta)
+        if d:
+            s = d["series"]
+            # 卡片墙要的就这几样：当前值、十年分位、一年变化
+            m["cur"] = {k: next((v for v in reversed(s.get(k) or []) if v is not None), None)
+                        for k in ("pe", "fwd_pe", "pb")}
+            m["pct10y"] = d["pct10y"]
+            m["pe_chg_1y"] = d["pe_chg_1y"]
+            m["has_series"] = True
+
+            d0, dd = _compact_dates(s["d"])
+            part = {"d0": d0, "dd": dd,
+                    "pe": _r2(s.get("pe")), "fwd_pe": _r2(s.get("fwd_pe")),
+                    "pb": _r2(s.get("pb")),
+                    "extrap": {k: _rle(v) for k, v in (d.get("extrap") or {}).items()}}
+            pp = f"{part_dir}/{t}.js"
+            with open(pp, "w") as f:
+                f.write("window.__valPart(" + json.dumps(t) + ",")
+                json.dump(part, f, separators=(",", ":"), ensure_ascii=False)
+                f.write(");")
+            total_part += os.path.getsize(pp)
+        else:
+            m["has_series"] = False
+        index["meta"][t] = m
+
+    ip = f"{SITE}/valuation_index.js"
+    with open(ip, "w") as f:
+        f.write("window.VAL_INDEX=")
+        json.dump(index, f, separators=(",", ":"), ensure_ascii=False)
         f.write(";")
-    out_path = f"{SITE}/valuation_data.js"
-    size = os.path.getsize(out_path)
-    print(f"\n写出 {out_path}  {size/1024:.0f} KB，{len(payload['data'])} 个标的")
+
+    # 旧的单体文件不再需要，留着会让人以为还在用
+    legacy = f"{SITE}/valuation_data.js"
+    if os.path.exists(legacy):
+        os.remove(legacy)
+
+    n = sum(1 for m in index["meta"].values() if m.get("has_series"))
+    print(f"\n写出 {ip}  {os.path.getsize(ip)/1024:.0f} KB（首屏只加载这个）")
+    print(f"     {part_dir}/  {n} 个分片，合计 {total_part/1024:.0f} KB（点开标的时才加载）")
+
+
+def _r2(arr):
+    """数值留两位小数就够画图了，三位白白多占约 8% 体积。"""
+    if not arr:
+        return arr
+    return [None if v is None else round(v, 2) for v in arr]
+
+
+def _rle(flags):
+    """外推标记是一长串 false 末尾几个 true，游程编码后只剩两三个数字。"""
+    if not flags:
+        return []
+    out = []
+    cur, n = flags[0], 0
+    for v in flags:
+        if v == cur:
+            n += 1
+        else:
+            out.append(n)
+            cur, n = v, 1
+    out.append(n)
+    return [1 if flags[0] else 0] + out
 
 
 if __name__ == "__main__":
