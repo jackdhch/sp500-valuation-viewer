@@ -237,8 +237,8 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
       <div class="sugg" id="sugg" hidden></div>
     </div>
     <div class="tabs">
-      <button id="tabSignal" class="on">低点信号</button>
-      <button id="tabVal">估值面板</button>
+      <button id="tabSignal">低点信号</button>
+      <button id="tabVal" class="on">估值面板</button>
     </div>
     <div class="spacer"></div>
     <button class="langbtn" id="lang">EN</button>
@@ -247,7 +247,7 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
 
 <main>
 <!-- 数据文件有两三兆，慢网络下要等一会儿；先摆个明确的提示，别让人对着空白页面猜是不是坏了 -->
-<div id="boot">正在加载行情数据…<span class="sub">首次打开需要下载约 2.8 MB，取决于网络可能要十几秒</span></div>
+<div id="boot" hidden>正在加载行情数据…<span class="sub">低点信号那套数据约 2.8 MB，慢网络下要等一会儿</span></div>
 <div id="view-signal" hidden>
   <!-- 左：图 -->
   <div>
@@ -319,7 +319,7 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
 </div><!-- /#view-signal -->
 
 <!-- ============ 估值面板（暗色，变量作用域只在本容器内，不影响上面的信号页） ============ -->
-<div id="view-val" hidden>
+<div id="view-val">
 
   <!-- 网格视图：自选清单的估值卡 -->
   <section id="valGrid">
@@ -394,21 +394,12 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
   <div id="built" style="margin-top:4px"></div>
 </footer>
 
-<script src="viewer_data.js"></script>
-<script src="viewer.js"></script>
+<!-- viewer_data.js（2.8 MB）与 viewer.js 不在这里加载：
+     它们是「低点信号」页签才用得上的，点到那个页签时由 valuation.js 动态插入。
+     首屏只需要 11 KB 的估值索引，这样页面几乎是秒开的。 -->
 <script src="valuation_index.js"></script>
 <script src="plot.js"></script>
 <script src="valuation.js"></script>
-<script>
-// viewer.js / valuation.js 都是同步脚本，跑到这里说明数据已经就位
-(function () {
-  var boot = document.getElementById("boot");
-  if (boot) boot.remove();
-  var sig = document.getElementById("view-signal");
-  // 只有当前停在信号页时才亮出来（用户可能在加载期间就点了估值面板）
-  if (sig && document.getElementById("tabSignal").className === "on") sig.hidden = false;
-  window.dispatchEvent(new Event("resize"));   // 让画布按真实宽度重画一次
-})();
-</script>
+
 </body>
 </html>

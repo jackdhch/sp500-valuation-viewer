@@ -498,13 +498,54 @@ $("#wiSlider").addEventListener("input", updateWhatIf);
 
 /* ---------------- 页签切换 ---------------- */
 
+/* 「低点信号」那套数据有 2.8 MB，是整个页面里最重的东西，而且只有那个页签用得上。
+   所以首屏不下它，等用户真点过去的时候再按顺序插入 viewer_data.js → viewer.js。
+   期间显示加载提示，不留空白。 */
+var signalState = "idle";     // idle / loading / ready / failed
+
+function loadSignalApp(done) {
+  if (signalState === "ready") return done(true);
+  if (signalState === "loading") return;
+  signalState = "loading";
+  var boot = document.getElementById("boot");
+  if (boot) boot.hidden = false;
+  function addScript(src, next) {
+    var el = document.createElement("script");
+    el.src = src;
+    el.onload = next;
+    el.onerror = function () {
+      signalState = "failed";
+      if (boot) boot.textContent = "行情数据加载失败，刷新页面再试一次";
+      done(false);
+    };
+    document.head.appendChild(el);
+  }
+  addScript("viewer_data.js", function () {
+    addScript("viewer.js", function () {
+      signalState = "ready";
+      if (boot) boot.hidden = true;
+      done(true);
+    });
+  });
+}
+
 function showTab(which) {
   var sig = which === "signal";
-  document.getElementById("view-signal").hidden = !sig;
   wrap.hidden = sig;
   document.getElementById("tabSignal").className = sig ? "on" : "";
   document.getElementById("tabVal").className = sig ? "" : "on";
-  if (!sig && trendPlot && !$("#valDetail").hidden) { trendPlot.render(); pctPlot.render(); }
+  if (!sig) {
+    document.getElementById("view-signal").hidden = true;
+    var boot = document.getElementById("boot");
+    if (boot && signalState !== "loading") boot.hidden = true;
+    if (trendPlot && !$("#valDetail").hidden) { trendPlot.render(); pctPlot.render(); }
+    return;
+  }
+  loadSignalApp(function (ok) {
+    if (!ok || document.getElementById("tabSignal").className !== "on") return;
+    document.getElementById("view-signal").hidden = false;
+    window.dispatchEvent(new Event("resize"));   // 让主图按真实宽度重画
+  });
 }
 
 document.getElementById("tabSignal").addEventListener("click", function () { showTab("signal"); });
