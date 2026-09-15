@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" data-public="1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,6 +11,27 @@
   --brand:#667eea; --brand-d:#4f5fd4; --sig:#764ba2;
   --buy:#059669; --sell:#dc2626; --warn:#b45309;
   --ma1:#f59e0b; --ma2:#0ea5e9; --band:rgba(118,75,162,.10);
+  --hover:#f3f4f6; --surface:#ffffff; --grid:#e5e7eb; --ink-3:#9ca3af;
+  --warnbg:#fffbeb; --warnline:#fde68a;
+  color-scheme: light;
+}
+/* 暗色：整站一套，由顶栏那个开关切换（存在 localStorage.sv_theme） */
+html[data-theme="dark"]{
+  --bg:#0d1117; --panel:#161b22; --line:#262d38; --line2:#1e242e;
+  --ink:#e6edf7; --ink2:#9aa7b8; --ink3:#6b7685;
+  --brand:#7c8cf8; --brand-d:#8b9aff; --sig:#a78bfa;
+  --buy:#2fd39b; --sell:#f85149; --warn:#e3b341;
+  --ma1:#f0883e; --ma2:#58a6ff; --band:rgba(167,139,250,.14);
+  --hover:#1c2128; --surface:#161b22; --grid:#262d38; --ink-3:#6b7685;
+  --warnbg:#2b2413; --warnline:#5c4a16;
+  color-scheme: dark;
+}
+/* 估值面板本来就是照着暗色设计的；亮色模式下给它一套对应的浅色，免得整页黑白打架 */
+html[data-theme="light"] #view-val{
+  --bg:#f9fafb; --panel:#ffffff; --panel2:#f3f4f6; --line:#e5e7eb; --line2:#f1f3f5;
+  --ink:#111827; --ink2:#4b5563; --ink3:#9ca3af;
+  --accent:#059669; --accent-d:#10b981; --pctline:#4f5fd4; --amber:#b45309;
+  --cheap:#059669; --fair:#b45309; --rich:#dc2626;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -25,16 +46,16 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
 .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--brand)}
 .spacer{flex:1}
 .tickerbox{position:relative}
-.tickerbox input{width:230px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.tickerbox input{width:230px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
 .tickerbox input:focus{outline:2px solid rgba(102,126,234,.35);outline-offset:0;border-color:var(--brand)}
-.sugg{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:#fff;border:1px solid var(--line);
+.sugg{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--panel);border:1px solid var(--line);
   border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.08);max-height:280px;overflow:auto;z-index:30}
 .sugg div{padding:8px 10px;cursor:pointer;display:flex;gap:8px;align-items:baseline}
-.sugg div:hover,.sugg div.on{background:#f3f4f6}
+.sugg div:hover,.sugg div.on{background:var(--hover)}
 .sugg b{font-weight:600}
 .sugg span{color:var(--ink3);font-size:12px}
-.langbtn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
-.langbtn:hover{background:#f3f4f6}
+.langbtn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px;cursor:pointer}
+.langbtn:hover{background:var(--hover)}
 
 /* ---------- 布局 ---------- */
 main{max-width:1360px;margin:0 auto;padding:16px}
@@ -47,8 +68,8 @@ main{max-width:1360px;margin:0 auto;padding:16px}
 
 /* ---------- 页签 ---------- */
 .tabs{display:flex;gap:6px}
-.tabs button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px}
-.tabs button:hover{background:#f3f4f6}
+.tabs button{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px}
+.tabs button:hover{background:var(--hover)}
 .tabs button.on{background:var(--brand);border-color:var(--brand);color:#fff}
 
 /* ---------- 首屏加载提示 ---------- */
@@ -163,8 +184,8 @@ main{max-width:1360px;margin:0 auto;padding:16px}
 
 /* ---------- 时间范围 ---------- */
 .ranges{display:flex;gap:6px;padding:0 14px 12px;flex-wrap:wrap}
-.ranges button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 11px;cursor:pointer;font-size:13px}
-.ranges button:hover{background:#f3f4f6}
+.ranges button{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:5px 11px;cursor:pointer;font-size:13px}
+.ranges button:hover{background:var(--hover)}
 .ranges button.on{background:var(--brand);border-color:var(--brand);color:#fff}
 
 /* ---------- 图 ---------- */
@@ -180,7 +201,7 @@ canvas{display:block;width:100%;touch-action:none}
 
 /* ---------- 信号面板 ---------- */
 .addrow{display:flex;gap:8px;padding:0 14px 14px}
-.addrow select{flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.addrow select{flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
 .addrow button{padding:8px 14px;border:0;border-radius:8px;background:var(--brand);color:#fff;cursor:pointer;font-weight:500}
 .addrow button:hover{background:var(--brand-d)}
 .sig{border:1px solid var(--line);border-radius:10px;margin:0 14px 10px;overflow:hidden}
@@ -194,7 +215,7 @@ canvas{display:block;width:100%;touch-action:none}
 .sig .x:hover{color:var(--sell)}
 .sig .params{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .sig .params label{font-size:11px;color:var(--ink3);display:block;margin-bottom:3px}
-.sig .params select,.sig .params input{width:100%;padding:6px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.sig .params select,.sig .params input{width:100%;padding:6px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink)}
 .sig .params label span{white-space:nowrap}
 .metricgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px 6px}
 .metricgrid label{display:flex;align-items:center;gap:4px;font-size:11.5px;cursor:pointer;white-space:nowrap}
@@ -223,7 +244,7 @@ td.date:hover{text-decoration:underline}
 .note b{color:var(--ink)}
 .scroll{max-height:340px;overflow:auto}
 footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);font-size:12px;line-height:1.7}
-.warnbox{margin:0 14px 14px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:9px;
+.warnbox{margin:0 14px 14px;padding:10px 12px;background:var(--warnbg);border:1px solid var(--warnline);border-radius:9px;
   font-size:12px;color:#78350f;line-height:1.6}
 </style>
 </head>
@@ -241,6 +262,7 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
       <button id="tabVal" class="on">估值面板</button>
     </div>
     <div class="spacer"></div>
+    <button class="langbtn" id="theme" title="切换亮 / 暗">🌙</button>
     <button class="langbtn" id="lang">EN</button>
   </div>
 </header>
@@ -271,13 +293,13 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
       <div class="legend" id="legend"></div>
     </section>
 
-    <section class="card" style="margin-bottom:16px">
+    <section class="card" id="cardHits" style="margin-bottom:16px">
       <h2 data-t="hitsTitle">触发记录</h2>
       <div class="scroll"><table id="hitsTable"></table></div>
       <div class="empty" id="hitsEmpty">左侧还没有启用任何信号。</div>
     </section>
 
-    <section class="card" style="margin-bottom:16px">
+    <section class="card" id="cardMarks" style="margin-bottom:16px">
       <h2 data-t="markTitle">标注低点的覆盖情况</h2>
       <div class="addrow" style="align-items:center;gap:10px">
         <span style="font-size:12px;color:#9ca3af" data-t="covWindow">容差(交易日)</span>
@@ -289,7 +311,7 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
       <div class="note" data-t="markNote"></div>
     </section>
 
-    <section class="card">
+    <section class="card" id="cardStats">
       <h2 data-t="statTitle">各信号的历史表现（全部历史，非当前时间范围）</h2>
       <div class="scroll"><table id="statTable"></table></div>
       <div class="note" data-t="statNote"></div>

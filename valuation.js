@@ -496,6 +496,37 @@ function updateWhatIf() {
 
 $("#wiSlider").addEventListener("input", updateWhatIf);
 
+/* ---------------- 亮 / 暗切换 ----------------
+ * 整站一套变量：:root 是亮色，html[data-theme="dark"] 覆盖成暗色，
+ * 估值面板在亮色模式下另有一组浅色变量（见 viewer.html 的样式）。
+ * canvas 上的颜色是每次重绘时从 CSS 变量读的，所以切换后重画一遍就行。
+ */
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  var btn = document.getElementById("theme");
+  if (btn) {
+    btn.textContent = t === "dark" ? "☀" : "🌙";
+    btn.title = t === "dark" ? "切到亮色" : "切到暗色";
+  }
+  try { localStorage.setItem("sv_theme", t); } catch (e) { /* 隐私模式下写不了，无所谓 */ }
+  if (trendPlot && !$("#valDetail").hidden) { trendPlot.render(); pctPlot.render(); }
+  window.dispatchEvent(new Event("resize"));   // 信号页那张主图也重画
+}
+
+(function initTheme() {
+  var saved = null;
+  try { saved = localStorage.getItem("sv_theme"); } catch (e) { /* 同上 */ }
+  if (!saved) {
+    saved = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark" : "light";
+  }
+  applyTheme(saved);
+  var btn = document.getElementById("theme");
+  if (btn) btn.addEventListener("click", function () {
+    applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  });
+})();
+
 /* ---------------- 页签切换 ---------------- */
 
 /* 「低点信号」那套数据有 2.8 MB，是整个页面里最重的东西，而且只有那个页签用得上。

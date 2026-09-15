@@ -532,13 +532,29 @@ try {
   var saved = JSON.parse(localStorage.getItem("sv_sigs") || "null");
   if (saved && saved.length) state.sigs = saved;
 } catch (e) { /* 忽略坏掉的本地存储 */ }
-if (!state.sigs.length) {
-  /* 默认配置：回撤深度 97 分（衡量「跌得够不够深」，触发价不随时间漂移）
-     加距MA50 97 分（衡量「跌得够不够急」）。两条都是单指标，卡片上直接给出触发价。 */
+/* 公开站（GitHub Pages）与本地版跑的是同一份代码，但公开站上不摆这些东西：
+   操作者手工标注的低点、触发记录、各信号历史表现——那是个人研究过程，
+   放在谁都能打开的页面上既没必要也容易被误读成「推荐买卖点」。
+   代码和数据都还在，本地打开（file:// 或 localhost）照旧完整显示。 */
+var PUBLIC_SITE = document.documentElement.dataset.public === "1" ||
+                  /\.github\.io$/.test(location.hostname);
+if (PUBLIC_SITE) {
+  ["cardHits", "cardMarks", "cardStats"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.hidden = true;
+  });
+}
+
+if (!PUBLIC_SITE && !state.sigs.length && localStorage.getItem("sv_sigs_seen") !== "1") {
+  /* 默认不再预设抄底分那两条——抄底分是「跌得够不够深/够不够急」的择时信号，
+     当默认值会把人往追跌的方向带。估值类的提醒现在在「估值面板」页签里，
+     那边按 PE 分位给阈值，逻辑上更稳。
+     这里只留一条最中性的：股价相对 200 日均线跌到历史 97 分位（跌破年线且幅度罕见），
+     纯粹作为「有东西可看」的示例，用户删掉后不会再自动加回来。 */
   state.sigs = [
-    { type: "pct-combo", active: true, params: { metrics: ["回撤深度"], mode: "mean", threshold: 97 } },
-    { type: "pct-combo", active: true, params: { metrics: ["距MA50"], mode: "mean", threshold: 97 } },
+    { type: "pct-combo", active: true, params: { metrics: ["距MA200"], mode: "mean", threshold: 97 } },
   ];
+  localStorage.setItem("sv_sigs_seen", "1");
 }
 if (!DATA.series[state.ticker]) state.ticker = Object.keys(DATA.series)[0];
 
