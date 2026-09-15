@@ -191,6 +191,50 @@ main{max-width:1360px;margin:0 auto;padding:16px}
   border-radius:7px;padding:4px 9px;cursor:pointer;font-size:12px}
 #view-val .cmppick button.on{background:rgba(47,211,155,.14);border-color:var(--accent-d);color:var(--accent)}
 
+/* 大盘概览条 */
+#view-val .macrobar{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:820px){#view-val .macrobar{grid-template-columns:1fr}}
+#view-val .mb{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:12px;padding:13px 16px;cursor:pointer;display:flex;align-items:center;gap:14px}
+#view-val .mb:hover{border-color:var(--accent-d);border-left-color:var(--accent)}
+#view-val .mb .l{flex:1;min-width:0}
+#view-val .mb .nm{font-size:13px;color:var(--ink2);margin-bottom:3px}
+#view-val .mb .big{font-size:27px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+#view-val .mb .sub{font-size:11px;color:var(--ink3);margin-top:3px}
+#view-val .mb .r{text-align:right;flex:none}
+#view-val .mb .pct{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+#view-val .mb .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;
+  margin-top:4px;font-weight:600}
+
+/* 相关性矩阵 */
+#view-val .corrtab{border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+#view-val .corrtab th{padding:6px 9px;color:var(--ink3);font-weight:500;font-size:11px}
+#view-val .corrtab th.rowh{text-align:right}
+#view-val .corrtab td{padding:7px 10px;text-align:center;border-radius:6px;font-weight:600}
+
+/* 回测 */
+#view-val .btrow{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+#view-val .btlab{font-size:12px;color:var(--ink3);display:flex;align-items:center;gap:8px}
+#view-val .btlab b{color:var(--accent);font-size:14px;min-width:38px}
+#view-val .btlab input{accent-color:var(--accent);width:150px}
+#view-val .btwrap{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){#view-val .btwrap{grid-template-columns:1fr}}
+#view-val .scwrap{position:relative;height:200px}
+#view-val .scwrap canvas{width:100%;height:100%}
+
+/* 投资组合 */
+#view-val .pfwrap{display:grid;grid-template-columns:1fr 1.3fr;gap:14px}
+@media(max-width:900px){#view-val .pfwrap{grid-template-columns:1fr}}
+#view-val #pfInput{width:100%;min-height:190px;resize:vertical;padding:10px;border-radius:9px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+  font:13px/1.7 "IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+#view-val #pfInput:focus{outline:2px solid rgba(47,211,155,.3);border-color:var(--accent-d)}
+#view-val .pfbar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12px}
+#view-val .pfbar .nm{width:78px;color:var(--ink2);flex:none}
+#view-val .pfbar .tr{flex:1;height:9px;border-radius:5px;background:var(--panel2);overflow:hidden}
+#view-val .pfbar .fi{height:100%;border-radius:5px;background:var(--accent)}
+#view-val .pfbar .pc{width:52px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+
 /* 图上的十字准星气泡 */
 #view-val .plotwrap{position:relative}
 #view-val .ptip{position:absolute;pointer-events:none;z-index:5;white-space:nowrap;
@@ -347,8 +391,8 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
       <div class="sugg" id="sugg" hidden></div>
     </div>
     <div class="tabs">
-      <button id="tabSignal">低点信号</button>
       <button id="tabVal" class="on">估值面板</button>
+      <button id="tabSignal">低点信号</button>
     </div>
     <div class="spacer"></div>
     <button class="langbtn" id="theme" title="切换亮 / 暗">🌙</button>
@@ -432,6 +476,9 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
 <!-- ============ 估值面板（暗色，变量作用域只在本容器内，不影响上面的信号页） ============ -->
 <div id="view-val">
 
+  <!-- 大盘概览：标普500 / 纳指100 / 黄金，一进来先看这三个 -->
+  <div class="macrobar" id="macroBar"></div>
+
   <!-- 网格视图：自选清单的估值卡 -->
   <section id="valGrid">
     <div class="valbar">
@@ -481,6 +528,38 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
           <div class="cmppick" id="cmpPick"></div>
         </div>
       </div>
+      <div class="vcard" style="margin-top:14px">
+        <div class="vhd"><span>日收益相关性</span>
+          <span class="vnote" id="corrNote">同涨同跌的程度，1 = 完全同步，0 = 无关，负数 = 反向</span></div>
+        <div style="overflow-x:auto"><table class="corrtab" id="corrTable"></table></div>
+      </div>
+    </div>
+
+    <!-- 投资组合分析 -->
+    <div id="valPortfolio" hidden>
+      <div class="pfwrap">
+        <div class="vcard">
+          <div class="vhd"><span>持仓</span><span class="vnote">一行一只</span></div>
+          <textarea id="pfInput" spellcheck="false" placeholder="NVDA 100&#10;AAPL 50&#10;QQQ 30&#10;&#10;或者直接给权重：&#10;NVDA 40%&#10;AAPL 35%&#10;QQQ 25%"></textarea>
+          <div class="seg" style="margin-top:10px">
+            <button id="pfCalc" class="on">计算</button>
+            <button id="pfDemo">填个示例</button>
+            <button id="pfClear">清空</button>
+          </div>
+          <div class="vnote" id="pfMsg" style="margin-top:10px"></div>
+        </div>
+        <div class="vcard">
+          <div class="vhd"><span>组合概览</span><span class="vnote" id="pfAsOf"></span></div>
+          <div class="kpis" id="pfKpis" style="grid-template-columns:repeat(2,1fr)"></div>
+          <div class="vhd" style="margin-top:6px"><span>板块分布</span><span class="vnote">按市值权重</span></div>
+          <div id="pfSectors"></div>
+        </div>
+      </div>
+      <div class="vcard" style="margin-top:14px">
+        <div class="vhd"><span>逐只明细</span><span class="vnote" id="pfCount"></span></div>
+        <div style="overflow-x:auto"><table class="cmptable" id="pfTable"></table></div>
+      </div>
+      <div class="vfoot" id="pfFoot"></div>
     </div>
 
     <div class="vfoot" id="valGridFoot"></div>
@@ -530,6 +609,28 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
       <div class="brush" id="valBrush">
         <canvas id="brushMini"></canvas>
         <div class="sel" id="brushSel"><i class="h hl"></i><i class="h hr"></i></div>
+      </div>
+    </div>
+
+    <!-- 估值择时回测：便宜的时候买，后来到底赚不赚 -->
+    <div class="vcard" id="btCard" style="margin-top:14px">
+      <div class="vhd"><span>估值择时回测</span>
+        <span class="vnote">分位跌破阈值那天买入，持有一段时间后的收益</span></div>
+      <div class="btrow">
+        <label class="btlab">分位阈值 <b id="btThVal">20%</b>
+          <input type="range" id="btTh" min="5" max="95" step="5" value="20"></label>
+        <div class="seg" id="btWin"></div>
+      </div>
+      <div class="btwrap">
+        <div>
+          <table class="cmptable" id="btTable"></table>
+          <div class="vnote" id="btNote" style="margin-top:9px"></div>
+        </div>
+        <div>
+          <div class="vhd" style="margin-bottom:4px"><span style="font-size:12px">分位 → 其后收益</span>
+            <span class="vnote">每个点是一个历史交易日</span></div>
+          <div class="scwrap"><canvas id="btScatter"></canvas><div class="ptip" id="tipSc" hidden></div></div>
+        </div>
       </div>
     </div>
 

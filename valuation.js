@@ -290,14 +290,17 @@ function renderSortBar() {
 }
 
 function renderGrid() {
+  renderMacroBar();
   renderViewBar();
   $("#valCards").hidden = view !== "cards";
   $("#valHeat").hidden = view !== "heat";
   $("#valCompare").hidden = view !== "cmp";
+  $("#valPortfolio").hidden = view !== "pf";
   $("#valSort").hidden = view !== "cards";
   if (!$("#pickPanel").hidden) renderPickPanel();
   if (view === "heat") { renderHeat(); finishGrid(); return; }
   if (view === "cmp") { renderCompare(); finishGrid(); return; }
+  if (view === "pf") { renderPortfolio(); finishGrid(); return; }
 
   var box = $("#valCards");
   box.innerHTML = "";
@@ -321,7 +324,8 @@ function finishGrid() {
 
 var VIEWS = [{ key: "cards", label: "卡片" },
              { key: "heat", label: "热力图" },
-             { key: "cmp", label: "对比" }];
+             { key: "cmp", label: "对比" },
+             { key: "pf", label: "组合" }];
 var view = "cards";
 var heatMetric = "pe";
 
@@ -378,6 +382,50 @@ function renderPickPanel() {
     "<code>python3 scripts/build_valuation.py</code>，然后 <code>bash scripts/deploy.sh</code>。";
 }
 
+/* ---------------- 大盘概览条 ----------------
+ * 标普500、纳指100、黄金——一进页面先看这三个，再往下看个股。
+ * 点一下进各自的详情页。
+ */
+var MACRO_BAR = [
+  { t: "VOO", label: "标普500", metric: "pe", fmt: function (v) { return v.toFixed(2) + "×"; } },
+  { t: "QQQ", label: "纳斯达克100", metric: "pe", fmt: function (v) { return v.toFixed(2) + "×"; } },
+  { t: "GOLD", label: "黄金（实际金价）", metric: "real",
+    fmt: function (v) { return "$" + Math.round(v).toLocaleString("en-US"); } }
+];
+
+function renderMacroBar() {
+  var box = $("#macroBar");
+  box.innerHTML = "";
+  MACRO_BAR.forEach(function (cfg) {
+    var m = D.meta[cfg.t];
+    if (!m) return;
+    var cur2 = (m.cur || {})[cfg.metric];
+    var info = ((m.pct10y || {})[cfg.metric]) || {};
+    var st = statusOf(info.neg ? null : info.pct, info.neg);
+    var c = pctColor(info.pct);
+    var chg = m.pe_chg_1y;
+    var el = document.createElement("div");
+    el.className = "mb";
+    el.innerHTML =
+      '<div class="l"><div class="nm"></div><div class="big"></div><div class="sub"></div></div>' +
+      '<div class="r"><div class="pct"></div><div class="badge"></div></div>';
+    el.querySelector(".nm").textContent = cfg.label;
+    el.querySelector(".big").textContent = (cur2 === null || cur2 === undefined) ? "—" : cfg.fmt(cur2);
+    el.querySelector(".sub").textContent =
+      (info.years ? (info.years >= 9.5 ? "近十年分位" : "近" + info.years + "年分位") : "分位") +
+      (chg === null || chg === undefined ? "" : "　1年变化 " + (chg > 0 ? "+" : "") + chg + "%");
+    var p = el.querySelector(".pct");
+    p.textContent = (info.pct === null || info.pct === undefined) ? "—" : info.pct.toFixed(1) + "%";
+    p.style.color = c.fg;
+    var bd = el.querySelector(".badge");
+    bd.textContent = st.txt;
+    bd.style.background = c.bg;
+    bd.style.color = c.fg;
+    el.addEventListener("click", function () { openDetail(cfg.t); });
+    box.appendChild(el);
+  });
+}
+
 function renderViewBar() {
   var box = $("#valView");
   box.innerHTML = "";
@@ -385,7 +433,7 @@ function renderViewBar() {
     var b = document.createElement("button");
     b.textContent = it.label;
     if (it.key === view) b.className = "on";
-    b.addEventListener("click", function () { view = it.key; renderGrid(); });
+    b.addEventListener("click", function () { view = it.key; renderGrid(); syncHash(true); });
     box.appendChild(b);
   });
   var mg = document.createElement("button");
@@ -506,7 +554,7 @@ function renderCompare() {
   var pick = $("#cmpPick");
   pick.innerHTML = "";
   Object.keys(D.meta).filter(function (t) {
-      return D.meta[t].has_series && !isHidden(t) && !isMacro(t);
+      return D.meta[t].has_series && !isHidden(t);
     }).sort().forEach(function (t) {
       var b = document.createElement("button");
       b.textContent = t;
@@ -542,21 +590,101 @@ function renderCompare() {
   drawCompare();
 }
 
+/* 相关性矩阵：选中标的的日收益两两求 Pearson 相关系数。
+   用收益率而不是价格——两条长期上涨的价格曲线天然高度相关，那是趋势不是共动。 */
+function renderCorr(tickers, base, i0, i1) {
+  var tab = $("#corrTable");
+  if (tickers.length < 2) {
+    tab.innerHTML = "";
+    $("#corrNote").textContent = "至少选两只才能比";
+    return;
+  }
+  // 各标的按基准日期轴对齐后的日收益
+  var rets = {}, minLen = Infinity;
+  tickers.forEach(function (t) {
+    var ds = expandDates(PARTS[t]), px = PARTS[t].px || [];
+    var pos = {};
+    for (var i = 0; i < ds.length; i++) pos[ds[i]] = i;
+    var r = [], prev = null;
+    for (var k = i0; k <= i1; k++) {
+      var j = pos[base[k]];
+      var v = (j === undefined) ? null : px[j];
+      r.push((v != null && prev != null && prev > 0) ? (v / prev - 1) : null);
+      if (v != null) prev = v;
+    }
+    rets[t] = r;
+    minLen = Math.min(minLen, r.length);
+  });
+
+  function corr(a, b) {
+    var xs = [], ys = [];
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] === null || b[i] === null || !isFinite(a[i]) || !isFinite(b[i])) continue;
+      xs.push(a[i]); ys.push(b[i]);
+    }
+    var n = xs.length;
+    if (n < 60) return null;                 // 不足三个月的重叠，不给数
+    var mx = xs.reduce(function (p, c) { return p + c; }, 0) / n;
+    var my = ys.reduce(function (p, c) { return p + c; }, 0) / n;
+    var sxy = 0, sxx = 0, syy = 0;
+    for (var k = 0; k < n; k++) {
+      var dx = xs[k] - mx, dy = ys[k] - my;
+      sxy += dx * dy; sxx += dx * dx; syy += dy * dy;
+    }
+    return (sxx > 0 && syy > 0) ? sxy / Math.sqrt(sxx * syy) : null;
+  }
+
+  function cell(v) {
+    if (v === null) return { bg: "var(--panel2)", fg: "var(--ink3)", t: "—" };
+    // 越接近 1 越红（同涨同跌，分散不了风险），越接近 0 或负越绿
+    var a = Math.max(0, Math.min(1, v));
+    var c = v < 0 ? [47, 211, 155] : [Math.round(47 + (248 - 47) * a),
+                                      Math.round(211 + (81 - 211) * a),
+                                      Math.round(155 + (73 - 155) * a)];
+    return { bg: "rgba(" + c.join(",") + ",.22)", fg: "rgb(" + c.join(",") + ")",
+             t: v.toFixed(2) };
+  }
+
+  var html = "<tr><th></th>" + tickers.map(function (t) {
+    return "<th>" + esc(t) + "</th>";
+  }).join("") + "</tr>";
+  tickers.forEach(function (a) {
+    html += "<tr><th class='rowh'>" + esc(a) + "</th>";
+    tickers.forEach(function (b2) {
+      var v = (a === b2) ? 1 : corr(rets[a], rets[b2]);
+      var c = cell(v);
+      html += "<td style='background:" + c.bg + ";color:" + c.fg + "'>" + c.t + "</td>";
+    });
+    html += "</tr>";
+  });
+  tab.innerHTML = html;
+  $("#corrNote").textContent =
+    "区间 " + base[i0] + " — " + base[i1] + " 的日收益相关系数。" +
+    "红 = 同涨同跌（放一起分散不了风险），绿 = 走势独立。";
+}
+
 function drawCompare() {
   if (!cmpSel.length) {
     cmpPlot.o.series = [];
     cmpPlot.render();
     $("#cmpLegend").innerHTML = "";
     $("#cmpTable").innerHTML = "";
+    $("#corrTable").innerHTML = "";
     return;
   }
   // 各标的交易日不完全一样，以选中里最长的那条为轴，其余按日期对齐
   var base = cmpSel.map(function (t) { return expandDates(PARTS[t]); })
                    .sort(function (a, b) { return b.length - a.length; })[0];
+  if (!base) return;
   var rng = RANGES.filter(function (x) { return x.key === cmpRange; })[0];
   var i0 = rangeIdx(base, rng ? rng.years : null), i1 = base.length - 1;
 
-  var series = cmpSel.map(function (t, k) {
+  // 折线图只画有当前指标的（黄金没有市盈率），但下面的相关性矩阵不受这个限制
+  var lineSel = cmpSel.filter(function (t) {
+    var p = PARTS[t];
+    return p && (p[cmpMetric] || []).some(function (v) { return v !== null && v !== undefined; });
+  });
+  var series = lineSel.map(function (t, k) {
     var ds = expandDates(PARTS[t]), vs = PARTS[t][cmpMetric] || [];
     var pos = {};
     for (var i = 0; i < ds.length; i++) pos[ds[i]] = i;
@@ -605,6 +733,9 @@ function drawCompare() {
   cmpPlot.o.series = series;
   cmpPlot.render();
 
+  $("#cmpNote").textContent = (lineSel.length < cmpSel.length)
+    ? ("有 " + (cmpSel.length - lineSel.length) + " 只没有这个指标，只进下面的相关性矩阵")
+    : $("#cmpNote").textContent;
   $("#cmpLegend").innerHTML = series.map(function (s) {
     return "<span><i style='background:var(" + s.color + ")'></i>" +
            (D.meta[s.ticker].name || s.ticker) + "</span>";
@@ -628,6 +759,7 @@ function drawCompare() {
     return { t: s.ticker, color: s.color, cur: raw, pct: p, st: statusOf(p, raw !== null && raw < 0) };
   });
   $("#cmpAsOf").textContent = "区间 " + base[i0] + " — " + base[i1] + "，分位按这段算";
+  renderCorr(cmpSel.filter(function (t) { return PARTS[t] && PARTS[t].px; }), base, i0, i1);
   $("#cmpTable").innerHTML =
     "<tr><th>标的</th><th class='r'>当前值</th><th class='r'>区间分位</th><th>状态</th></tr>" +
     rows.map(function (r) {
@@ -639,6 +771,142 @@ function drawCompare() {
           r.st.cls === "rich" ? "var(--rich)" : r.st.cls === "fair" ? "var(--ink)" : "var(--ink3)") +
         "'>" + r.st.txt + "</td></tr>";
     }).join("");
+}
+
+/* ---------------- 投资组合分析 ----------------
+ * 只用索引里的当前值（价格、市盈率、十年分位、板块），不需要加载任何分片。
+ *
+ * 组合市盈率用**调和加权** 1 ÷ Σ(wᵢ/PEᵢ)，也就是「组合总市值 ÷ 组合总盈利」。
+ * 这是唯一正确的算法——算术加权 Σ(wᵢ·PEᵢ) 会被少数几只高市盈率的持仓拉飞
+ * （对 QQQ 实测过：调和 28.9，算术 91.2）。亏损或没有市盈率的持仓不进这个加权，
+ * 但它们的权重仍然占着，所以下面会写明「参与计算的权重是多少」。
+ */
+var PF_DEMO = "NVDA 40%\nAAPL 20%\nQQQ 25%\nGOLD 15%";
+
+function parsePortfolio(text) {
+  var rows = [], errs = [], pctMode = null;
+  text.split(/\n+/).forEach(function (line) {
+    line = line.trim();
+    if (!line || line.charAt(0) === "#") return;
+    var m = line.split(/[\s,，:：]+/).filter(Boolean);
+    if (m.length < 2) { errs.push(line + "（少了数量或权重）"); return; }
+    var t = m[0].toUpperCase().replace(/[^A-Z0-9.\-]/g, "");
+    var raw = m[1].replace(/[,，]/g, "");
+    var isPct = /%$/.test(raw);
+    var v = parseFloat(raw.replace("%", ""));
+    if (!isFinite(v) || v <= 0) { errs.push(line + "（数量得是正数）"); return; }
+    if (pctMode === null) pctMode = isPct;
+    else if (pctMode !== isPct) { errs.push(line + "（股数和百分比不能混着写）"); return; }
+    if (!D.meta[t]) { errs.push(t + "（页面里还没有这只标的）"); return; }
+    rows.push({ t: t, v: v, pct: isPct });
+  });
+  return { rows: rows, errs: errs, pctMode: !!pctMode };
+}
+
+function renderPortfolio() {
+  var parsed = parsePortfolio($("#pfInput").value || "");
+  var rows = parsed.rows;
+  var msg = $("#pfMsg");
+  msg.innerHTML = parsed.errs.length
+    ? "这几行没算进去：<br>" + parsed.errs.map(function (e) { return "· " + e; }).join("<br>")
+    : (rows.length ? "" : "在左边填持仓，一行一只。");
+  if (!rows.length) {
+    $("#pfKpis").innerHTML = ""; $("#pfTable").innerHTML = "";
+    $("#pfSectors").innerHTML = ""; $("#pfCount").textContent = "";
+    $("#pfFoot").innerHTML = "";
+    return;
+  }
+
+  // 先把每一行折成市值
+  var total = 0;
+  rows.forEach(function (r) {
+    var m = D.meta[r.t];
+    r.name = m.name || r.t;
+    r.px = m.px;
+    r.pe = (m.cur || {}).pe;
+    r.pct10 = ((m.pct10y || {}).pe || {}).pct;
+    r.sector = m.sector_zh || (m.kind === "macro" ? "商品" : m.kind && m.kind !== "stock" ? "ETF / 指数" : "未分类");
+    r.value = parsed.pctMode ? r.v : (r.px ? r.px * r.v : null);
+    if (r.value) total += r.value;
+  });
+  rows.forEach(function (r) { r.w = r.value && total ? r.value / total * 100 : 0; });
+  rows.sort(function (a, b) { return b.w - a.w; });
+
+  // 调和加权市盈率 + 权重加权分位；没有市盈率的持仓不进分母，但要如实说明覆盖了多少
+  var invSum = 0, covPe = 0, pctSum = 0, covPct = 0;
+  rows.forEach(function (r) {
+    if (r.pe && r.pe > 0) { invSum += r.w / 100 / r.pe; covPe += r.w; }
+    if (r.pct10 !== null && r.pct10 !== undefined) { pctSum += r.w / 100 * r.pct10; covPct += r.w; }
+  });
+  var pfPe = (invSum > 0) ? (covPe / 100) / invSum : null;
+  var pfPct = (covPct > 0) ? pctSum / (covPct / 100) : null;
+  var st = statusOf(pfPct);
+  var top3 = rows.slice(0, 3).reduce(function (a, r) { return a + r.w; }, 0);
+  var top5 = rows.slice(0, 5).reduce(function (a, r) { return a + r.w; }, 0);
+
+  $("#pfAsOf").textContent = "价格与估值取自 " + D.built;
+  $("#pfKpis").innerHTML =
+    kpi("组合市盈率", pfPe === null ? "—" : pfPe.toFixed(2) + "×", "hi") +
+    kpi("加权估值分位", pfPct === null ? "—" : pfPct.toFixed(1) + "%", "amber") +
+    kpi("估值状态", st.txt, st.cls) +
+    kpi("前三大集中度", top3.toFixed(1) + "%", "");
+
+  // 板块分布
+  var bys = {};
+  rows.forEach(function (r) { bys[r.sector] = (bys[r.sector] || 0) + r.w; });
+  var maxw = Math.max.apply(null, Object.keys(bys).map(function (k) { return bys[k]; }));
+  $("#pfSectors").innerHTML = Object.keys(bys).sort(function (a, b) { return bys[b] - bys[a]; })
+    .map(function (k) {
+      return "<div class='pfbar'><span class='nm'>" + esc(k) + "</span>" +
+challengeBar(bys[k], maxw) + "<span class='pc'>" + bys[k].toFixed(1) + "%</span></div>";
+    }).join("");
+
+  $("#pfCount").textContent = rows.length + " 只，" +
+    (parsed.pctMode ? "按你给的权重" : "按股数×最新收盘价折算");
+  $("#pfTable").innerHTML =
+    "<tr><th>标的</th><th class='r'>" + (parsed.pctMode ? "权重" : "股数") + "</th>" +
+    "<th class='r'>市值</th><th class='r'>占比</th><th class='r'>PE</th>" +
+    "<th class='r'>十年分位</th><th>板块</th></tr>" +
+    rows.map(function (r) {
+      var c = pctColor(r.pct10);
+      return "<tr><td><b>" + esc(r.t) + "</b><br><span style='color:var(--ink3);font-size:11px'>" +
+        esc(r.name) + "</span></td>" +
+        "<td class='r'>" + (parsed.pctMode ? r.v + "%" : r.v) + "</td>" +
+        "<td class='r'>" + (r.value ? "$" + Math.round(r.value).toLocaleString("en-US") : "—") + "</td>" +
+        "<td class='r'><b>" + r.w.toFixed(1) + "%</b></td>" +
+        "<td class='r'>" + (r.pe ? r.pe.toFixed(2) : "—") + "</td>" +
+        "<td class='r' style='color:" + c.fg + "'>" +
+        (r.pct10 === null || r.pct10 === undefined ? "—" : r.pct10.toFixed(1) + "%") + "</td>" +
+        "<td style='color:var(--ink3)'>" + esc(r.sector) + "</td></tr>";
+    }).join("");
+
+  var bench = ["QQQ", "VOO"].filter(function (t) { return D.meta[t]; }).map(function (t) {
+    var m = D.meta[t];
+    return t + " " + (((m.cur || {}).pe) || "—") + "×（分位 " +
+           (((m.pct10y || {}).pe || {}).pct || "—") + "%）";
+  }).join("　");
+  $("#pfFoot").innerHTML =
+    "组合市盈率用<b>调和加权</b>（组合总市值 ÷ 组合总盈利），不是各只市盈率的算术平均——" +
+    "后者会被少数几只高市盈率持仓拉飞。参与市盈率计算的权重占 <b>" + covPe.toFixed(1) +
+    "%</b>，参与分位计算的占 <b>" + covPct.toFixed(1) + "%</b>" +
+    (covPe < 99 ? "（其余是亏损、刚上市或没有市盈率的持仓，它们的权重仍算在占比里）" : "") + "。<br>" +
+    "前五大集中度 " + top5.toFixed(1) + "%。对照：" + bench + "<br>" +
+    "分位是固定十年窗口；上市不足十年的按实际年限算，逐只明细里点不开，要看历史去卡片墙。";
+}
+
+function kpi(k, v, cls) {
+  return "<div class='kpi" + (cls === "hi" ? " hi" : "") + "'><div class='k'>" + esc(k) +
+    "</div><div class='v" + (cls === "amber" ? " amber" : "") + "' style='" +
+    (cls === "cheap" ? "color:var(--cheap)" : cls === "rich" ? "color:var(--rich)" : "") +
+    "'>" + esc(v) + "</div></div>";
+}
+function esc(x) {
+  return String(x === null || x === undefined ? "" : x)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function challengeBar(w, maxw) {
+  return "<span class='tr'><span class='fi' style='width:" +
+         (maxw ? (w / maxw * 100) : 0) + "%'></span></span>";
 }
 
 /* ---------------- 详情视图 ---------------- */
@@ -698,6 +966,7 @@ function expandFlags(rle, n) {
 }
 
 function openDetail(ticker) {
+  $("#macroBar").hidden = true;
   if (cur.ticker !== ticker) {
     cur.i0 = null; cur.i1 = null;   // 换标的不沿用上一只的自定义区间
     var mts0 = metricsFor(ticker);
@@ -724,6 +993,7 @@ function openDetail(ticker) {
     bindBrush();
   }
   $("#valSpan").textContent = "加载中…";
+  syncHash(true);                                // 进详情页就把它写进地址栏
   loadPart(ticker, function (ok) {
     if (cur.ticker !== ticker) return;           // 用户已经点去别的标的了
     if (!ok) { $("#valSpan").textContent = "这只标的的历史数据加载失败"; return; }
@@ -769,9 +1039,9 @@ function redrawDetail() {
   var rng = RANGES.filter(function (x) { return x.key === cur.range; })[0] || null;
 
   seg($("#valMetrics"), MTS, function (it) { return it.key === cur.metric; },
-      function (it) { cur.metric = it.key; redrawDetail(); });
+      function (it) { cur.metric = it.key; redrawDetail(); syncHash(false); });
   seg($("#valRanges"), RANGES, function (it) { return it.key === cur.range; },   // custom 时一个都不亮
-      function (it) { cur.range = it.key; cur.i0 = null; cur.i1 = null; redrawDetail(); });
+      function (it) { cur.range = it.key; cur.i0 = null; cur.i1 = null; redrawDetail(); syncHash(false); });
   seg($("#valToggles"),
       [{ key: "px", label: "叠加股价" }, { key: "anc", label: "标财季末" }],
       function (it) { return it.key === "px" ? showPrice : showAnchors; },
@@ -866,6 +1136,7 @@ function redrawDetail() {
   var p10 = ((D.meta[cur.ticker].pct10y) || {})[met.key] || {};
   if (met.base) p10 = {};     // 相对估值是前端现算的，没有预存的固定十年分位
   renderWhatIf(vals, i0, i1, met, curVal, curPct);
+  runBacktest();
 
   var kindNote = D.meta[cur.ticker].note ? ("口径：" + D.meta[cur.ticker].note + "<br>") : "";
   $("#valDetailFoot").innerHTML = kindNote +
@@ -1105,6 +1376,10 @@ function updateWhatIf() {
 }
 
 $("#wiSlider").addEventListener("input", updateWhatIf);
+$("#btTh").addEventListener("input", function () {
+  btTh = parseInt($("#btTh").value, 10);
+  runBacktest();
+});
 
 /* ---------------- 亮 / 暗切换 ----------------
  * 整站一套变量：:root 是亮色，html[data-theme="dark"] 覆盖成暗色，
@@ -1136,6 +1411,172 @@ function applyTheme(t) {
     applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
   });
 })();
+
+/* ---------------- 估值择时回测 ----------------
+ *
+ * 回答的问题：「历史上估值分位跌破 X% 的那些日子买进去，拿 1 / 3 / 5 年，后来赚不赚」。
+ *
+ * 几条为了不骗自己而定的规矩：
+ * 1. 分位用**固定十年窗口的滚动分位**，每一天只看那天之前的十年——不是拿全历史算完
+ *    再回头套，那样等于用了未来数据，回测会漂亮得离谱。
+ * 2. 只统计「上一天还在阈值之上、这一天跌破」的那一刻（首次穿越），不是每个低于阈值的
+ *    日子都算一次。否则一段长时间的低估会被重复计上百次，样本量是假的。
+ * 3. 持有期不够长的触发点直接不计入，不用「截至今天的收益」凑数。
+ * 4. 收益是价格收益，不含分红，也没有扣税费。
+ */
+var btTh = 20, btWin = 252;
+var btScatterPts = [];
+
+/* 固定窗口的滚动分位：第 i 天只跟它之前 win 个有效观测比 */
+function rollingFixedPct(vals, win) {
+  var out = new Array(vals.length).fill(null), sorted = [], queue = [];
+  for (var i = 0; i < vals.length; i++) {
+    var v = vals[i];
+    if (v === null || v === undefined || v <= 0) continue;
+    sorted.splice(bisectLeft(sorted, v), 0, v);
+    queue.push(v);
+    if (queue.length > win) {
+      var old = queue.shift();
+      var k = bisectLeft(sorted, old);
+      if (sorted[k] === old) sorted.splice(k, 1);
+    }
+    if (queue.length < 250) continue;      // 样本不足一年不出数
+    var lo = bisectLeft(sorted, v), hi = bisectRight(sorted, v);
+    out[i] = Math.round(1000 * ((lo + hi) / 2) / sorted.length) / 10;
+  }
+  return out;
+}
+
+function runBacktest() {
+  var part = PARTS[cur.ticker];
+  var card = $("#btCard");
+  if (!part || !part.px || !viewCtx) { card.hidden = true; return; }
+  var met = viewCtx.met;
+  // 相对估值是现算的比值，名义金价的分位没有意义，这两类不做回测
+  if (met.base || met.key === "nominal") { card.hidden = true; return; }
+  var vals = viewCtx.vals, px = part.px, dates = viewCtx.dates;
+  var pct = rollingFixedPct(vals, 2520);   // 十年窗口
+
+  seg($("#btWin"), [{ key: 252, label: "持有 1 年" }, { key: 756, label: "3 年" },
+                    { key: 1260, label: "5 年" }],
+      function (it) { return it.key === btWin; },
+      function (it) { btWin = it.key; runBacktest(); });
+  $("#btThVal").textContent = btTh + "%";
+
+  var hits = [], all = [];
+  for (var i = 1; i < pct.length; i++) {
+    if (pct[i] === null) continue;
+    var j = i + btWin;
+    if (j >= px.length) break;             // 持有期还没走完的不计入
+    var p0 = px[i], p1 = px[j];
+    if (!p0 || !p1) continue;
+    var ret = (p1 / p0 - 1) * 100;
+    all.push({ pct: pct[i], ret: ret, i: i });
+    if (pct[i] < btTh && pct[i - 1] !== null && pct[i - 1] >= btTh) {
+      hits.push({ d: dates[i], pct: pct[i], ret: ret });
+    }
+  }
+  btScatterPts = all;
+  card.hidden = false;
+
+  function stat(arr) {
+    if (!arr.length) return null;
+    var v = arr.slice().sort(function (a, b) { return a - b; });
+    var mean = arr.reduce(function (a, b) { return a + b; }, 0) / arr.length;
+    var med = v.length % 2 ? v[(v.length - 1) / 2]
+                           : (v[v.length / 2 - 1] + v[v.length / 2]) / 2;
+    var win = arr.filter(function (x) { return x > 0; }).length / arr.length * 100;
+    return { n: arr.length, mean: mean, med: med, win: win,
+             lo: v[0], hi: v[v.length - 1] };
+  }
+  var hs = stat(hits.map(function (h) { return h.ret; }));
+  var bs = stat(all.map(function (a) { return a.ret; }));
+  var yrs = (btWin / 252).toFixed(0);
+
+  function row(label, s2, hi) {
+    if (!s2) return "<tr><td>" + esc(label) + "</td><td colspan='4' style='color:var(--ink3)'>样本不足</td></tr>";
+    var c = s2.mean > 0 ? "var(--cheap)" : "var(--rich)";
+    return "<tr><td>" + esc(label) + (hi ? "" : "") + "</td>" +
+      "<td class='r'>" + s2.n + "</td>" +
+      "<td class='r' style='color:" + c + ";font-weight:600'>" + s2.mean.toFixed(1) + "%</td>" +
+      "<td class='r'>" + s2.med.toFixed(1) + "%</td>" +
+      "<td class='r'>" + s2.win.toFixed(0) + "%</td></tr>";
+  }
+  $("#btTable").innerHTML =
+    "<tr><th>买入时机</th><th class='r'>样本</th><th class='r'>平均收益</th>" +
+    "<th class='r'>中位</th><th class='r'>胜率</th></tr>" +
+    row("分位跌破 " + btTh + "% 那天", hs, true) +
+    row("任意一天（基准）", bs, false);
+
+  var edge = (hs && bs) ? (hs.mean - bs.mean) : null;
+  $("#btNote").innerHTML =
+    "持有 " + yrs + " 年的价格收益，不含分红、不计税费。" +
+    (hs ? "跌破阈值共触发 <b>" + hs.n + "</b> 次" +
+          (edge !== null ? "，比「任意一天买入」平均多 <b style='color:" +
+           (edge > 0 ? "var(--cheap)" : "var(--rich)") + "'>" +
+           (edge > 0 ? "+" : "") + edge.toFixed(1) + " 个百分点</b>" : "") + "。"
+        : "这个阈值下没有足够的历史样本。") +
+    "<br>分位是固定十年窗口的滚动值，每天只看它之前的十年，没有用未来数据；" +
+    "只统计「上一天还在阈值之上、这天跌破」的那一刻，不是每个低估的日子都算一次。" +
+    (hs && hs.n < 8 ? "<br><b>样本只有 " + hs.n + " 次，统计上说明不了什么，看看就好。</b>" : "");
+
+  drawScatter();
+}
+
+function drawScatter() {
+  var cv = $("#btScatter");
+  var box = cv.parentNode.getBoundingClientRect();
+  var w = box.width, h = box.height;
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  var g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  var pts = btScatterPts;
+  if (!pts.length) return;
+
+  var pad = { l: 44, r: 8, t: 8, b: 22 };
+  var rets = pts.map(function (p) { return p.ret; }).sort(function (a, b) { return a - b; });
+  // 上下各裁 1%，免得个别极端点把其余的压成一条线
+  var lo = rets[Math.floor(rets.length * 0.01)], hi = rets[Math.floor(rets.length * 0.99)];
+  if (lo === hi) { lo -= 1; hi += 1; }
+  var X = function (p) { return pad.l + (w - pad.l - pad.r) * p / 100; };
+  var Y = function (r) {
+    var t = (Math.max(lo, Math.min(hi, r)) - lo) / (hi - lo);
+    return pad.t + (h - pad.t - pad.b) * (1 - t);
+  };
+  var ink3 = window.VPlot.cssv("--ink3") || "#6b7685";
+  var grid = window.VPlot.cssv("--line") || "#262d38";
+
+  g.strokeStyle = grid; g.lineWidth = 1;
+  g.font = '10px "IBM Plex Mono", monospace'; g.textBaseline = "middle";
+  [0, 25, 50, 75, 100].forEach(function (p) {
+    g.beginPath(); g.moveTo(X(p) + .5, pad.t); g.lineTo(X(p) + .5, h - pad.b); g.stroke();
+    g.fillStyle = ink3; g.textAlign = "center";
+    g.fillText(p + "%", X(p), h - pad.b + 10);
+  });
+  [lo, (lo + hi) / 2, hi].forEach(function (r) {
+    g.beginPath(); g.moveTo(pad.l, Y(r) + .5); g.lineTo(w - pad.r, Y(r) + .5); g.stroke();
+    g.fillStyle = ink3; g.textAlign = "right";
+    g.fillText(Math.round(r) + "%", pad.l - 6, Y(r));
+  });
+  if (lo < 0 && hi > 0) {   // 零轴画粗一点，一眼看出赚还是亏
+    g.strokeStyle = ink3; g.lineWidth = 1.4;
+    g.beginPath(); g.moveTo(pad.l, Y(0) + .5); g.lineTo(w - pad.r, Y(0) + .5); g.stroke();
+  }
+  pts.forEach(function (p) {
+    var c = pctColor(p.pct);
+    g.fillStyle = c.fg;
+    g.globalAlpha = .28;
+    g.beginPath(); g.arc(X(p.pct), Y(p.ret), 1.7, 0, 7); g.fill();
+  });
+  g.globalAlpha = 1;
+  // 阈值线
+  g.strokeStyle = window.VPlot.cssv("--accent") || "#2fd39b";
+  g.setLineDash([3, 3]); g.lineWidth = 1.2;
+  g.beginPath(); g.moveTo(X(btTh) + .5, pad.t); g.lineTo(X(btTh) + .5, h - pad.b); g.stroke();
+  g.setLineDash([]);
+}
 
 /* ---------------- 导出 ---------------- */
 
@@ -1205,6 +1646,74 @@ function exportPng() {
   }, "image/png");
 }
 
+/* ---------------- 地址栏路由 ----------------
+ *
+ * 把「现在看的是什么」写进 URL 的 # 后面，这样：
+ *   · 可以把某一只标的、某个视图的链接直接发给别人，对方打开就是同一个画面
+ *   · 浏览器的前进/后退能用
+ *   · 刷新之后还停在原处，不会被打回卡片墙
+ *   · 能加书签
+ *
+ * 形式：
+ *   #cards / #heat / #cmp / #pf   估值面板的四个视图
+ *   #t/NVDA                       某只标的的详情
+ *   #t/NVDA/pb/10y                连指标和区间一起带上
+ *   #signal                       低点信号页
+ *
+ * 切视图、进详情用 pushState（后退键有用）；调指标和区间用 replaceState，
+ * 免得拖一下区间刷就往历史里塞几十条记录。
+ */
+var routing = false;      // 正在按 URL 布置画面，这期间不要反过来改 URL
+
+function currentHash() {
+  if (!$("#view-val").hidden && !$("#valDetail").hidden && cur.ticker) {
+    return "#t/" + encodeURIComponent(cur.ticker) + "/" + cur.metric + "/" + cur.range;
+  }
+  if ($("#view-val").hidden) return "#signal";
+  return "#" + view;
+}
+
+function syncHash(push) {
+  if (routing) return;
+  var h = currentHash();
+  if (location.hash === h) return;
+  try {
+    if (push) history.pushState(null, "", h);
+    else history.replaceState(null, "", h);
+  } catch (e) {
+    location.hash = h;      // file:// 下 history API 可能不让用
+  }
+}
+
+function applyHash() {
+  var raw = (location.hash || "").replace(/^#\/?/, "");
+  routing = true;
+  try {
+    if (raw === "signal") { showTab("signal"); return; }
+    var m = raw.match(/^t\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?$/);
+    if (m) {
+      var t = decodeURIComponent(m[1]).toUpperCase();
+      if (D.meta[t]) {
+        if (m[2]) cur.metric = m[2];
+        if (m[3]) { cur.range = m[3]; cur.i0 = null; cur.i1 = null; }
+        showTab("val");
+        openDetail(t);
+        return;
+      }
+    }
+    if (["cards", "heat", "cmp", "pf"].indexOf(raw) >= 0) view = raw;
+    showTab("val");
+    $("#valDetail").hidden = true;
+    $("#valGrid").hidden = false;
+    $("#macroBar").hidden = false;
+    renderGrid();
+  } finally {
+    routing = false;
+  }
+}
+
+window.addEventListener("hashchange", applyHash);
+
 /* ---------------- 页签切换 ---------------- */
 
 /* 「低点信号」那套数据有 2.8 MB，是整个页面里最重的东西，而且只有那个页签用得上。
@@ -1257,12 +1766,18 @@ function showTab(which) {
   });
 }
 
-document.getElementById("tabSignal").addEventListener("click", function () { showTab("signal"); });
-document.getElementById("tabVal").addEventListener("click", function () { showTab("val"); });
+document.getElementById("tabSignal").addEventListener("click", function () {
+  showTab("signal"); syncHash(true);
+});
+document.getElementById("tabVal").addEventListener("click", function () {
+  showTab("val"); syncHash(true);
+});
 $("#valBack").addEventListener("click", function (e) {
   e.preventDefault();
   $("#valDetail").hidden = true;
   $("#valGrid").hidden = false;
+  $("#macroBar").hidden = false;
+  syncHash(true);
 });
 
 var rt;
@@ -1273,7 +1788,27 @@ window.addEventListener("resize", function () {
   }, 120);
 });
 
+$("#pfCalc").addEventListener("click", renderPortfolio);
+$("#pfDemo").addEventListener("click", function () {
+  $("#pfInput").value = PF_DEMO;
+  renderPortfolio();
+});
+$("#pfClear").addEventListener("click", function () {
+  $("#pfInput").value = "";
+  try { localStorage.removeItem("sv_pf"); } catch (e) { /* 隐私模式 */ }
+  renderPortfolio();
+});
+// 持仓存本地，刷新不用重填（只在这台浏览器里，不会上传）
+$("#pfInput").addEventListener("input", function () {
+  try { localStorage.setItem("sv_pf", $("#pfInput").value); } catch (e) { /* 同上 */ }
+});
+try {
+  var savedPf = localStorage.getItem("sv_pf");
+  if (savedPf) $("#pfInput").value = savedPf;
+} catch (e) { /* 同上 */ }
+
 renderGrid();
+if (location.hash) applyHash();
 
 /* 给 tests/test_valuation.py 用 */
 window.__valRollingPct = rollingPct;
