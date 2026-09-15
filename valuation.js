@@ -365,6 +365,8 @@ function redrawDetail() {
   pctPlot.render();
 
   var p10 = (d.pct10y && d.pct10y[met.key]) || {};
+  renderWhatIf(vals, i0, i1, met, curVal, curPct);
+
   var kindNote = D.meta[cur.ticker].note ? ("口径：" + D.meta[cur.ticker].note + "<br>") : "";
   $("#valDetailFoot").innerHTML = kindNote +
     "「百分位（当前区间）」= 当前值在 <b>" + rng.label + "</b> 这段里的排名，换区间就会变；" +
@@ -374,6 +376,75 @@ function redrawDetail() {
     "负市盈率（盈利为负）照常画进走势图，但不参与分位排名，分位曲线在那段留空。" +
     (cur.metric === "fwd_pe" ? "<br>前瞻市盈率的历史只有约 5 年（免费源上限），切到更长区间时早段是空的。" : "");
 }
+
+/* ---------------- 目标估值反推 ----------------
+ *
+ * 问题：「其他都不变，我想让估值百分位回到 X%，股价得是多少？」
+ *
+ * 「其他不变」= 每股收益（或每股净资产）不变，只有股价动。于是：
+ *     目标估值 = 当前区间里 X% 分位对应的那个倍数
+ *     目标股价 = 当前股价 × (目标估值 ÷ 当前估值)
+ * 这个式子对 PE / Forward PE / PB 都成立，也不需要知道每股收益本身是多少。
+ *
+ * 对 QQQ / VOO 这种指数口径的标的，估值是指数的、股价是 ETF 的，两者同比例变动，
+ * 所以式子照样成立——它给的是「纳指100 估值回到 X% 时 QQQ 大概多少钱」。
+ */
+var wiState = null;
+
+function quantile(sortedArr, p) {
+  if (!sortedArr.length) return null;
+  if (sortedArr.length === 1) return sortedArr[0];
+  var idx = (p / 100) * (sortedArr.length - 1);
+  var lo = Math.floor(idx), hi = Math.ceil(idx);
+  if (lo === hi) return sortedArr[lo];
+  return sortedArr[lo] + (sortedArr[hi] - sortedArr[lo]) * (idx - lo);
+}
+
+function renderWhatIf(vals, i0, i1, met, curVal, curPct) {
+  var box = $("#whatif"), slider = $("#wiSlider");
+  var px = D.meta[cur.ticker].px;
+  var seg = [];
+  for (var i = i0; i <= i1; i++) {
+    var v = vals[i];
+    if (v !== null && v !== undefined && v > 0) seg.push(v);
+  }
+  seg.sort(function (a, b) { return a - b; });
+
+  // 负估值、没有价格、样本太少，都没法反推——这时把面板整个关掉，而不是给个假数字
+  if (!px || seg.length < 30 || curVal === null || curVal <= 0) {
+    box.hidden = true;
+    wiState = null;
+    return;
+  }
+  box.hidden = false;
+  wiState = { seg: seg, px: px, curVal: curVal, met: met,
+              pxDate: D.meta[cur.ticker].px_date };
+  slider.value = (curPct === null ? 50 : curPct);
+  updateWhatIf();
+}
+
+function updateWhatIf() {
+  if (!wiState) return;
+  var p = parseFloat($("#wiSlider").value);
+  var target = quantile(wiState.seg, p);
+  var px = wiState.px * (target / wiState.curVal);
+  var chg = (px / wiState.px - 1) * 100;
+
+  $("#wiPct").textContent = p.toFixed(1) + "%";
+  $("#wiRatio").textContent = target.toFixed(2) + wiState.met.unit;
+  $("#wiPx").textContent = "$" + px.toFixed(2);
+  var el = $("#wiChg");
+  el.textContent = (chg > 0 ? "+" : "") + chg.toFixed(1) + "%";
+  el.className = "v " + (Math.abs(chg) < 0.05 ? "" : chg > 0 ? "up" : "down");
+
+  $("#wiFoot").textContent =
+    "现价 $" + wiState.px.toFixed(2) + "（" + wiState.pxDate + "），当前 " +
+    wiState.met.label + " " + wiState.curVal.toFixed(2) + wiState.met.unit +
+    "。分位取自当前所选区间内的 " + wiState.seg.length + " 个有效交易日，" +
+    "换区间会换一套分布，算出来的价格也会变。";
+}
+
+$("#wiSlider").addEventListener("input", updateWhatIf);
 
 /* ---------------- 页签切换 ---------------- */
 

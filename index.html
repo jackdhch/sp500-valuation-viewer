@@ -133,6 +133,15 @@ main{max-width:1360px;margin:0 auto;padding:16px}
   font-size:11px;color:var(--ink3);line-height:1.6}
 #view-val .vc.nohist{cursor:default;opacity:.92}
 #view-val .vc.nohist:hover{border-color:var(--line)}
+#view-val .wirow{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+#view-val #wiSlider{flex:1 1 280px;min-width:220px;accent-color:var(--accent);height:22px}
+#view-val .wiout{display:flex;gap:22px;flex-wrap:wrap}
+#view-val .wiout>div{display:flex;flex-direction:column;gap:2px;min-width:86px}
+#view-val .wiout .k{font-size:11px;color:var(--ink3)}
+#view-val .wiout .v{font-size:19px;font-weight:650;font-variant-numeric:tabular-nums}
+#view-val .wiout .v.hi{color:var(--accent)}
+#view-val .wiout .v.up{color:var(--rich)} #view-val .wiout .v.down{color:var(--cheap)}
+#view-val .wifoot{margin-top:9px;font-size:11px;color:var(--ink3);line-height:1.6}
 #view-val .vfoot{margin-top:14px;font-size:11px;color:var(--ink3);line-height:1.7}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px}
 .card>h2{margin:0;padding:12px 14px;border-bottom:1px solid var(--line2);font-size:14px;font-weight:600}
@@ -353,6 +362,22 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
         <div class="gradtick"><span>0% <span>低估</span></span><span>20%</span><span>50%</span><span>80%</span><span>100% <span>高估</span></span></div>
       </div>
     </div>
+    <!-- 反推：把估值拨到某个分位，股价该是多少 -->
+    <div class="vcard" id="whatif" style="margin-top:14px">
+      <div class="vhd"><span>目标估值反推</span>
+        <span class="vnote">前提：每股收益不变，只有股价在动</span></div>
+      <div class="wirow">
+        <input type="range" id="wiSlider" min="0" max="100" step="0.5" value="50">
+        <div class="wiout">
+          <div><span class="k">目标分位</span><span class="v" id="wiPct">—</span></div>
+          <div><span class="k">对应估值</span><span class="v" id="wiRatio">—</span></div>
+          <div><span class="k">对应股价</span><span class="v hi" id="wiPx">—</span></div>
+          <div><span class="k">相对现价</span><span class="v" id="wiChg">—</span></div>
+        </div>
+      </div>
+      <div class="wifoot" id="wiFoot"></div>
+    </div>
+
     <div class="vfoot" id="valDetailFoot"></div>
   </section>
 </div><!-- /#view-val -->
