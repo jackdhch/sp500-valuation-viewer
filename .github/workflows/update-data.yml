@@ -38,15 +38,26 @@ jobs:
           SP500_PRICE_MAX_AGE: '0'      # runner 上没有价格缓存，每次都现抓
         run: python tools/build_valuation.py
 
+      - name: 检查估值提醒，有新触发就发邮件
+        env:
+          SP500_ROOT: ${{ github.workspace }}
+          SP500_SITE: ${{ github.workspace }}
+          # 密钥与收件地址只从 Secrets 来，不写在仓库里（本仓库是公开的）。
+          # 两个 Secret 没配的话脚本会自己跳过发信，不会让整个任务失败。
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+          ALERT_FROM: ${{ secrets.ALERT_FROM }}
+        run: python tools/check_alerts.py --send
+
       - name: 有变化才提交
         run: |
           # 现在产物是「索引 + 每只标的一个分片」，不再是单个 valuation_data.js
-          if git diff --quiet -- valuation_index.js v/; then
+          if git diff --quiet -- valuation_index.js v/ alerts_state.json; then
             echo "数据没有变化，不提交"
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add valuation_index.js v/
+          git add valuation_index.js v/ alerts_state.json
           git commit -m "自动更新估值数据 $(date -u '+%Y-%m-%d')"
           git push

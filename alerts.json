@@ -1,0 +1,15 @@
+{
+  "_说明": [
+    "估值提醒规则。GitHub Actions 每天更新完数据后检查一遍，只有「上次没触发、这次触发了」才发邮件。",
+    "字段：ticker 标的代码 / metric 指标(pe|fwd_pe|pb) / op 方向(below|above) / threshold 分位阈值(0-100) / note 备注（会出现在邮件里）。",
+    "分位口径是固定十年窗口；上市不足十年的按实际年限算，页面上会写明。",
+    "收件邮箱与 API 密钥都放在 GitHub Secrets 里，不写在这个文件里——本仓库是公开的。"
+  ],
+  "rules": [
+    {"ticker": "QQQ",  "metric": "pe", "op": "below", "threshold": 20, "note": "纳指100 估值回到近十年最便宜的两成"},
+    {"ticker": "VOO",  "metric": "pe", "op": "below", "threshold": 20, "note": "标普500 估值回到近十年最便宜的两成"},
+    {"ticker": "QQQ",  "metric": "pe", "op": "above", "threshold": 90, "note": "纳指100 估值进入近十年最贵的一成"},
+    {"ticker": "NVDA", "metric": "pe", "op": "below", "threshold": 10, "note": "英伟达 PE 分位进入近十年最低一成"},
+    {"ticker": "SMH",  "metric": "pe", "op": "above", "threshold": 90, "note": "半导体板块估值进入近十年最贵一成"}
+  ]
+}

@@ -1,0 +1,7 @@
+{
+ "NVDA|pe|below|10": true,
+ "QQQ|pe|above|90": true,
+ "QQQ|pe|below|20": false,
+ "SMH|pe|above|90": false,
+ "VOO|pe|below|20": false
+}
