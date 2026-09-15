@@ -71,6 +71,10 @@ def read_anchors(ticker):
     return sorted(out, key=lambda x: x["d"])
 
 
+# 内部代码 → yfinance 代码。黄金期货的代码里有等号，不适合直接当文件名和标的 id
+YF_ALIAS = {"GOLD": "GC=F"}
+
+
 def read_prices(ticker):
     """日频收盘价。优先用 data/viewer/<T>.csv 的缓存，没有就用 yfinance 抓并缓存。"""
     path = f"{PRICE_DIR}/{ticker}.csv"
@@ -85,7 +89,7 @@ def read_prices(ticker):
         except ImportError:
             return {}
         try:
-            df = yf.Ticker(ticker).history(period="max", auto_adjust=False)
+            df = yf.Ticker(YF_ALIAS.get(ticker, ticker)).history(period="max", auto_adjust=False)
         except Exception as e:
             print(f"    {ticker} 价格抓取失败（{e}），沿用本地缓存")
             df = None
@@ -365,6 +369,166 @@ def build_weighted_etf(etf, cfg):
             "first": dates[0], "last": dates[-1], "note": note}, None
 
 
+# ------------------------------------------------------------------- 黄金
+#
+# 黄金没有盈利也没有净资产，市盈率、市净率这套完全不适用。能拿来当「估值」用的，
+# 是几把把它和别的东西相比的尺子——本页做三条：
+#
+#   real       实际金价：名义金价按 CPI 折算到当月购买力。这条最接近「估值分位」的含义，
+#              问的是「以今天的钱衡量，黄金现在贵不贵」。1980 年和 2011 年的两次顶
+#              在这条线上看得很清楚，而名义价看不出来。
+#   spx_ratio  标普500 ÷ 金价：一份标普能换多少盎司黄金。高 = 股票相对黄金贵，
+#              低 = 黄金相对股票贵。这就是老派的「道金比」换个分子。
+#   nominal    名义金价，美元/盎司。只作参照，它长期单调上行，分位没有意义，
+#              所以不参与「低估/高估」的判断。
+#
+# 数据：金价用 COMEX 期货连续合约（yfinance 的 GC=F，2000-08 起）；
+# CPI 用 data/cpi_monthly.csv（月度，插值到交易日）；标普500 用 data/sp500_index.csv。
+GOLD_METRICS = [
+    {"key": "real", "label": "实际金价", "kpi": "实际金价（按今天的购买力）", "unit": " 美元"},
+    {"key": "spx_ratio", "label": "标普500 ÷ 金价", "kpi": "一份标普换几盎司黄金", "unit": " 盎司"},
+    {"key": "nominal", "label": "名义金价", "kpi": "名义金价", "unit": " 美元"},
+]
+
+
+def build_gold():
+    prices = read_prices("GOLD")
+    if not prices:
+        return None, "拿不到金价（yfinance GC=F）"
+    cpi_pts = []
+    cpi_path = f"{DATA}/cpi_monthly.csv"
+    if os.path.exists(cpi_path):
+        with open(cpi_path) as f:
+            for r in csv.DictReader(f):
+                try:
+                    cpi_pts.append((datetime.date.fromisoformat(r["date"]), float(r["value"])))
+                except (ValueError, KeyError):
+                    pass
+    if not cpi_pts:
+        return None, "缺 data/cpi_monthly.csv"
+    cpi_pts.sort()
+
+    spx = {}
+    spx_path = f"{DATA}/sp500_index.csv"
+    if os.path.exists(spx_path):
+        with open(spx_path) as f:
+            for r in csv.DictReader(f):
+                c = r.get("Close")
+                if c:
+                    spx[datetime.date.fromisoformat(r["Date"][:10])] = float(c)
+
+    dates = sorted(prices)
+    cpi = interp(cpi_pts, dates, extend=True)
+    cpi_now = cpi_pts[-1][1]
+    # CPI 只发布到上个月，之后的日子就按最后一个月的水平算，不外推趋势
+    cpi_last = max(d for d, _ in cpi_pts)
+
+    out = {"d": [d.isoformat() for d in dates],
+           "px": [round(prices[d], 2) for d in dates]}
+    nominal, real, ratio = [], [], []
+    for i, d in enumerate(dates):
+        px = prices[d]
+        nominal.append(round(px, 2))
+        c = cpi[i]
+        real.append(round(px / c * cpi_now, 2) if c else None)
+        sp = spx.get(d)
+        ratio.append(round(sp / px, 4) if (sp and px) else None)
+    out["nominal"], out["real"], out["spx_ratio"] = nominal, real, ratio
+
+    pct10 = {}
+    for key in ("real", "spx_ratio"):
+        p, n, years = fixed_window_percentile(out[key], dates, days=3650)
+        pct10[key] = {"pct": p, "n": n, "years": years, "neg": False,
+                      "status": status_label(p)}
+    # 名义金价长期单调上行，分位永远贴着 100%，给出来只会误导
+    pct10["nominal"] = {"pct": None, "n": 0, "years": 0, "neg": False,
+                        "status": "不适用"}
+
+    y1 = dates[-1] - datetime.timedelta(days=365)
+    i1 = next((i for i, d in enumerate(dates) if d >= y1), None)
+    chg = (round(100.0 * (real[-1] / real[i1] - 1), 1)
+           if (i1 is not None and real[-1] and real[i1]) else None)
+
+    note = ("黄金没有盈利与净资产，市盈率、市净率不适用。这里用三把尺子："
+            "实际金价（名义价按 CPI 折算到当月购买力，CPI 更新到 "
+            f"{cpi_last.isoformat()}）、标普500÷金价、名义金价。"
+            "名义金价长期单调上行，不参与高估/低估判断。"
+            "金价用 COMEX 期货连续合约（GC=F），2000 年 8 月起。")
+    return {"series": out, "extrap": {}, "pct10y": pct10, "pe_chg_1y": chg,
+            "anchors": [], "px": round(prices[dates[-1]], 2),
+            "px_date": dates[-1].isoformat(),
+            "first": dates[0].isoformat(), "last": dates[-1].isoformat(),
+            "note": note}, None
+
+
+# ---------------------------------------------------------------- 板块分类
+#
+# 热力图按板块分组要用。数据来源按可靠性排：
+#   1. data/holdings/sp500_mcap.csv —— 标普500 成分股的 GICS 板块，本地现成的
+#   2. data/holdings/wishlist_info.csv —— 自选清单的板块
+#   3. yfinance 的 info["sector"] —— 补上面两个都没有的（主要是外国 ADR，
+#      像 TSM、SAP、NVO 这些不在标普500 里）。抓一次缓存到 _sectors.json，不重复请求。
+SECTOR_CACHE = None
+
+
+def load_sectors(tickers):
+    global SECTOR_CACHE
+    if SECTOR_CACHE is not None:
+        return SECTOR_CACHE
+    out = {}
+    for path, tcol, scol in [(f"{DATA}/holdings/sp500_mcap.csv", "ticker", "sector"),
+                             (f"{DATA}/holdings/wishlist_info.csv", "ticker", "sector")]:
+        if not os.path.exists(path):
+            continue
+        with open(path) as f:
+            for r in csv.DictReader(f):
+                if r.get(scol):
+                    out.setdefault(r[tcol], r[scol])
+
+    cache_path = f"{VAL}/_sectors.json"
+    cached = {}
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path) as f:
+                cached = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            cached = {}
+    out.update({k: v for k, v in cached.items() if v})
+
+    missing = [t for t in tickers if t not in out]
+    if missing:
+        try:
+            import yfinance as yf
+        except ImportError:
+            missing = []
+        for t in missing:
+            try:
+                sec = (yf.Ticker(YF_ALIAS.get(t, t)).info or {}).get("sector")
+            except Exception:
+                sec = None
+            if sec:
+                out[t] = sec
+                cached[t] = sec
+        if cached:
+            with open(cache_path, "w") as f:
+                json.dump(cached, f, ensure_ascii=False, indent=1, sort_keys=True)
+        print(f"  板块分类：补抓 {len(missing)} 只，命中 {sum(1 for t in missing if t in out)}")
+    SECTOR_CACHE = out
+    return out
+
+
+# GICS 板块的中文名。翻译只影响显示，分组仍按英文原值。
+SECTOR_ZH = {
+    "Technology": "信息技术", "Information Technology": "信息技术",
+    "Communication Services": "通信服务", "Consumer Cyclical": "可选消费",
+    "Consumer Discretionary": "可选消费", "Consumer Defensive": "必需消费",
+    "Consumer Staples": "必需消费", "Healthcare": "医疗保健", "Health Care": "医疗保健",
+    "Financial Services": "金融", "Financials": "金融", "Industrials": "工业",
+    "Energy": "能源", "Utilities": "公用事业", "Real Estate": "房地产",
+    "Basic Materials": "原材料", "Materials": "原材料",
+}
+
+
 def load_etf_snapshot():
     path = f"{VAL}/_etf_snapshot.csv"
     if not os.path.exists(path):
@@ -388,9 +552,31 @@ def main():
         # （AVGO、INTC、TXN 等）的 CSV，那是合成 ETF 用的原料，不该出现在页面上。
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         from fetch_valuation import WISHLIST, EXTRA_STOCKS
-        targets = [t for t in WISHLIST + EXTRA_STOCKS
-                   if os.path.exists(f"{VAL}/{t}.csv")]
+        want = list(WISHLIST) + list(EXTRA_STOCKS)
+        # 再加上美股市值前 100（清单由 fetch 阶段从 stockanalysis 的排行页抓下来存着）
+        top_path = f"{VAL}/_top100.json"
+        if os.path.exists(top_path):
+            try:
+                with open(top_path) as f:
+                    want += json.load(f)
+            except (json.JSONDecodeError, OSError):
+                pass
+        # 再加上 Seeking Alpha 半年榜的 10 只（名单与出处见 _sa_top10.json，
+        # 注意那是「Top 10 Stocks」不是「Alpha Picks」，两个是不同的产品）
+        sa_path = f"{VAL}/_sa_top10.json"
+        if os.path.exists(sa_path):
+            try:
+                with open(sa_path) as f:
+                    want += (json.load(f).get("tickers") or [])
+            except (json.JSONDecodeError, OSError):
+                pass
+        seen, targets = set(), []
+        for t in want:                       # 去重且保持顺序
+            if t not in seen and os.path.exists(f"{VAL}/{t}.csv"):
+                seen.add(t)
+                targets.append(t)
     snap = load_snapshot()
+    sectors = load_sectors(targets)
     payload = {"built": datetime.date.today().isoformat(), "meta": {}, "data": {}}
 
     # 指数型 ETF 先处理，数据来自 site/data.json（scripts/build_dataset.py 的产物）
@@ -433,6 +619,22 @@ def main():
         print(f"{t:6} {r['first']}~{r['last']}  PE={cur}  "
               f"十年分位={p10.get('pct')}({p10.get('years')}年,{p10.get('n')}点) "
               f"{p10.get('status')}  [持仓合成] 对照 stockanalysis {es.get('pe', '?')}")
+
+    # 黄金
+    g, gerr = build_gold()
+    if g is None:
+        print(f"GOLD   跳过：{gerr}")
+    else:
+        payload["meta"]["GOLD"] = {
+            "name": "黄金（COMEX）", "peg": "", "mcap": "", "kind": "macro",
+            "note": g["note"], "metrics": GOLD_METRICS,
+            "px": g["px"], "px_date": g["px_date"],
+            "first": g["first"], "last": g["last"]}
+        payload["data"]["GOLD"] = {k: g.get(k) for k in
+                                   ("series", "extrap", "pct10y", "pe_chg_1y", "anchors")}
+        p10 = g["pct10y"]["real"]
+        print(f"GOLD   {g['first']}~{g['last']}  名义 ${g['px']}  "
+              f"实际金价十年分位={p10.get('pct')}({p10.get('years')}年) {p10.get('status')}")
 
     # 只给当前值的 ETF
     for t, why in SNAPSHOT_ONLY_ETF.items():
@@ -480,9 +682,11 @@ def main():
                 print(f"{t:6} 跳过（既没有锚点也没有快照）")
             continue
         s = snap.get(t, {})
+        sec = sectors.get(t, "")
         payload["meta"][t] = {
             "name": s.get("name", t), "peg": s.get("peg", ""),
             "mcap": s.get("mcap", ""), "kind": "stock",
+            "sector": sec, "sector_zh": SECTOR_ZH.get(sec, sec or "未分类"),
             "px": r.get("px"), "px_date": r.get("px_date"),
             "first": r["first"], "last": r["last"],
         }
@@ -532,8 +736,9 @@ def write_payload(payload):
         if d:
             s = d["series"]
             # 卡片墙要的就这几样：当前值、十年分位、一年变化
+            keys = [x["key"] for x in (meta.get("metrics") or [])] or ["pe", "fwd_pe", "pb"]
             m["cur"] = {k: next((v for v in reversed(s.get(k) or []) if v is not None), None)
-                        for k in ("pe", "fwd_pe", "pb")}
+                        for k in keys}
             m["pct10y"] = d["pct10y"]
             m["pe_chg_1y"] = d["pe_chg_1y"]
             m["has_series"] = True
@@ -544,6 +749,10 @@ def write_payload(payload):
                     "pb": _r2(s.get("pb")), "px": _r2(s.get("px")),
                     "anchors": d.get("anchors") or [],
                     "extrap": {k: _rle(v) for k, v in (d.get("extrap") or {}).items()}}
+            # 自定义指标（目前只有黄金那三条）也要进分片
+            for mk in [x["key"] for x in (meta.get("metrics") or [])]:
+                if mk in s:
+                    part[mk] = _r2(s[mk])
             pp = f"{part_dir}/{t}.js"
             with open(pp, "w") as f:
                 f.write("window.__valPart(" + json.dumps(t) + ",")
