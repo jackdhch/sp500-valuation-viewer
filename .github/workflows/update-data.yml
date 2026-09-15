@@ -1,0 +1,51 @@
+name: 更新估值数据
+
+# 每天更新的其实只有「价格」这一半：
+# 市盈率 = 当日收盘价 ÷ 每股收益，分子天天变，分母要等下一份季报才变。
+# 所以这个定时任务只重抓价格再重算，季度锚点（data/valuation/*.csv）仍由本地
+# 跑 tools/fetch_valuation.py 后推送——那一步要爬 macrotrends，在 CI 里容易被限流。
+on:
+  schedule:
+    # 美东收盘后。UTC 21:30 ≈ 美东 17:30（夏令时）/ 16:30（冬令时）
+    - cron: '30 21 * * 1-5'
+  workflow_dispatch:        # 也可以在 Actions 页面手动点一下
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 装依赖
+        run: pip install --quiet yfinance
+
+      - name: 重算估值序列
+        env:
+          SP500_ROOT: ${{ github.workspace }}
+          SP500_DATA: ${{ github.workspace }}/data
+          SP500_SITE: ${{ github.workspace }}
+          SP500_PRICE_MAX_AGE: '0'      # runner 上没有价格缓存，每次都现抓
+        run: python tools/build_valuation.py
+
+      - name: 有变化才提交
+        run: |
+          if git diff --quiet -- valuation_data.js; then
+            echo "数据没有变化，不提交"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add valuation_data.js
+          git commit -m "自动更新估值数据 $(date -u '+%Y-%m-%d')"
+          git push

@@ -1,0 +1,5 @@
+# 价格缓存：CI 每次现抓，不入库（24 只 × 20 年，进仓库要 8 MB 且天天变）
+data/viewer/
+# 抓取时留下的原始 HTML 缓存
+data/valuation/_raw/
+__pycache__/
