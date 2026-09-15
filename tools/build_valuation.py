@@ -151,7 +151,9 @@ def build_one(ticker):
     if len(dates) < 60:
         return None
 
-    out = {"d": [d.isoformat() for d in dates]}
+    out = {"d": [d.isoformat() for d in dates],
+           # 价格序列给「价格 + 估值双轴」用；锚点位置给财季标记用
+           "px": [round(prices[d], 4) for d in dates]}
     extrap = {}
     pct10 = {}
     for ratio_key, per_share_key in METRICS:
@@ -180,7 +182,13 @@ def build_one(ticker):
     chg = (round(100.0 * (cur_pe / old_pe - 1), 1)
            if (cur_pe and old_pe and old_pe > 0 and cur_pe > 0) else None)
 
+    # 每股收益锚点落在哪几个交易日上——图上画竖线用。
+    # 注意这是**财季末**，不是财报发布日（发布通常还要晚三到六周），页面上要写清楚。
+    dset = {d: i for i, d in enumerate(dates)}
+    anchor_idx = sorted({dset[a["d"]] for a in anchors if a["d"] in dset})
+
     return {"series": out, "extrap": extrap, "pct10y": pct10, "pe_chg_1y": chg,
+            "anchors": anchor_idx,
             "px": round(prices[dates[-1]], 4), "px_date": dates[-1].isoformat(),
             "first": dates[0].isoformat(), "last": dates[-1].isoformat()}
 
@@ -230,6 +238,8 @@ def build_index_etf(ticker, cfg, ds):
         neg = cur is not None and cur < 0
         pct10[key] = {"pct": None if neg else p, "n": n, "years": years, "neg": neg,
                       "status": "盈利为负" if neg else status_label(p)}
+    px_col = ds.get(ticker.lower()) or []
+    out["px"] = [px_col[i] if i < len(px_col) else None for i in range(i0, i1 + 1)]
     out["pb"] = [None] * len(dates)      # 指数口径没有现成的市净率序列
     pct10["pb"] = {"pct": None, "n": 0, "years": 0, "neg": False, "status": "无数据"}
 
@@ -326,6 +336,8 @@ def build_weighted_etf(etf, cfg):
             if key == "pe":
                 cover_series.append(round(cov, 1))
         out[key] = vals
+    out["px"] = [round(prices[datetime.date.fromisoformat(d)], 4)
+                 if datetime.date.fromisoformat(d) in prices else None for d in dates]
     out["fwd_pe"] = [None] * len(dates)   # 成分股的前瞻市盈率只有约 5 年，暂不合成
 
     pct10 = {}
@@ -393,7 +405,8 @@ def main():
                                   "kind": "index_etf", "note": cfg["note"],
                                   "px": r.get("px"), "px_date": r.get("px_date"),
                                   "first": r["first"], "last": r["last"]}
-            payload["data"][t] = {k: r[k] for k in ("series", "extrap", "pct10y", "pe_chg_1y")}
+            payload["data"][t] = {k: r.get(k) for k in
+                                  ("series", "extrap", "pct10y", "pe_chg_1y", "anchors")}
             p10 = r["pct10y"]["pe"]
             print(f"{t:6} {r['first']}~{r['last']}  PE={r['series']['pe'][-1]}  "
                   f"十年分位={p10.get('pct')}({p10.get('years')}年,{p10.get('n')}点) "
@@ -413,7 +426,8 @@ def main():
                               "kind": "weighted_etf", "note": r["note"],
                               "px": r.get("px"), "px_date": r.get("px_date"),
                               "first": r["first"], "last": r["last"]}
-        payload["data"][t] = {k: r[k] for k in ("series", "extrap", "pct10y", "pe_chg_1y")}
+        payload["data"][t] = {k: r.get(k) for k in
+                              ("series", "extrap", "pct10y", "pe_chg_1y", "anchors")}
         p10 = r["pct10y"]["pe"]
         cur = next((v for v in reversed(r["series"]["pe"]) if v is not None), None)
         print(f"{t:6} {r['first']}~{r['last']}  PE={cur}  "
@@ -472,7 +486,8 @@ def main():
             "px": r.get("px"), "px_date": r.get("px_date"),
             "first": r["first"], "last": r["last"],
         }
-        payload["data"][t] = {k: r[k] for k in ("series", "extrap", "pct10y", "pe_chg_1y")}
+        payload["data"][t] = {k: r.get(k) for k in
+                              ("series", "extrap", "pct10y", "pe_chg_1y", "anchors")}
         p10 = r["pct10y"].get("pe", {})
         print(f"{t:6} {r['first']}~{r['last']}  PE={r['series']['pe'][-1]}  "
               f"十年分位={p10.get('pct')}({p10.get('years')}年,{p10.get('n')}点) "
@@ -526,7 +541,8 @@ def write_payload(payload):
             d0, dd = _compact_dates(s["d"])
             part = {"d0": d0, "dd": dd,
                     "pe": _r2(s.get("pe")), "fwd_pe": _r2(s.get("fwd_pe")),
-                    "pb": _r2(s.get("pb")),
+                    "pb": _r2(s.get("pb")), "px": _r2(s.get("px")),
+                    "anchors": d.get("anchors") or [],
                     "extrap": {k: _rle(v) for k, v in (d.get("extrap") or {}).items()}}
             pp = f"{part_dir}/{t}.js"
             with open(pp, "w") as f:

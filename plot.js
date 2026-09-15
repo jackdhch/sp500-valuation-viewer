@@ -33,7 +33,8 @@ class Plot {
     this.over = document.createElement("canvas");
     el.append(this.base, this.over);
     el.style.height = (opts.height || 190) + "px";
-    this.pad = { l: 56, r: 12, t: 10, b: 22 };
+    this.pad = { l: 56, r: (opts.series || []).some(s => s.axis === "right") ? 56 : 12,
+                 t: 10, b: 22 };
   }
   size() {
     const r = this.el.getBoundingClientRect();
@@ -54,26 +55,43 @@ class Plot {
     const t = (px - l) / Math.max(1, this.w - l - r);
     return Math.max(state.r0, Math.min(state.r1, Math.round(state.r0 + t * span)));
   }
-  yOf(v) {
+  // series 上标了 axis:"right" 的走右轴。价格（两三百块）和市盈率（二三十倍）
+  // 量纲差一个数量级，塞进同一根轴的话市盈率那条会被压成直线。
+  yOf(v, axis) {
     const { t, b } = this.pad;
+    const lo = axis === "right" ? this.rlo : this.lo;
+    const hi = axis === "right" ? this.rhi : this.hi;
     let f;
-    if (this.o.log) {
+    if (this.o.log && axis !== "right") {
       const L = Math.log10;
-      f = (L(Math.max(v, 1e-6)) - L(this.lo)) / Math.max(1e-9, L(this.hi) - L(this.lo));
+      f = (L(Math.max(v, 1e-6)) - L(lo)) / Math.max(1e-9, L(hi) - L(lo));
     } else {
-      f = (v - this.lo) / Math.max(1e-9, this.hi - this.lo);
+      f = (v - lo) / Math.max(1e-9, hi - lo);
     }
     return t + (this.h - t - b) * (1 - f);
   }
-  domain() {
-    if (this.o.fixed) { [this.lo, this.hi] = this.o.fixed; return; }
+  _span(axis) {
     let lo = Infinity, hi = -Infinity;
-    for (const s of this.o.series)
+    for (const s of this.o.series) {
+      if ((s.axis || "left") !== axis) continue;
       for (let i = state.r0; i <= state.r1; i++) {
         const v = s.data[i];
         if (v == null) continue;
         if (v < lo) lo = v; if (v > hi) hi = v;
       }
+    }
+    return [lo, hi];
+  }
+  domain() {
+    this.hasRight = this.o.series.some(s => (s.axis || "left") === "right");
+    if (this.hasRight) {
+      let [rlo, rhi] = this._span("right");
+      if (!isFinite(rlo)) { rlo = 0; rhi = 1; }
+      const rp = (rhi - rlo) * .10 || Math.abs(rhi) * .05 || 1;
+      this.rlo = rlo - rp; this.rhi = rhi + rp;
+    }
+    if (this.o.fixed) { [this.lo, this.hi] = this.o.fixed; return; }
+    let [lo, hi] = this._span("left");
     if (!isFinite(lo)) { lo = 0; hi = 1; }
     if (this.o.log) { this.lo = Math.max(0.1, lo * .92); this.hi = hi * 1.08; return; }
     const p = (hi - lo) * .10 || Math.abs(hi) * .05 || 1;
@@ -90,15 +108,19 @@ class Plot {
       return out.length > 1 ? out : [this.lo, this.hi];
     }
     const target = Math.max(2, Math.floor((this.h - this.pad.t - this.pad.b) / 44));
-    const raw = (this.hi - this.lo) / target;
+    return this._ticksOn(this.lo, this.hi, target);
+  }
+  _ticksOn(lo, hi, target) {
+    const raw = (hi - lo) / Math.max(1, target);
+    if (!isFinite(raw) || raw <= 0) return [lo];
     const mag = Math.pow(10, Math.floor(Math.log10(raw)));
     const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || 10 * mag;
     const out = [];
-    for (let v = Math.ceil(this.lo / step) * step; v <= this.hi; v += step) out.push(v);
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v);
     return out;
   }
   // min/max 降采样：每个像素列保留极值，保住形状又不画上万段
-  path(ctx, data, extrap, wantExtrap) {
+  path(ctx, data, extrap, wantExtrap, axis) {
     const { l, r } = this.pad, cols = Math.max(1, Math.round(this.w - l - r));
     const span = state.r1 - state.r0 + 1, per = span / cols;
     ctx.beginPath();
@@ -108,7 +130,7 @@ class Plot {
       for (let i = state.r0; i <= state.r1; i++) {
         const v = data[i];
         if (v == null || (!!extrap?.[i] !== wantExtrap)) { started = false; continue; }
-        put(this.xOf(i), this.yOf(v));
+        put(this.xOf(i), this.yOf(v, axis));
       }
     } else {
       for (let c = 0; c < cols; c++) {
@@ -121,12 +143,13 @@ class Plot {
         }
         if (!ok) { started = false; continue; }
         const x = this.xOf(a);
-        put(x, this.yOf(mn)); ctx.lineTo(x, this.yOf(mx));
+        put(x, this.yOf(mn, axis)); ctx.lineTo(x, this.yOf(mx, axis));
       }
     }
     ctx.stroke();
   }
   render() {
+    this.pad.r = this.o.series.some(s => (s.axis || "left") === "right") ? 56 : 12;
     this.size(); this.domain();
     const g = this.base.getContext("2d");
     g.clearRect(0, 0, this.w, this.h);
@@ -148,6 +171,16 @@ class Plot {
       g.strokeStyle = grid; g.lineWidth = 1;
       g.beginPath(); g.moveTo(l, y); g.lineTo(this.w - r, y); g.stroke();
       g.fillStyle = ink3; g.fillText(this.o.yfmt(v), l - 8, y);
+    }
+    if (this.hasRight) {
+      const fmt = this.o.yfmt2 || (v => Math.round(v).toLocaleString("en-US"));
+      g.textAlign = "left";
+      for (const v of this._ticksOn(this.rlo, this.rhi, 4)) {
+        const y = Math.round(this.yOf(v, "right")) + .5;
+        if (y < this.pad.t - 2 || y > this.h - this.pad.b + 2) continue;
+        g.fillStyle = ink3; g.fillText(fmt(v), this.w - r + 8, y);
+      }
+      g.textAlign = "right";
     }
     // 参考线（如 FactSet 的 5年 / 10年均值）
     for (const rl of (this.o.rules || [])) {
@@ -199,8 +232,8 @@ class Plot {
       g.save();
       if (s.alpha != null) g.globalAlpha = s.alpha;
       g.strokeStyle = cssv(s.color); g.lineWidth = s.width || 2;
-      g.setLineDash([]); this.path(g, s.data, s.extrap, false);
-      if (s.extrap) { g.setLineDash([4, 3]); this.path(g, s.data, s.extrap, true); g.setLineDash([]); }
+      g.setLineDash([]); this.path(g, s.data, s.extrap, false, s.axis);
+      if (s.extrap) { g.setLineDash([4, 3]); this.path(g, s.data, s.extrap, true, s.axis); g.setLineDash([]); }
       g.restore();
     }
     // 触发点强调（抄底分图专用）
@@ -248,7 +281,7 @@ class Plot {
     g.beginPath(); g.moveTo(x, t); g.lineTo(x, this.h - b); g.stroke(); g.setLineDash([]);
     for (const s of this.o.series) {
       const v = s.data[i]; if (v == null) continue;
-      const y = this.yOf(v);
+      const y = this.yOf(v, s.axis);
       g.fillStyle = cssv("--surface"); g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill();
       g.strokeStyle = cssv(s.color); g.lineWidth = 2;
       g.beginPath(); g.arc(x, y, 3.4, 0, 7); g.stroke();

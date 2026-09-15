@@ -216,6 +216,43 @@ main{max-width:1360px;margin:0 auto;padding:16px}
 #view-val .wiout .v.up{color:var(--rich)} #view-val .wiout .v.down{color:var(--cheap)}
 #view-val .wifoot{margin-top:9px;font-size:11px;color:var(--ink3);line-height:1.6}
 #view-val .vfoot{margin-top:14px;font-size:11px;color:var(--ink3);line-height:1.7}
+
+/* ---------- 窄屏（手机）----------
+   原则：横向永远不出现滚动条；能点的东西都留到 40px 左右的触摸高度；
+   两张并排的图改成上下堆叠；表格单独套一层横向滚动，不撑破页面。 */
+@media(max-width:640px){
+  .hdr{padding:8px 10px;gap:8px}
+  .brand{font-size:14px}
+  .tickerbox{order:3;flex:1 1 100%}
+  .tickerbox input{width:100%}
+  .tabs button{padding:6px 10px;font-size:12px}
+  main{padding:10px}
+  #view-val{padding:12px;border-radius:12px}
+  #view-val h1{font-size:19px}
+  #view-val .valbar{flex-wrap:wrap;gap:8px}
+  #view-val .segrow{gap:10px}
+  #view-val .seg button{padding:7px 11px}          /* 手指点得到 */
+  #view-val .kpis{grid-template-columns:repeat(2,1fr);gap:8px}
+  #view-val .kpi .v{font-size:21px}
+  #view-val .duo{grid-template-columns:1fr}
+  #view-val .cards{grid-template-columns:1fr 1fr;gap:8px}
+  #view-val .vc{padding:11px}
+  #view-val .vc .big .num{font-size:24px}
+  #view-val .vc .tri .v{font-size:13px}
+  #view-val .heat{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
+  #view-val .hc .p{font-size:18px}
+  #view-val .brush{height:56px}                    /* 拖起来不至于点不中 */
+  #view-val .brush .h{width:22px}
+  #view-val .brush .h.hl{left:-11px} #view-val .brush .h.hr{right:-11px}
+  #view-val .wiout{gap:14px}
+  #view-val .wiout .v{font-size:17px}
+  #view-val .cmptable{font-size:12px}
+  #view-signal{gap:10px}
+}
+@media(max-width:400px){
+  #view-val .cards{grid-template-columns:1fr}
+  #view-val .kpis{grid-template-columns:1fr 1fr}
+}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px}
 .card>h2{margin:0;padding:12px 14px;border-bottom:1px solid var(--line2);font-size:14px;font-weight:600}
 .card>.body{padding:14px}
@@ -400,6 +437,13 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
       <div class="spacer"></div>
       <div class="vnote" id="valBuilt"></div>
     </div>
+    <!-- 清单管理：决定卡片墙上摆哪些标的 -->
+    <div class="vcard" id="pickPanel" hidden style="margin-bottom:12px">
+      <div class="vhd"><span>管理清单</span><span class="vnote">点一下切换显示 / 隐藏，只影响你自己这台浏览器</span></div>
+      <div class="cmppick" id="pickList"></div>
+      <div class="vnote" id="pickHint" style="margin-top:10px"></div>
+    </div>
+
     <div class="cards" id="valCards"></div>
 
     <!-- 热力图：一眼看完谁贵谁便宜，不用翻卡片 -->
@@ -448,6 +492,9 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
     <div class="segrow">
       <div class="seg" id="valMetrics"></div>
       <div class="seg" id="valRanges"></div>
+      <div class="seg" id="valToggles"></div>
+      <div class="spacer"></div>
+      <div class="seg" id="valExport"></div>
     </div>
 
     <div class="kpis">

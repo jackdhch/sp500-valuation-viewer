@@ -30,8 +30,16 @@ window.VPlot.root = wrap;   // 暗色变量在 #view-val 上，画图引擎要�
 var METRICS = [
   { key: "pe",     label: "PE TTM",      kpi: "PE (TTM)",      unit: "×" },
   { key: "fwd_pe", label: "Forward PE",  kpi: "PE (Forward)",  unit: "×" },
-  { key: "pb",     label: "PB",          kpi: "PB",            unit: "×" }
+  { key: "pb",     label: "PB",          kpi: "PB",            unit: "×" },
+  /* 相对估值：个股市盈率 ÷ 大盘市盈率。
+     单看个股的市盈率分位，涨跌里混着「大盘整体变贵/变便宜」这一层；
+     除掉基准之后剩下的才是「相对于大盘，这只股票自己贵了还是便宜了」。
+     比值 1.5 就是「比大盘贵 50%」。 */
+  { key: "rel_spx", label: "相对标普500", kpi: "PE ÷ 标普500", unit: "", base: "VOO" },
+  { key: "rel_ndx", label: "相对纳指100", kpi: "PE ÷ 纳指100", unit: "", base: "QQQ" }
 ];
+// 卡片墙与热力图只用得上这三个原始指标（相对估值要两条序列对齐，只在详情页算）
+var BASE_METRICS = METRICS.slice(0, 3);
 var RANGES = [
   { key: "all", label: "全部", years: null },
   { key: "20y", label: "20Y", years: 20 },
@@ -58,6 +66,9 @@ var SORTS = [
 ];
 
 var cur = { ticker: null, metric: "pe", range: "5y", i0: null, i1: null };
+// 详情页上的两个叠加开关
+var showPrice = false;    // 右轴叠加股价，看「涨是因为赚钱了还是因为变贵了」
+var showAnchors = false;  // 图上标出财季末（每股收益锚点换挡的位置）
 var sortBy = "default", sortDesc = true;
 var trendPlot = null, pctPlot = null;
 var pctSeries = null;      // 当前区间的滚动分位序列，随区间变化重算
@@ -220,7 +231,7 @@ function sortValue(t, key) {
 }
 
 function sortedTickers() {
-  var all = Object.keys(D.meta);
+  var all = Object.keys(D.meta).filter(function (t) { return !isHidden(t); });
   if (sortBy === "default") {
     // 默认：ETF / 指数排在前面，个股按代码
     var order = { index_etf: 0, weighted_etf: 1, snapshot_etf: 2, stock: 3 };
@@ -272,6 +283,7 @@ function renderGrid() {
   $("#valHeat").hidden = view !== "heat";
   $("#valCompare").hidden = view !== "cmp";
   $("#valSort").hidden = view !== "cards";
+  if (!$("#pickPanel").hidden) renderPickPanel();
   if (view === "heat") { renderHeat(); finishGrid(); return; }
   if (view === "cmp") { renderCompare(); finishGrid(); return; }
 
@@ -315,6 +327,45 @@ function pctColor(p) {
   return { bg: "rgba(" + c.join(",") + ",.26)", fg: "rgb(" + c.join(",") + ")" };
 }
 
+/* ---------------- 清单管理 ----------------
+ * 数据是预先生成好的，所以这里管的是「摆不摆出来」，不是「有没有数据」。
+ * 想加一只页面上没有的标的，得先在本地把它的估值锚点抓下来——提示里写了怎么做。
+ */
+var hiddenSet = (function () {
+  try { return JSON.parse(localStorage.getItem("sv_val_hidden") || "[]"); }
+  catch (e) { return []; }
+})();
+
+function saveHidden() {
+  try { localStorage.setItem("sv_val_hidden", JSON.stringify(hiddenSet)); } catch (e) { /* 隐私模式 */ }
+}
+
+function isHidden(t) { return hiddenSet.indexOf(t) >= 0; }
+
+function renderPickPanel() {
+  var box = $("#pickList");
+  box.innerHTML = "";
+  Object.keys(D.meta).sort().forEach(function (t) {
+    var b = document.createElement("button");
+    b.textContent = t;
+    if (!isHidden(t)) b.className = "on";
+    b.title = D.meta[t].name || t;
+    b.addEventListener("click", function () {
+      var i = hiddenSet.indexOf(t);
+      if (i >= 0) hiddenSet.splice(i, 1); else hiddenSet.push(t);
+      saveHidden();
+      renderGrid();
+    });
+    box.appendChild(b);
+  });
+  $("#pickHint").innerHTML =
+    "当前显示 " + (Object.keys(D.meta).length - hiddenSet.length) + " / " +
+    Object.keys(D.meta).length + " 个。" +
+    "要加一只这里没有的标的，得先在本地抓它的估值锚点：" +
+    "<code>python3 scripts/fetch_valuation.py TICKER</code> 再 " +
+    "<code>python3 scripts/build_valuation.py</code>，然后 <code>bash scripts/deploy.sh</code>。";
+}
+
 function renderViewBar() {
   var box = $("#valView");
   box.innerHTML = "";
@@ -325,14 +376,22 @@ function renderViewBar() {
     b.addEventListener("click", function () { view = it.key; renderGrid(); });
     box.appendChild(b);
   });
+  var mg = document.createElement("button");
+  mg.textContent = "管理";
+  if (!$("#pickPanel").hidden) mg.className = "on";
+  mg.addEventListener("click", function () {
+    $("#pickPanel").hidden = !$("#pickPanel").hidden;
+    renderGrid();
+  });
+  box.appendChild(mg);
 }
 
 function renderHeat() {
-  seg($("#heatMetric"), METRICS, function (it) { return it.key === heatMetric; },
+  seg($("#heatMetric"), BASE_METRICS, function (it) { return it.key === heatMetric; },
       function (it) { heatMetric = it.key; renderHeat(); });
   var box = $("#heatGrid");
   box.innerHTML = "";
-  var rows = Object.keys(D.meta).filter(function (t) { return D.meta[t].has_series; })
+  var rows = Object.keys(D.meta).filter(function (t) { return D.meta[t].has_series && !isHidden(t); })
     .map(function (t) {
       var m = D.meta[t];
       var info = (m.pct10y || {})[heatMetric] || {};
@@ -372,7 +431,7 @@ var cmpSel = ["NVDA", "AMZN", "MSFT"].filter(function (t) { return D.meta[t]; })
 var cmpMetric = "pe", cmpRange = "5y", cmpPlot = null;
 
 function renderCompare() {
-  seg($("#cmpMetricSeg"), METRICS, function (it) { return it.key === cmpMetric; },
+  seg($("#cmpMetricSeg"), BASE_METRICS, function (it) { return it.key === cmpMetric; },
       function (it) { cmpMetric = it.key; renderCompare(); });
   seg($("#cmpRangeSeg"), RANGES, function (it) { return it.key === cmpRange; },
       function (it) { cmpRange = it.key; renderCompare(); });
@@ -380,7 +439,7 @@ function renderCompare() {
   // 可选标的
   var pick = $("#cmpPick");
   pick.innerHTML = "";
-  Object.keys(D.meta).filter(function (t) { return D.meta[t].has_series; }).sort()
+  Object.keys(D.meta).filter(function (t) { return D.meta[t].has_series && !isHidden(t); }).sort()
     .forEach(function (t) {
       var b = document.createElement("button");
       b.textContent = t;
@@ -601,11 +660,38 @@ function openDetail(ticker) {
   });
 }
 
+/* 把基准标的的序列按日期对齐到当前标的的日期轴上 */
+function alignTo(dates, baseTicker, key) {
+  var bp = PARTS[baseTicker];
+  if (!bp) return null;
+  var bd = expandDates(bp), bv = bp[key] || [];
+  var pos = {};
+  for (var i = 0; i < bd.length; i++) pos[bd[i]] = i;
+  return dates.map(function (d) {
+    var i = pos[d];
+    return (i === undefined) ? null : bv[i];
+  });
+}
+
 function redrawDetail() {
   var part = PARTS[cur.ticker];
   if (!part) return;
   var dates = expandDates(part);
   var s = part;
+
+  var metNow = METRICS.filter(function (x) { return x.key === cur.metric; })[0];
+  if (metNow && metNow.base) {
+    if (cur.ticker === metNow.base) {           // 自己跟自己比没意义
+      cur.metric = "pe";
+    } else if (!PARTS[metNow.base]) {           // 基准分片还没下，先下再画
+      $("#valSpan").textContent = "加载基准（" + metNow.base + "）…";
+      loadPart(metNow.base, function (ok) {
+        if (ok && cur.metric === metNow.key) redrawDetail();
+        else if (!ok) $("#valSpan").textContent = "基准数据加载失败";
+      });
+      return;
+    }
+  }
   var met = METRICS.filter(function (x) { return x.key === cur.metric; })[0];
   var rng = RANGES.filter(function (x) { return x.key === cur.range; })[0] || null;
 
@@ -613,8 +699,29 @@ function redrawDetail() {
       function (it) { cur.metric = it.key; redrawDetail(); });
   seg($("#valRanges"), RANGES, function (it) { return it.key === cur.range; },   // custom 时一个都不亮
       function (it) { cur.range = it.key; cur.i0 = null; cur.i1 = null; redrawDetail(); });
+  seg($("#valToggles"),
+      [{ key: "px", label: "叠加股价" }, { key: "anc", label: "标财季末" }],
+      function (it) { return it.key === "px" ? showPrice : showAnchors; },
+      function (it) {
+        if (it.key === "px") showPrice = !showPrice; else showAnchors = !showAnchors;
+        redrawDetail();
+      });
+  seg($("#valExport"),
+      [{ key: "csv", label: "导出 CSV" }, { key: "png", label: "存图" }],
+      function () { return false; },
+      function (it) { it.key === "csv" ? exportCsv() : exportPng(); });
 
-  var vals = s[met.key] || [];
+  var vals;
+  if (met.base) {
+    var mine = s.pe || [], theirs = alignTo(dates, met.base, "pe");
+    vals = mine.map(function (v, i) {
+      var b = theirs ? theirs[i] : null;
+      if (v == null || b == null || b <= 0 || v <= 0) return null;
+      return Math.round(v / b * 1000) / 1000;
+    });
+  } else {
+    vals = s[met.key] || [];
+  }
   var i0, i1;
   if (cur.i0 != null && cur.i1 != null) {       // 用户拖过区间刷，以它为准
     i0 = Math.max(0, Math.min(cur.i0, dates.length - 2));
@@ -645,7 +752,8 @@ function redrawDetail() {
   var st = statusOf(curPct, curVal !== null && curVal < 0);
 
   $("#kpi1k").textContent = met.kpi;
-  $("#kpi1v").textContent = curVal === null ? "无数据" : fmt(curVal) + met.unit;
+  $("#kpi1v").textContent = curVal === null ? "无数据"
+    : (met.base ? fmt(curVal) + "×大盘" : fmt(curVal) + met.unit);
   $("#kpi2v").textContent = curPct === null ? "样本不足" : curPct + "%";
   $("#kpi3v").textContent = st.txt;
   $("#kpi3v").style.color = st.cls === "cheap" ? "var(--cheap)"
@@ -664,8 +772,18 @@ function redrawDetail() {
   renderBrush(dates, vals, i0, i1);
   hideCursorTip();
 
-  trendPlot.o.series[0].data = vals;
-  trendPlot.o.series[0].extrap = expandFlags((part.extrap || {})[met.key], dates.length);
+  trendPlot.o.series = [{ data: vals, color: "--accent",
+                          extrap: expandFlags((part.extrap || {})[met.key], dates.length) }];
+  if (showPrice && part.px) {
+    // 价格走右轴：股价两三百块、市盈率二三十倍，塞进同一根轴市盈率会被压成直线
+    trendPlot.o.series.push({ data: part.px, color: "--pctline", axis: "right" });
+  }
+  trendPlot.o.yfmt2 = function (v) { return "$" + (v >= 100 ? Math.round(v) : v.toFixed(1)); };
+  // 财季末竖线。注意这是**财季结束日**，不是财报发布日——后者通常还要晚三到六周。
+  trendPlot.o.vmarks = (showAnchors && part.anchors)
+    ? part.anchors.filter(function (i) { return i >= i0 && i <= i1; })
+                  .map(function (i) { return dates[i]; })
+    : null;
   pctPlot.o.series[0].data = full;
   window.VPlot.setDates(dates);
   window.VPlot.setRange(i0, i1);
@@ -673,6 +791,7 @@ function redrawDetail() {
   pctPlot.render();
 
   var p10 = ((D.meta[cur.ticker].pct10y) || {})[met.key] || {};
+  if (met.base) p10 = {};     // 相对估值是前端现算的，没有预存的固定十年分位
   renderWhatIf(vals, i0, i1, met, curVal, curPct);
 
   var kindNote = D.meta[cur.ticker].note ? ("口径：" + D.meta[cur.ticker].note + "<br>") : "";
@@ -879,7 +998,7 @@ function renderWhatIf(vals, i0, i1, met, curVal, curPct) {
   seg.sort(function (a, b) { return a - b; });
 
   // 负估值、没有价格、样本太少，都没法反推——这时把面板整个关掉，而不是给个假数字
-  if (!px || seg.length < 30 || curVal === null || curVal <= 0) {
+  if (met.base || !px || seg.length < 30 || curVal === null || curVal <= 0) {
     box.hidden = true;
     wiState = null;
     return;
@@ -944,6 +1063,74 @@ function applyTheme(t) {
     applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
   });
 })();
+
+/* ---------------- 导出 ---------------- */
+
+function download(name, blob) {
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+function exportCsv() {
+  if (!viewCtx) return;
+  var c = viewCtx, part = PARTS[cur.ticker] || {};
+  var head = ["date", c.met.key, "rolling_pct_in_range", "close"];
+  var lines = [head.join(",")];
+  for (var i = c.i0; i <= c.i1; i++) {
+    var v = c.vals[i], p = c.pct[i - c.i0], px = (part.px || [])[i];
+    lines.push([c.dates[i],
+                v == null ? "" : v,
+                p == null ? "" : p,
+                px == null ? "" : px].join(","));
+  }
+  // 开头写一行注释交代口径，免得单独一个 CSV 传出去之后没人说得清这些数是怎么算的
+  var note = "# " + cur.ticker + " " + c.met.label +
+             "；分位是这段区间内的滚动百分位，换区间会变；" +
+             "市盈率的分子是当日收盘价、分母是季度财报锚点插值出来的每股收益；" +
+             "数据生成于 " + D.built + "\n";
+  download(cur.ticker + "_" + c.met.key + "_" + c.dates[c.i0] + "_" + c.dates[c.i1] + ".csv",
+           new Blob(["\ufeff" + note + lines.join("\n")],
+                    { type: "text/csv;charset=utf-8" }));
+}
+
+function exportPng() {
+  if (!trendPlot || $("#valDetail").hidden) return;
+  var pad = 16, gap = 14, headH = 44, footH = 26;
+  var w = trendPlot.w + pctPlot.w + gap + pad * 2;
+  var h = Math.max(trendPlot.h, pctPlot.h) + headH + footH + pad * 2;
+  var cv = document.createElement("canvas");
+  var dpr = 2;
+  cv.width = w * dpr; cv.height = h * dpr;
+  var g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = window.VPlot.cssv("--panel") || "#161b22";
+  g.fillRect(0, 0, w, h);
+
+  var m = D.meta[cur.ticker] || {};
+  g.fillStyle = window.VPlot.cssv("--ink") || "#e6edf7";
+  g.font = "600 16px system-ui, sans-serif";
+  g.fillText((m.name || cur.ticker) + "  " + cur.ticker, pad, pad + 16);
+  g.fillStyle = window.VPlot.cssv("--ink3") || "#6b7685";
+  g.font = "12px system-ui, sans-serif";
+  g.fillText(viewCtx.met.label + " · " + $("#valSpan").textContent, pad, pad + 34);
+
+  g.drawImage(trendPlot.base, pad, pad + headH, trendPlot.w, trendPlot.h);
+  g.drawImage(pctPlot.base, pad + trendPlot.w + gap, pad + headH, pctPlot.w, pctPlot.h);
+
+  g.fillStyle = window.VPlot.cssv("--ink3") || "#6b7685";
+  g.font = "11px system-ui, sans-serif";
+  g.fillText("左：估值走势　右：区间滚动分位　·　数据生成于 " + D.built +
+             "　·　只呈现公开数据，不构成投资建议",
+             pad, h - pad - 2);
+
+  cv.toBlob(function (blob) {
+    if (blob) download(cur.ticker + "_" + viewCtx.met.key + "_" + D.built + ".png", blob);
+  }, "image/png");
+}
 
 /* ---------------- 页签切换 ---------------- */
 
