@@ -50,8 +50,12 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 WISHLIST = ["NVDA", "AAPL", "GOOG", "AMZN", "TSM", "MU", "AMD", "ASML", "SNDK", "ANET",
             "GEV", "ARM", "STX", "WDC", "GLW", "NOW", "BE", "LITE", "SKHY", "KXIAY"]
 
-# MSFT 不在自选里，但截图对比表给了它的实测值（PE 28.17 / 分位 28.7%），留作验证锚点
-EXTRA_STOCKS = ["MSFT"]
+# 自选清单之外另加的：
+#   MSFT  截图对比表给了它的实测值（PE 28.17 / 分位 28.7%），留作验证锚点，本身也是七巨头之一
+#   META / TSLA  补全「七巨头」——其余五只（AAPL MSFT GOOG AMZN NVDA）自选清单里已有
+#   SPCX  SpaceX，2026-06-12 在纳斯达克 IPO（2026-09-14 报 151.21 美元、市值约 2.05 万亿）。
+#         上市才三个月，历史序列极短、市盈率还是 n/a，页面上会落到「仅当前值」那类卡片
+EXTRA_STOCKS = ["MSFT", "META", "TSLA", "SPCX"]
 
 MT_PAGES = {"pe-ratio": ("eps", "pe"),
             "price-book": ("bvps", "pb"),

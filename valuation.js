@@ -57,7 +57,7 @@ var SORTS = [
   { key: "pe",      label: "PE", desc: false }
 ];
 
-var cur = { ticker: null, metric: "pe", range: "5y" };
+var cur = { ticker: null, metric: "pe", range: "5y", i0: null, i1: null };
 var sortBy = "default", sortDesc = true;
 var trendPlot = null, pctPlot = null;
 var pctSeries = null;      // 当前区间的滚动分位序列，随区间变化重算
@@ -123,22 +123,29 @@ function snapshotCard(ticker) {
   var m = D.meta[ticker];
   var el = document.createElement("div");
   el.className = "vc nohist";
+  var isEtf = m.kind && m.kind !== "stock";
+  // ETF 关心持仓数与成立日；刚 IPO 的个股关心市值，第三格没东西就留空
+  var third = isEtf ? ["持仓数", m.holdings || "—"] : ["市值", m.mcap || "—"];
+  var second = isEtf ? ["成立", m.inception || "—"] : ["PEG", (m.peg && m.peg !== "n/a") ? m.peg : "—"];
   el.innerHTML =
     '<div class="top"><span class="nm"></span><span class="badge na">仅当前值</span></div>' +
     '<div class="tk"></div>' +
     '<div class="big"><span class="lab">PE · TTM</span><span class="num"></span></div>' +
     '<div class="tri">' +
       '<div><div class="k">PB</div><div class="v b"></div></div>' +
-      '<div><div class="k">持仓数</div><div class="v h"></div></div>' +
-      '<div><div class="k">成立</div><div class="v i" style="font-size:12px"></div></div>' +
+      '<div><div class="k k2"></div><div class="v v2" style="font-size:13px"></div></div>' +
+      '<div><div class="k k3"></div><div class="v v3" style="font-size:13px"></div></div>' +
     '</div>' +
     '<div class="why"></div>';
   el.querySelector(".nm").textContent = m.name || ticker;
-  el.querySelector(".tk").textContent = ticker + " · ETF";
-  el.querySelector(".num").textContent = m.cur_pe || "—";
-  el.querySelector(".b").textContent = m.cur_pb || "—";
-  el.querySelector(".h").textContent = m.holdings || "—";
-  el.querySelector(".i").textContent = m.inception || "—";
+  el.querySelector(".tk").textContent = ticker + (isEtf ? " · ETF" : " · 美股");
+  var pe = m.cur_pe;
+  el.querySelector(".num").textContent = (pe && pe !== "n/a") ? pe : "—";
+  el.querySelector(".b").textContent = (m.cur_pb && m.cur_pb !== "n/a") ? m.cur_pb : "—";
+  el.querySelector(".k2").textContent = second[0];
+  el.querySelector(".v2").textContent = second[1];
+  el.querySelector(".k3").textContent = third[0];
+  el.querySelector(".v3").textContent = third[1];
   el.querySelector(".why").textContent = "无历史分位：" + (m.note || "");
   return el;
 }
@@ -260,18 +267,252 @@ function renderSortBar() {
 }
 
 function renderGrid() {
+  renderViewBar();
+  $("#valCards").hidden = view !== "cards";
+  $("#valHeat").hidden = view !== "heat";
+  $("#valCompare").hidden = view !== "cmp";
+  $("#valSort").hidden = view !== "cards";
+  if (view === "heat") { renderHeat(); finishGrid(); return; }
+  if (view === "cmp") { renderCompare(); finishGrid(); return; }
+
   var box = $("#valCards");
   box.innerHTML = "";
   sortedTickers().forEach(function (t) {
     box.appendChild(D.meta[t].has_series ? card(t) : snapshotCard(t));
   });
   renderSortBar();
+  finishGrid();
+}
+
+function finishGrid() {
   $("#valBuilt").textContent = "数据生成于 " + D.built;
   $("#valGridFoot").innerHTML =
     "分位口径：估值卡上的「PE 分位」是<b>固定十年窗口</b>；点进详情页后的「百分位（当前区间）」" +
     "是<b>区间相对量</b>，会随 1Y/5Y/全部 的切换而变，两者本来就不是同一个数。<br>" +
     "日频市盈率的分子是真实当日收盘价，分母是季度财报锚点插值出来的每股收益（与本站其余页面同口径）。" +
     "每股收益、每股净资产来自 macrotrends（约 20 年季度锚点），前瞻市盈率来自 stockanalysis（约 5 年）。";
+}
+
+/* ---------------- 视图切换：卡片 / 热力图 / 对比 ---------------- */
+
+var VIEWS = [{ key: "cards", label: "卡片" },
+             { key: "heat", label: "热力图" },
+             { key: "cmp", label: "对比" }];
+var view = "cards";
+var heatMetric = "pe";
+
+/* 分位 → 颜色。跟页面底部那条五段渐变用同一套色，视觉上对得上。 */
+function pctColor(p) {
+  if (p === null || p === undefined) return { bg: "var(--panel2)", fg: "var(--ink3)" };
+  var stops = [[0, [47, 211, 155]], [20, [143, 206, 74]], [50, [227, 179, 65]],
+               [80, [240, 136, 62]], [100, [248, 81, 73]]];
+  var i = 1;
+  while (i < stops.length - 1 && p > stops[i][0]) i++;
+  var a = stops[i - 1], b = stops[i];
+  var t = (p - a[0]) / Math.max(1e-6, b[0] - a[0]);
+  var c = [0, 1, 2].map(function (k) { return Math.round(a[1][k] + (b[1][k] - a[1][k]) * t); });
+  // 底色压淡一点，文字才看得清
+  return { bg: "rgba(" + c.join(",") + ",.26)", fg: "rgb(" + c.join(",") + ")" };
+}
+
+function renderViewBar() {
+  var box = $("#valView");
+  box.innerHTML = "";
+  VIEWS.forEach(function (it) {
+    var b = document.createElement("button");
+    b.textContent = it.label;
+    if (it.key === view) b.className = "on";
+    b.addEventListener("click", function () { view = it.key; renderGrid(); });
+    box.appendChild(b);
+  });
+}
+
+function renderHeat() {
+  seg($("#heatMetric"), METRICS, function (it) { return it.key === heatMetric; },
+      function (it) { heatMetric = it.key; renderHeat(); });
+  var box = $("#heatGrid");
+  box.innerHTML = "";
+  var rows = Object.keys(D.meta).filter(function (t) { return D.meta[t].has_series; })
+    .map(function (t) {
+      var m = D.meta[t];
+      var info = (m.pct10y || {})[heatMetric] || {};
+      return { t: t, name: m.name || t, pct: info.neg ? null : info.pct,
+               years: info.years, cur: (m.cur || {})[heatMetric] };
+    });
+  // 便宜的排前面；没有分位的垫底
+  rows.sort(function (a, b) {
+    if (a.pct === null || a.pct === undefined) return 1;
+    if (b.pct === null || b.pct === undefined) return -1;
+    return a.pct - b.pct;
+  });
+  rows.forEach(function (r) {
+    var c = pctColor(r.pct);
+    var el = document.createElement("div");
+    el.className = "hc";
+    el.style.background = c.bg;
+    el.innerHTML = "<div class='t'></div><div class='p'></div><div class='v'></div>";
+    el.querySelector(".t").textContent = r.t;
+    var p = el.querySelector(".p");
+    p.textContent = (r.pct === null || r.pct === undefined) ? "—" : r.pct.toFixed(1) + "%";
+    p.style.color = c.fg;
+    el.querySelector(".v").textContent =
+      (r.cur === null || r.cur === undefined ? "—" : r.cur.toFixed(2) + "×") +
+      (r.years && r.years < 9.5 ? "  近" + r.years + "年" : "");
+    el.title = r.name + "：" + METRICS.filter(function (x) { return x.key === heatMetric; })[0].label +
+               " 分位 " + (r.pct == null ? "样本不足" : r.pct + "%");
+    el.addEventListener("click", function () { openDetail(r.t); });
+    box.appendChild(el);
+  });
+}
+
+/* ---------------- 多标的对比 ---------------- */
+
+var CMP_COLORS = ["--accent", "--pctline", "--amber", "--rich", "--ink2", "--cheap"];
+var cmpSel = ["NVDA", "AMZN", "MSFT"].filter(function (t) { return D.meta[t]; });
+var cmpMetric = "pe", cmpRange = "5y", cmpPlot = null;
+
+function renderCompare() {
+  seg($("#cmpMetricSeg"), METRICS, function (it) { return it.key === cmpMetric; },
+      function (it) { cmpMetric = it.key; renderCompare(); });
+  seg($("#cmpRangeSeg"), RANGES, function (it) { return it.key === cmpRange; },
+      function (it) { cmpRange = it.key; renderCompare(); });
+
+  // 可选标的
+  var pick = $("#cmpPick");
+  pick.innerHTML = "";
+  Object.keys(D.meta).filter(function (t) { return D.meta[t].has_series; }).sort()
+    .forEach(function (t) {
+      var b = document.createElement("button");
+      b.textContent = t;
+      if (cmpSel.indexOf(t) >= 0) b.className = "on";
+      b.addEventListener("click", function () {
+        var i = cmpSel.indexOf(t);
+        if (i >= 0) cmpSel.splice(i, 1);
+        else if (cmpSel.length < CMP_COLORS.length) cmpSel.push(t);
+        renderCompare();
+      });
+      pick.appendChild(b);
+    });
+
+  if (!cmpPlot) {
+    cmpPlot = new window.VPlot.Plot($("#p-cmp"), {
+      height: 300, series: [],
+      yfmt: function (v) { return v.toFixed(1) + "×"; }
+    });
+  }
+
+  // 逐个确保分片已加载，全到齐了再画
+  var pending = cmpSel.filter(function (t) { return !PARTS[t]; });
+  if (pending.length) {
+    $("#cmpNote").textContent = "加载中…（" + pending.length + " 只）";
+    pending.forEach(function (t) {
+      loadPart(t, function () {
+        if (cmpSel.indexOf(t) >= 0 && !cmpSel.some(function (x) { return !PARTS[x]; })) renderCompare();
+      });
+    });
+    return;
+  }
+  $("#cmpNote").textContent = "折线图数据口径与当前指标一致";
+  drawCompare();
+}
+
+function drawCompare() {
+  if (!cmpSel.length) {
+    cmpPlot.o.series = [];
+    cmpPlot.render();
+    $("#cmpLegend").innerHTML = "";
+    $("#cmpTable").innerHTML = "";
+    return;
+  }
+  // 各标的交易日不完全一样，以选中里最长的那条为轴，其余按日期对齐
+  var base = cmpSel.map(function (t) { return expandDates(PARTS[t]); })
+                   .sort(function (a, b) { return b.length - a.length; })[0];
+  var rng = RANGES.filter(function (x) { return x.key === cmpRange; })[0];
+  var i0 = rangeIdx(base, rng ? rng.years : null), i1 = base.length - 1;
+
+  var series = cmpSel.map(function (t, k) {
+    var ds = expandDates(PARTS[t]), vs = PARTS[t][cmpMetric] || [];
+    var pos = {};
+    for (var i = 0; i < ds.length; i++) pos[ds[i]] = i;
+    var aligned = base.map(function (d) {
+      var i = pos[d];
+      return (i === undefined) ? null : vs[i];
+    });
+    return { data: aligned, color: CMP_COLORS[k % CMP_COLORS.length], ticker: t };
+  });
+
+  /* Y 轴按 2%–98% 分位裁一刀。不裁的话，某些标的历史上盈利接近 0 的那几个季度
+     会把市盈率顶到上万倍（NVDA 2012 年前后就是），一根尖峰能把其余几条线全压成直线。
+     超出范围的点贴着边界画，图上注明，不当它不存在。 */
+  var pool = [];
+  series.forEach(function (s2) {
+    for (var i = i0; i <= i1; i++) {
+      var v = s2.data[i];
+      if (v !== null && v !== undefined) pool.push(v);
+    }
+  });
+  pool.sort(function (a, b) { return a - b; });
+  var clipped = 0;
+  if (pool.length > 50) {
+    var lo = pool[Math.floor(pool.length * 0.02)];
+    var hi = pool[Math.floor(pool.length * 0.98)];
+    var pad = (hi - lo) * 0.06;
+    lo -= pad; hi += pad;
+    series.forEach(function (s2) {
+      s2.data = s2.data.map(function (v) {
+        if (v === null || v === undefined) return v;
+        if (v < lo) { clipped++; return lo; }
+        if (v > hi) { clipped++; return hi; }
+        return v;
+      });
+    });
+    cmpPlot.o.fixed = [lo, hi];
+  } else {
+    cmpPlot.o.fixed = null;
+  }
+  $("#cmpNote").textContent = clipped
+    ? "Y 轴按 2%–98% 分位裁剪，" + clipped + " 个极端点贴边显示"
+    : "折线图数据口径与当前指标一致";
+
+  window.VPlot.setDates(base);
+  window.VPlot.setRange(i0, i1);
+  cmpPlot.o.series = series;
+  cmpPlot.render();
+
+  $("#cmpLegend").innerHTML = series.map(function (s) {
+    return "<span><i style='background:var(" + s.color + ")'></i>" +
+           (D.meta[s.ticker].name || s.ticker) + "</span>";
+  }).join("");
+
+  // 右边的对比表：当前值 + 该区间内的分位 + 状态
+  var rows = series.map(function (s) {
+    var seg2 = [];
+    for (var i = i0; i <= i1; i++) {
+      var v = s.data[i];
+      if (v !== null && v !== undefined && v > 0) seg2.push(v);
+    }
+    var cur2 = seg2.length ? seg2[seg2.length - 1] : null;
+    var sorted = seg2.slice().sort(function (a, b) { return a - b; });
+    var p = null;
+    if (cur2 !== null && sorted.length >= 30) {
+      var lo = bisectLeft(sorted, cur2), hi = bisectRight(sorted, cur2);
+      p = Math.round(1000 * ((lo + hi) / 2) / sorted.length) / 10;
+    }
+    var raw = lastValid(s.data.slice(i0, i1 + 1));
+    return { t: s.ticker, color: s.color, cur: raw, pct: p, st: statusOf(p, raw !== null && raw < 0) };
+  });
+  $("#cmpAsOf").textContent = "区间 " + base[i0] + " — " + base[i1] + "，分位按这段算";
+  $("#cmpTable").innerHTML =
+    "<tr><th>标的</th><th class='r'>当前值</th><th class='r'>区间分位</th><th>状态</th></tr>" +
+    rows.map(function (r) {
+      return "<tr><td><i style='display:inline-block;width:8px;height:8px;border-radius:50%;" +
+        "margin-right:6px;background:var(" + r.color + ")'></i>" + r.t + "</td>" +
+        "<td class='r'>" + (r.cur === null ? "—" : r.cur.toFixed(2)) + "</td>" +
+        "<td class='r'>" + (r.pct === null ? "样本不足" : r.pct + "%") + "</td>" +
+        "<td style='color:" + (r.st.cls === "cheap" ? "var(--cheap)" :
+          r.st.cls === "rich" ? "var(--rich)" : r.st.cls === "fair" ? "var(--ink)" : "var(--ink3)") +
+        "'>" + r.st.txt + "</td></tr>";
+    }).join("");
 }
 
 /* ---------------- 详情视图 ---------------- */
@@ -331,6 +572,7 @@ function expandFlags(rle, n) {
 }
 
 function openDetail(ticker) {
+  if (cur.ticker !== ticker) { cur.i0 = null; cur.i1 = null; }   // 换标的不沿用上一只的自定义区间
   cur.ticker = ticker;
   $("#valGrid").hidden = true;
   $("#valDetail").hidden = false;
@@ -348,6 +590,8 @@ function openDetail(ticker) {
               { lo: 0, hi: 20, color: "--cheap", alpha: "22" }],
       yfmt: function (v) { return v.toFixed(0) + "%"; }
     });
+    bindCursor();
+    bindBrush();
   }
   $("#valSpan").textContent = "加载中…";
   loadPart(ticker, function (ok) {
@@ -363,17 +607,27 @@ function redrawDetail() {
   var dates = expandDates(part);
   var s = part;
   var met = METRICS.filter(function (x) { return x.key === cur.metric; })[0];
-  var rng = RANGES.filter(function (x) { return x.key === cur.range; })[0];
+  var rng = RANGES.filter(function (x) { return x.key === cur.range; })[0] || null;
 
   seg($("#valMetrics"), METRICS, function (it) { return it.key === cur.metric; },
       function (it) { cur.metric = it.key; redrawDetail(); });
-  seg($("#valRanges"), RANGES, function (it) { return it.key === cur.range; },
-      function (it) { cur.range = it.key; redrawDetail(); });
+  seg($("#valRanges"), RANGES, function (it) { return it.key === cur.range; },   // custom 时一个都不亮
+      function (it) { cur.range = it.key; cur.i0 = null; cur.i1 = null; redrawDetail(); });
 
   var vals = s[met.key] || [];
-  var i0 = rangeIdx(dates, rng.years), i1 = dates.length - 1;
+  var i0, i1;
+  if (cur.i0 != null && cur.i1 != null) {       // 用户拖过区间刷，以它为准
+    i0 = Math.max(0, Math.min(cur.i0, dates.length - 2));
+    i1 = Math.max(i0 + 1, Math.min(cur.i1, dates.length - 1));
+  } else {
+    i0 = rangeIdx(dates, rng ? rng.years : null);
+    i1 = dates.length - 1;
+  }
+  cur.i0 = i0; cur.i1 = i1;
 
-  $("#valSpan").textContent = rng.label + " · " + dates[i0] + " — " + dates[i1];
+  var spanLabel = rng ? rng.label : "自定义";
+  $("#valSpan").textContent = spanLabel + " · " + dates[i0] + " — " + dates[i1] +
+                              "（" + (i1 - i0 + 1) + " 个交易日）";
   $("#trendNote").textContent = met.label + " 走势";
 
   // 该指标在这个区间里一个有效值都没有（例如前瞻市盈率只有约 5 年，切到 20Y 的早段）
@@ -406,6 +660,10 @@ function redrawDetail() {
   knob.style.display = curPct === null ? "none" : "block";
   if (curPct !== null) knob.style.left = curPct + "%";
 
+  viewCtx = { dates: dates, vals: vals, pct: pctSeries || [], i0: i0, i1: i1, met: met };
+  renderBrush(dates, vals, i0, i1);
+  hideCursorTip();
+
   trendPlot.o.series[0].data = vals;
   trendPlot.o.series[0].extrap = expandFlags((part.extrap || {})[met.key], dates.length);
   pctPlot.o.series[0].data = full;
@@ -419,12 +677,172 @@ function redrawDetail() {
 
   var kindNote = D.meta[cur.ticker].note ? ("口径：" + D.meta[cur.ticker].note + "<br>") : "";
   $("#valDetailFoot").innerHTML = kindNote +
-    "「百分位（当前区间）」= 当前值在 <b>" + rng.label + "</b> 这段里的排名，换区间就会变；" +
+    "「百分位（当前区间）」= 当前值在 <b>" + spanLabel + "</b> 这段里的排名，换区间就会变；" +
     "估值卡上那个是固定十年窗口的分位（本指标为 " +
     (p10.pct === null || p10.pct === undefined ? "样本不足" : p10.pct + "%，覆盖 " + p10.years + " 年") +
     "），两者不是同一个数。<br>" +
     "负市盈率（盈利为负）照常画进走势图，但不参与分位排名，分位曲线在那段留空。" +
     (cur.metric === "fwd_pe" ? "<br>前瞻市盈率的历史只有约 5 年（免费源上限），切到更长区间时早段是空的。" : "");
+}
+
+/* ---------------- 十字准星与数值气泡 ----------------
+ * Plot 自带 cursor()（在上层 canvas 上画竖线和圆点），这里把鼠标位置换算成数据下标，
+ * 让两张图同步显示同一天，再把那天的数字浮在图上。
+ */
+var viewCtx = null;      // { dates, vals, pct, i0, i1, met } 由 redrawDetail 填
+
+function fmtDay(iso) { return iso; }
+
+function moveCursor(plot, clientX) {
+  if (!viewCtx) return;
+  var box = plot.el.getBoundingClientRect();
+  var i = plot.iOf(clientX - box.left);
+  window.VPlot.state.cur = i;
+  trendPlot.cursor();
+  pctPlot.cursor();
+  showCursorTip(i);
+}
+
+function showCursorTip(i) {
+  var c = viewCtx;
+  if (!c || i < c.i0 || i > c.i1) return hideCursorTip();
+  var v = c.vals[i], p = (i - c.i0 >= 0) ? c.pct[i - c.i0] : null;
+  place($("#tipTrend"), trendPlot, i, v == null ? null : v,
+        "<div class='dt'>" + c.dates[i] + "</div><b>" +
+        (v == null ? "—" : v.toFixed(2) + c.met.unit) + "</b>");
+  place($("#tipPct"), pctPlot, i, p == null ? null : p,
+        "<div class='dt'>" + c.dates[i] + "</div><b>" +
+        (p == null ? "—" : p.toFixed(1) + "%") + "</b>");
+}
+
+function place(tip, plot, i, v, html) {
+  tip.innerHTML = html;
+  tip.hidden = false;
+  var x = plot.xOf(i), y = (v == null ? plot.h / 2 : plot.yOf(v));
+  var w = tip.offsetWidth, h = tip.offsetHeight;
+  // 靠右侧时气泡翻到左边，免得被图边裁掉
+  tip.style.left = Math.max(2, Math.min(plot.w - w - 2, x + (x > plot.w - w - 20 ? -w - 12 : 12))) + "px";
+  tip.style.top = Math.max(2, Math.min(plot.h - h - 2, y - h - 10)) + "px";
+}
+
+function hideCursorTip() {
+  $("#tipTrend").hidden = true;
+  $("#tipPct").hidden = true;
+  var g = trendPlot && trendPlot.over.getContext("2d");
+  if (g) g.clearRect(0, 0, trendPlot.w, trendPlot.h);
+  var g2 = pctPlot && pctPlot.over.getContext("2d");
+  if (g2) g2.clearRect(0, 0, pctPlot.w, pctPlot.h);
+}
+
+function bindCursor() {
+  [["#p-val", function () { return trendPlot; }],
+   ["#p-valpct", function () { return pctPlot; }]].forEach(function (pair) {
+    var el = $(pair[0]);
+    el.addEventListener("pointermove", function (e) { moveCursor(pair[1](), e.clientX); });
+    el.addEventListener("pointerleave", hideCursorTip);
+    el.addEventListener("touchmove", function (e) {
+      if (e.touches[0]) { moveCursor(pair[1](), e.touches[0].clientX); e.preventDefault(); }
+    }, { passive: false });
+  });
+}
+
+/* ---------------- 区间刷 ----------------
+ * 底下那条小图画的是「全历史」的走势轮廓，绿色选区就是当前看的那段。
+ * 拖手柄改起止，拖选区整体平移；点区间按钮会把它复位到那个预设。
+ */
+var brushDrag = null;
+
+function renderBrush(dates, vals, i0, i1) {
+  var box = $("#valBrush"), cv = $("#brushMini");
+  var w = box.clientWidth, h = box.clientHeight;
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  var g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+
+  var lo = Infinity, hi = -Infinity;
+  for (var k = 0; k < vals.length; k++) {
+    var v = vals[k];
+    if (v == null || v <= 0) continue;
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  if (lo < hi) {
+    g.strokeStyle = window.VPlot.cssv("--accent-d") || "#1f9c73";
+    g.lineWidth = 1;
+    g.beginPath();
+    var started = false;
+    for (var j = 0; j < vals.length; j++) {
+      var y = vals[j];
+      if (y == null || y <= 0) { started = false; continue; }
+      var px = w * j / Math.max(1, vals.length - 1);
+      var py = h - 4 - (h - 8) * (y - lo) / (hi - lo);
+      if (started) g.lineTo(px, py); else { g.moveTo(px, py); started = true; }
+    }
+    g.stroke();
+  }
+  var sel = $("#brushSel");
+  sel.style.left = (100 * i0 / Math.max(1, vals.length - 1)) + "%";
+  sel.style.width = (100 * (i1 - i0) / Math.max(1, vals.length - 1)) + "%";
+}
+
+function brushIndexAt(clientX, n) {
+  var box = $("#valBrush").getBoundingClientRect();
+  var t = (clientX - box.left) / Math.max(1, box.width);
+  return Math.max(0, Math.min(n - 1, Math.round(t * (n - 1))));
+}
+
+function bindBrush() {
+  var box = $("#valBrush");
+  function start(kind) {
+    return function (e) {
+      if (!viewCtx) return;
+      brushDrag = { kind: kind, n: viewCtx.dates.length,
+                    i0: cur.i0, i1: cur.i1,
+                    from: brushIndexAt(e.clientX, viewCtx.dates.length) };
+      box.setPointerCapture && box.setPointerCapture(e.pointerId);
+      e.preventDefault(); e.stopPropagation();
+    };
+  }
+  $("#brushSel").querySelector(".hl").addEventListener("pointerdown", start("l"));
+  $("#brushSel").querySelector(".hr").addEventListener("pointerdown", start("r"));
+  $("#brushSel").addEventListener("pointerdown", start("move"));
+
+  // 在选区外面按下拖动 = 直接框出一段新区间（标准的 brush 行为，不用先把选区拖过去）
+  box.addEventListener("pointerdown", function (e) {
+    if (brushDrag || !viewCtx) return;
+    var n = viewCtx.dates.length;
+    brushDrag = { kind: "new", n: n, i0: cur.i0, i1: cur.i1,
+                  anchor: brushIndexAt(e.clientX, n) };
+    box.setPointerCapture && box.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  box.addEventListener("pointermove", function (e) {
+    if (!brushDrag || !viewCtx) return;
+    var n = brushDrag.n, i = brushIndexAt(e.clientX, n), MIN = 30;
+    var a = cur.i0, b = cur.i1;
+    if (brushDrag.kind === "new") {
+      a = Math.min(brushDrag.anchor, i);
+      b = Math.max(brushDrag.anchor, i);
+      if (b - a < MIN) b = Math.min(n - 1, a + MIN);
+    }
+    else if (brushDrag.kind === "l") a = Math.min(i, b - MIN);
+    else if (brushDrag.kind === "r") b = Math.max(i, a + MIN);
+    else {
+      var d = i - brushDrag.from, span = brushDrag.i1 - brushDrag.i0;
+      a = Math.max(0, Math.min(n - 1 - span, brushDrag.i0 + d));
+      b = a + span;
+    }
+    a = Math.max(0, a); b = Math.min(n - 1, b);
+    if (a === cur.i0 && b === cur.i1) return;
+    cur.i0 = a; cur.i1 = b; cur.range = "custom";
+    redrawDetail();
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) {
+    box.addEventListener(ev, function () { brushDrag = null; });
+  });
 }
 
 /* ---------------- 目标估值反推 ----------------

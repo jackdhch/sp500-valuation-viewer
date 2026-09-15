@@ -440,7 +440,30 @@ def main():
             continue
         r = build_one(t)
         if r is None:
-            print(f"{t:6} 跳过（锚点或价格不足）")
+            # 历史太短或压根没有估值数据（刚 IPO 的、OTC 粉单的），仍然在页面上列一张
+            # 「仅当前值」的卡，把原因写清楚，比让它凭空消失好——否则用户会以为漏抓了。
+            sn = snap.get(t, {})
+            anchors = read_anchors(t)
+            if sn or anchors:
+                why = ("历史太短，做不出估值序列"
+                       if anchors else "免费数据源没有这只标的的估值数据")
+                if anchors:
+                    why += f"（只有 {len(anchors)} 个季度锚点，最早 {min(a['d'] for a in anchors)}）"
+                def _clean(v):
+                    # macrotrends 用 0 表示「亏损，这个比率没意义」，直接显示成 0.0 会误导
+                    try:
+                        return "" if v in ("", None) or float(v) == 0 else str(v)
+                    except (TypeError, ValueError):
+                        return "" if v in ("n/a", "N/A", None) else str(v)
+                payload["meta"][t] = {
+                    "name": sn.get("name", t), "peg": sn.get("peg", ""),
+                    "mcap": sn.get("mcap", ""), "kind": "stock", "has_series": False,
+                    "cur_pe": _clean(sn.get("pe")), "cur_pb": _clean(sn.get("pb")),
+                    "note": why, "first": "", "last": "",
+                }
+                print(f"{t:6} 只给当前值：{why}")
+            else:
+                print(f"{t:6} 跳过（既没有锚点也没有快照）")
             continue
         s = snap.get(t, {})
         payload["meta"][t] = {

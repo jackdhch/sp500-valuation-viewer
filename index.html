@@ -12,7 +12,7 @@
   --buy:#059669; --sell:#dc2626; --warn:#b45309;
   --ma1:#f59e0b; --ma2:#0ea5e9; --band:rgba(118,75,162,.10);
   --hover:#f3f4f6; --surface:#ffffff; --grid:#e5e7eb; --ink-3:#9ca3af;
-  --warnbg:#fffbeb; --warnline:#fde68a;
+  --warnbg:#fffbeb; --warnline:#fde68a; --cursor:#9ca3af;
   color-scheme: light;
 }
 /* 暗色：整站一套，由顶栏那个开关切换（存在 localStorage.sv_theme） */
@@ -23,7 +23,7 @@ html[data-theme="dark"]{
   --buy:#2fd39b; --sell:#f85149; --warn:#e3b341;
   --ma1:#f0883e; --ma2:#58a6ff; --band:rgba(167,139,250,.14);
   --hover:#1c2128; --surface:#161b22; --grid:#262d38; --ink-3:#6b7685;
-  --warnbg:#2b2413; --warnline:#5c4a16;
+  --warnbg:#2b2413; --warnline:#5c4a16; --cursor:#6b7685;
   color-scheme: dark;
 }
 /* 估值面板本来就是照着暗色设计的；亮色模式下给它一套对应的浅色，免得整页黑白打架 */
@@ -64,6 +64,9 @@ main{max-width:1360px;margin:0 auto;padding:16px}
 /* hidden 属性只是 display:none 的一个低优先级默认值，会被上面这条 display:grid 盖掉，
    所以切页签时必须显式把它压回去，否则两个视图会同时出现 */
 #view-signal[hidden],#view-val[hidden]{display:none}
+/* 同样的坑：.cards / .seg 这些自己设了 display，会把 hidden 属性盖掉，
+   导致切视图时卡片墙和对比视图同时出现。这里一次性压住。 */
+#view-val [hidden]{display:none !important}
 @media(max-width:1000px){#view-signal{grid-template-columns:1fr}}
 
 /* ---------- 页签 ---------- */
@@ -158,6 +161,51 @@ main{max-width:1360px;margin:0 auto;padding:16px}
   font-size:11px;color:var(--ink3);line-height:1.6}
 #view-val .vc.nohist{cursor:default;opacity:.92}
 #view-val .vc.nohist:hover{border-color:var(--line)}
+/* 热力图 */
+#view-val .heat{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+#view-val .hc{border-radius:10px;padding:11px 12px;cursor:pointer;border:1px solid transparent;
+  transition:transform .08s}
+#view-val .hc:hover{transform:translateY(-2px);border-color:var(--ink)}
+#view-val .hc .t{font-size:13px;font-weight:700}
+#view-val .hc .p{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25}
+#view-val .hc .v{font-size:11px;opacity:.85}
+#view-val .heatlegend{display:flex;align-items:center;margin-top:14px;font-size:11px;color:var(--ink3)}
+
+/* 多标的对比 */
+#view-val .cmptop{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px}
+#view-val .cmpwrap{display:grid;grid-template-columns:1.6fr 1fr;gap:14px}
+@media(max-width:1040px){#view-val .cmpwrap{grid-template-columns:1fr}}
+#view-val .cmplegend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:12px}
+#view-val .cmplegend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+#view-val .cmptable{width:100%;border-collapse:collapse;font-size:13px}
+#view-val .cmptable th{text-align:left;font-weight:500;color:var(--ink3);font-size:11px;padding:6px 8px;
+  border-bottom:1px solid var(--line)}
+#view-val .cmptable td{padding:8px;border-bottom:1px solid var(--line2);font-variant-numeric:tabular-nums}
+#view-val .cmptable td.r{text-align:right}
+#view-val .cmppick{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+#view-val .cmppick button{border:1px solid var(--line);background:var(--panel2);color:var(--ink2);
+  border-radius:7px;padding:4px 9px;cursor:pointer;font-size:12px}
+#view-val .cmppick button.on{background:rgba(47,211,155,.14);border-color:var(--accent-d);color:var(--accent)}
+
+/* 图上的十字准星气泡 */
+#view-val .plotwrap{position:relative}
+#view-val .ptip{position:absolute;pointer-events:none;z-index:5;white-space:nowrap;
+  background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+  font-size:12px;line-height:1.7;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+#view-val .ptip b{font-size:14px;font-variant-numeric:tabular-nums}
+#view-val .ptip .dt{color:var(--ink3);font-size:11px}
+
+/* 区间刷 */
+#view-val .brush{position:relative;height:46px;border:1px solid var(--line);border-radius:9px;
+  background:var(--panel2);overflow:hidden;touch-action:none;cursor:crosshair}
+#view-val .brush canvas{position:absolute;inset:0;width:100%;height:100%}
+#view-val .brush .sel{position:absolute;top:0;bottom:0;background:rgba(47,211,155,.16);
+  border-left:2px solid var(--accent);border-right:2px solid var(--accent)}
+#view-val .brush .h{position:absolute;top:0;bottom:0;width:11px;cursor:ew-resize}
+#view-val .brush .h.hl{left:-6px} #view-val .brush .h.hr{right:-6px}
+#view-val .brush .h:after{content:"";position:absolute;top:50%;left:50%;width:3px;height:18px;
+  transform:translate(-50%,-50%);border-radius:2px;background:var(--accent)}
+
 #view-val .wirow{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
 #view-val #wiSlider{flex:1 1 280px;min-width:220px;accent-color:var(--accent);height:22px}
 #view-val .wiout{display:flex;gap:22px;flex-wrap:wrap}
@@ -347,11 +395,43 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
   <section id="valGrid">
     <div class="valbar">
       <h2>自选清单估值</h2>
+      <div class="seg" id="valView"></div>
       <div class="seg" id="valSort"></div>
       <div class="spacer"></div>
       <div class="vnote" id="valBuilt"></div>
     </div>
     <div class="cards" id="valCards"></div>
+
+    <!-- 热力图：一眼看完谁贵谁便宜，不用翻卡片 -->
+    <div id="valHeat" hidden>
+      <div class="seg" id="heatMetric" style="margin-bottom:12px"></div>
+      <div class="heat" id="heatGrid"></div>
+      <div class="heatlegend">
+        <span>0% 低估</span><div class="gradbar" style="flex:1;margin:0 10px"></div><span>100% 高估</span>
+      </div>
+    </div>
+
+    <!-- 多标的对比 -->
+    <div id="valCompare" hidden>
+      <div class="cmptop">
+        <div class="seg" id="cmpMetricSeg"></div>
+        <div class="seg" id="cmpRangeSeg"></div>
+      </div>
+      <div class="cmpwrap">
+        <div class="vcard">
+          <div class="vhd"><span>对比走势</span><span class="vnote" id="cmpNote">折线图数据口径与当前指标一致</span></div>
+          <div class="cmplegend" id="cmpLegend"></div>
+          <div class="plotwrap"><div class="plotbox" id="p-cmp"></div><div class="ptip" id="tipCmp" hidden></div></div>
+        </div>
+        <div class="vcard">
+          <div class="vhd"><span>估值对比</span><span class="vnote" id="cmpAsOf"></span></div>
+          <table class="cmptable" id="cmpTable"></table>
+          <div class="vnote" style="margin-top:10px">勾选左边的标的加入对比，最多 6 个。</div>
+          <div class="cmppick" id="cmpPick"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="vfoot" id="valGridFoot"></div>
   </section>
 
@@ -380,16 +460,25 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
     <div class="duo">
       <div class="vcard">
         <div class="vhd"><span>估值走势</span><span class="vnote" id="trendNote"></span></div>
-        <div class="plotbox" id="p-val"></div>
+        <div class="plotwrap"><div class="plotbox" id="p-val"></div><div class="ptip" id="tipTrend" hidden></div></div>
       </div>
       <div class="vcard">
         <div class="vhd"><span>历史分位</span><span class="vnote">当前区间滚动百分位</span></div>
-        <div class="plotbox" id="p-valpct"></div>
+        <div class="plotwrap"><div class="plotbox" id="p-valpct"></div><div class="ptip" id="tipPct" hidden></div></div>
         <div class="posrow"><span>当前区间位置</span><span id="posVal">—</span></div>
         <div class="gradbar"><div class="knob" id="posKnob"></div></div>
         <div class="gradtick"><span>0% <span>低估</span></span><span>20%</span><span>50%</span><span>80%</span><span>100% <span>高估</span></span></div>
       </div>
     </div>
+    <!-- 区间刷：拖两端的手柄自由选时间段，比六个预设按钮细 -->
+    <div class="vcard" id="brushCard" style="margin-top:14px">
+      <div class="vhd"><span>区间</span><span class="vnote" id="brushNote">拖动两端手柄调整；点上面的区间按钮可复位</span></div>
+      <div class="brush" id="valBrush">
+        <canvas id="brushMini"></canvas>
+        <div class="sel" id="brushSel"><i class="h hl"></i><i class="h hr"></i></div>
+      </div>
+    </div>
+
     <!-- 反推：把估值拨到某个分位，股价该是多少 -->
     <div class="vcard" id="whatif" style="margin-top:14px">
       <div class="vhd"><span>目标估值反推</span>
