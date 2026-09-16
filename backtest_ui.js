@@ -53,6 +53,38 @@ function render(D) {
     h += "<div class='btsec'><h2>" + esc(g.title) + "</h2>" +
          "<div class='btdesc'>" + esc(g.desc) + "</div>";
 
+    if (g.always) {
+      g.always.forEach(function (blk) {
+        h += "<h3 style='font-size:14px;margin:16px 0 6px'>" + esc(blk.label) +
+             "　<span class='sub'>" + esc(blk.span[0]) + " ~ " + esc(blk.span[1]) + "</span></h3>";
+        h += "<div class='btwrap2'><table><tr><th>方案</th><th>类型</th>" +
+             "<th class='r'>年化</th><th class='r'>总收益</th>" +
+             "<th class='r'>最大回撤</th><th class='r'>年化 ÷ 回撤</th></tr>" +
+          blk.rows.map(function (r) {
+            return "<tr><td>" + esc(r.name) + "</td>" +
+              "<td><span class='sub'>" + esc(r.kind) + "</span></td>" +
+              "<td class='r'>" + pct(r.cagr, 2) + "</td>" +
+              "<td class='r'>" + pct(r.total) + "</td>" +
+              "<td class='r'><span class='neg'>" + r.mdd + "%</span></td>" +
+              "<td class='r'>" + (r.ret_per_dd === null ? "—" : r.ret_per_dd) + "</td></tr>";
+          }).join("") + "</table></div>";
+      });
+      h += "<div class='btnote'>" +
+        "<b>这两张表最该看的不是冠军，是同一个东西在两段里的翻转。</b><br>" +
+        "· <b>长债（TLT）</b>近十一年年化 −0.9%，拉到二十四年是 +3.5%。同一个资产，两段结论相反——" +
+        "近十一年是它历史上最惨的一段（加息周期杀债券），照那段选，会把一个正常资产判死刑。<br>" +
+        "· <b>回撤翻倍</b>。标普500 在短区间里最大回撤 33.7%，长区间 55.2%——差别就是有没有包含 2008。" +
+        "只看近十年会系统性低估自己要承受什么。<br>" +
+        "· <b>动量轮动的价值只在长区间显出来</b>。它在短区间收益不突出，" +
+        "但长区间的「年化 ÷ 回撤」是所有方案里最高的一档（0.37 对标普500 的 0.20）——" +
+        "它赚的不是收益，是回撤。<br>" +
+        "· <b>「100% 半导体年化 34%」不是一个可外推的结论</b>。那是近十一年这段特定行情的产物，" +
+        "它的最大回撤 45%，而且没有经历过 2008。<br><br>" +
+        "<b>所以「怎么找」的答案是</b>：不是找年化最高那行，是找<b>两段里都站得住、" +
+        "且回撤你能拿得住</b>的那行。年化高低受时期摆布，回撤和「年化÷回撤」稳定得多。" +
+        "</div>";
+    }
+
     if (g.priors) {
       var base = g.priors[0];
       h += "<div class='btwrap2'><table><tr><th>策略</th><th class='r'>触发天数</th>" +
