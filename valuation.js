@@ -344,11 +344,13 @@ function renderGrid() {
   $("#valHeat").hidden = view !== "heat";
   $("#valCompare").hidden = view !== "cmp";
   $("#valPortfolio").hidden = view !== "pf";
+  $("#valSA").hidden = view !== "sa";
   $("#valSort").hidden = view !== "cards";
   if (!$("#pickPanel").hidden) renderPickPanel();
   if (view === "heat") { renderHeat(); finishGrid(); return; }
   if (view === "cmp") { renderCompare(); finishGrid(); return; }
   if (view === "pf") { renderPortfolio(); finishGrid(); return; }
+  if (view === "sa") { renderSA(); finishGrid(); return; }
 
   var box = $("#valCards");
   box.innerHTML = "";
@@ -374,7 +376,8 @@ function finishGrid() {
 var VIEWS = [{ key: "cards", label: "卡片" },
              { key: "heat", label: "热力图" },
              { key: "cmp", label: "对比" },
-             { key: "pf", label: "组合" }];
+             { key: "pf", label: "组合" },
+             { key: "sa", label: "SA 榜单" }];
 var view = "cards";
 var heatMetric = "pe";
 
@@ -962,6 +965,91 @@ function esc(x) {
 function challengeBar(w, maxw) {
   return "<span class='tr'><span class='fi' style='width:" +
          (maxw ? (w / maxw * 100) : 0) + "%'></span></span>";
+}
+
+/* ---------------- Seeking Alpha 两份名单 ----------------
+ *
+ * 这一页想回答的问题只有一个：这些量化选股**买进去的那一刻**，标的是便宜还是已经涨上去了。
+ * 光看名单和事后涨幅分不清——涨得多既可能是「买得便宜后来涨回去」，
+ * 也可能是「买在动量上一路追」。把「加入时的估值分位」和「加入至今的股价涨幅」
+ * 并排摆出来，这两种情况就分开了。
+ *
+ * 加入时分位是固定十年窗口、截止到加入那天算的，只看那天之前的十年，不掺后来的数据。
+ */
+function renderSA() {
+  var box = $("#valSA");
+  var sa = D.sa || {};
+  if (!Object.keys(sa).length) { box.innerHTML = "<div class='vnote'>没有名单数据</div>"; return; }
+  var html = "";
+
+  ["alpha_picks", "top10"].forEach(function (k) {
+    var g = sa[k];
+    if (!g) return;
+    var withp = g.rows.filter(function (r) { return r.at_pct !== null && r.at_pct !== undefined; });
+    var avg = withp.length ? withp.reduce(function (a, r) { return a + r.at_pct; }, 0) / withp.length : null;
+
+    html += "<div class='vcard' style='margin-bottom:14px'>";
+    html += "<div class='vhd'><span>" + esc(g.label) + "</span><span class='vnote'>" +
+      (avg === null ? "" : "加入时平均估值分位 " + avg.toFixed(1) + "%（" + withp.length + " 只算得出）") +
+      "</span></div>";
+    html += "<div style='overflow-x:auto'><table class='satab'>" +
+      "<tr><th>标的</th><th>加入</th><th class='r'>加入时分位</th><th class='r'>现在分位</th>" +
+      "<th class='r'>分位变化</th><th class='r'>加入至今股价</th><th>依据</th></tr>";
+    g.rows.forEach(function (r) {
+      if (r.no_data) {
+        html += "<tr><td><b>" + esc(r.t) + "</b></td><td colspan='6' style='color:var(--ink3)'>" +
+                "页面里还没有这只标的的估值数据</td></tr>";
+        return;
+      }
+      var a = r.at_pct, c = r.cur_pct;
+      var ca = pctColor(a), cc = pctColor(c);
+      var dp = (a !== null && a !== undefined && c !== null && c !== undefined) ? (c - a) : null;
+      var px = r.px_chg;
+      html += "<tr class='clickable' data-t='" + esc(r.t) + "'>" +
+        "<td><b>" + esc(r.t) + "</b></td>" +
+        "<td style='color:var(--ink3)'>" + esc(r.added || "未知") + "</td>" +
+        "<td class='r'>" + (a === null || a === undefined ? "—" :
+          "<span class='sapill' style='background:" + ca.bg + ";color:" + ca.fg + "'>" +
+          a.toFixed(1) + "%</span>") + "</td>" +
+        "<td class='r'>" + (c === null || c === undefined ? "—" :
+          "<span class='sapill' style='background:" + cc.bg + ";color:" + cc.fg + "'>" +
+          c.toFixed(1) + "%</span>") + "</td>" +
+        "<td class='r' style='color:" + (dp === null ? "var(--ink3)" :
+          dp > 0 ? "var(--rich)" : "var(--cheap)") + "'>" +
+          (dp === null ? "—" : (dp > 0 ? "+" : "") + dp.toFixed(1)) + "</td>" +
+        "<td class='r' style='font-weight:600;color:" + (px === null || px === undefined ?
+          "var(--ink3)" : px > 0 ? "var(--cheap)" : "var(--rich)") + "'>" +
+          (px === null || px === undefined ? "—" : (px > 0 ? "+" : "") + px.toFixed(1) + "%") + "</td>" +
+        "<td style='color:var(--ink3);font-size:11px;max-width:260px'>" +
+          esc((r.note || "").slice(0, 90)) + "</td></tr>";
+    });
+    html += "</table></div>";
+
+    if (k === "alpha_picks") {
+      html += "<div class='sanote'>" +
+        "<b>这不是完整持仓</b>：Alpha Picks 在持 30 只，完整名单在付费墙后面，公开渠道拿不到。" +
+        "上面是公开可核实的那几只，加入月份分实锤 / 独立来源 / 纯推断三档，依据写在最后一列。<br>" +
+        "看「分位变化」那一列：几乎全是正的，说明持有期间<b>估值在扩张</b>——" +
+        "涨幅里有相当一部分不是盈利涨出来的，是估值涨出来的。" +
+        "</div>";
+    } else {
+      html += "<div class='sanote'>" +
+        "半年榜是 2026-07-14 一次性发布的，所以十只的「加入」都按发布月算。" +
+        "两个月的样本说明不了长期问题，但可以看一个对照：" +
+        "买在历史最贵一成（分位 90% 以上）的那几只，两个月里跌得最多；" +
+        "唯一买在分位 1% 以下的 AMZN 基本没动。" +
+        "</div>";
+    }
+    html += "</div>";
+  });
+
+  box.innerHTML = html;
+  box.querySelectorAll("tr.clickable").forEach(function (tr) {
+    tr.addEventListener("click", function () {
+      var t = tr.dataset.t;
+      if (D.meta[t]) openDetail(t);
+    });
+  });
 }
 
 /* ---------------- 详情视图 ---------------- */
@@ -1765,7 +1853,7 @@ function applyHash() {
         return;
       }
     }
-    if (["cards", "heat", "cmp", "pf"].indexOf(raw) >= 0) view = raw;
+    if (["cards", "heat", "cmp", "pf", "sa"].indexOf(raw) >= 0) view = raw;
     showTab("val");
     $("#valDetail").hidden = true;
     $("#valGrid").hidden = false;

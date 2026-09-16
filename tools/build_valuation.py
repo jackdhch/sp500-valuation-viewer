@@ -721,7 +721,78 @@ def main():
               f"十年分位={p10.get('pct')}({p10.get('years')}年,{p10.get('n')}点) "
               f"{p10.get('status')}  1YΔ={r['pe_chg_1y']}%")
 
+    attach_sa_analysis(payload)
     write_payload(payload)
+
+
+def attach_sa_analysis(payload):
+    """给两份 Seeking Alpha 名单算「加入时的估值分位 → 现在的估值分位」。
+
+    这一栏想回答的是：这些量化选股买进去的那一刻，标的到底是便宜还是已经涨上去了。
+    光看名单和涨幅看不出这个——涨得多既可能是「买得便宜后来涨回去」，
+    也可能是「买在动量上一路追」。把加入时分位和当时到现在的股价涨幅并排放才分得清。
+
+    分位用固定十年窗口、截止到加入那天算（`fixed_window_percentile` 的 asof 参数），
+    只看那天之前的十年，不掺后来的数据。
+    """
+    out = {}
+    for fname, key, label in [("_sa_top10.json", "tickers", "Top 10 半年榜"),
+                              ("_sa_alpha_picks.json", "holdings", "Alpha Picks")]:
+        path = f"{VAL}/{fname}"
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path) as f:
+                doc = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+        items = doc.get(key) or []
+        # 半年榜是一次性发布的一份名单，没有逐只的加入日，就用发布日当加入日
+        list_as_of = (doc.get("as_of") or "")[:7]
+        rows = []
+        for it in items:
+            t = it if isinstance(it, str) else it.get("ticker")
+            added = (list_as_of if isinstance(it, str)
+                     else (it.get("added") or ""))
+            note = "" if isinstance(it, str) else (it.get("note") or "")
+            d = payload["data"].get(t)
+            if not d:
+                rows.append({"t": t, "added": added, "note": note, "no_data": True})
+                continue
+            ser = d["series"]
+            dates = [datetime.date.fromisoformat(x) for x in ser["d"]]
+            pe = ser.get("pe") or []
+            px = ser.get("px") or []
+            cur_pe = next((v for v in reversed(pe) if v is not None), None)
+            cur_pct = ((d.get("pct10y") or {}).get("pe") or {}).get("pct")
+            row = {"t": t, "added": added, "note": note,
+                   "cur_pe": cur_pe, "cur_pct": cur_pct,
+                   "cur_px": next((v for v in reversed(px) if v is not None), None)}
+            if added:
+                # 加入日取该月 15 号当天或之后最近的一个交易日（Alpha Picks 月中那次买入）
+                try:
+                    y, mth = [int(x) for x in added.split("-")[:2]]
+                    want = datetime.date(y, mth, 15)
+                except ValueError:
+                    want = None
+                idx = next((i for i, dd in enumerate(dates) if want and dd >= want), None)
+                if idx is not None:
+                    p_at, n_at, yr_at = fixed_window_percentile(pe, dates, days=3650,
+                                                                asof=dates[idx])
+                    row.update({"at_date": dates[idx].isoformat(),
+                                "at_pe": pe[idx], "at_pct": p_at, "at_years": yr_at,
+                                "at_px": px[idx] if idx < len(px) else None})
+                    if row.get("at_px") and row.get("cur_px"):
+                        row["px_chg"] = round((row["cur_px"] / row["at_px"] - 1) * 100, 1)
+            rows.append(row)
+        out[fname.replace("_sa_", "").replace(".json", "")] = {"label": label, "rows": rows}
+    if out:
+        payload["sa"] = out
+        for k, v in out.items():
+            withp = [r for r in v["rows"] if r.get("at_pct") is not None]
+            if withp:
+                avg = sum(r["at_pct"] for r in withp) / len(withp)
+                print(f"{v['label']}：{len(withp)} 只算得出加入时分位，平均 {avg:.1f}%")
 
 
 def _compact_dates(iso_dates):
@@ -753,6 +824,10 @@ def write_payload(payload):
     os.makedirs(part_dir, exist_ok=True)
 
     index = {"built": payload["built"], "meta": {}}
+    # 除了 meta 和 data，payload 里其余的顶层内容（目前是 sa 那两份名单的分析）也带进索引
+    for k, v in payload.items():
+        if k not in ("built", "meta", "data"):
+            index[k] = v
     total_part = 0
     for t, meta in payload["meta"].items():
         d = payload["data"].get(t)
