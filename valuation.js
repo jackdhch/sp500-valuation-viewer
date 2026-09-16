@@ -369,7 +369,8 @@ function renderGrid() {
 }
 
 function finishGrid() {
-  $("#valBuilt").textContent = "数据生成于 " + D.built;
+  var bno = document.documentElement.dataset.build;
+  $("#valBuilt").textContent = "数据生成于 " + D.built + (bno ? "　构建 " + bno : "");
   $("#valGridFoot").innerHTML =
     "分位口径：估值卡上的「PE 分位」是<b>固定十年窗口</b>；点进详情页后的「百分位（当前区间）」" +
     "是<b>区间相对量</b>，会随 1Y/5Y/全部 的切换而变，两者本来就不是同一个数。<br>" +
@@ -1140,7 +1141,7 @@ function renderPoster() {
   if (!window.POSTER_PX) {
     $("#pstTitle").textContent = "加载中…";
     var sc = document.createElement("script");
-    sc.src = "poster_px.js";
+    sc.src = "poster_px.js?v=" + encodeURIComponent(D.built);
     sc.onload = function () { if (view === "poster") renderPoster(); };
     sc.onerror = function () { $("#pstTitle").textContent = "价格数据加载失败"; };
     document.head.appendChild(sc);
@@ -1411,7 +1412,7 @@ function rangeIdx(dates, years) {
 function loadPart(ticker, cb) {
   if (PARTS[ticker]) return cb(true);
   var s = document.createElement("script");
-  s.src = "v/" + encodeURIComponent(ticker) + ".js";
+  s.src = "v/" + encodeURIComponent(ticker) + ".js?v=" + encodeURIComponent(D.built);
   s.onload = function () { cb(!!PARTS[ticker]); };
   s.onerror = function () { cb(false); };
   document.head.appendChild(s);
@@ -2392,7 +2393,7 @@ function loadSignalApp(done) {
   if (boot) boot.hidden = false;
   function addScript(src, next) {
     var el = document.createElement("script");
-    el.src = src;
+    el.src = src + (src.indexOf("?") >= 0 ? "&" : "?") + "v=" + encodeURIComponent(D.built);
     el.onload = next;
     el.onerror = function () {
       signalState = "failed";
