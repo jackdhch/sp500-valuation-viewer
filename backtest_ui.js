@@ -53,6 +53,65 @@ function render(D) {
     h += "<div class='btsec'><h2>" + esc(g.title) + "</h2>" +
          "<div class='btdesc'>" + esc(g.desc) + "</div>";
 
+    if (g.horizons) {
+      var H = g.horizons;
+      h += "<div class='btwrap2'><table><tr><th>哪天买</th>" +
+        H.horizons.map(function (x) { return "<th class='r'>拿 " + esc(x) + "</th>"; }).join("") +
+        "</tr>" +
+        H.rows.map(function (r) {
+          var base = r.name.indexOf("任意") === 0;
+          return "<tr" + (base ? " class='kindrow'" : "") + "><td>" + esc(r.name) + "</td>" +
+            r.cells.map(function (c) {
+              return "<td class='r'>" + (c.n ? pct(c.cagr, 2) +
+                "<br><span class='sub'>" + c.n + " 次</span>" : "—") + "</td>";
+            }).join("") + "</tr>";
+        }).join("") + "</table></div>";
+
+      h += "<div class='btnote'><b>横着看每一行，差距是怎么塌掉的。</b><br>" +
+        "拿 1 年：「回撤 20% 时买」年化 19.6%，「任意一天买」12.7%，差 <b>7 个百分点</b>。<br>" +
+        "拿 5 年：13.8% 对 10.9%，差缩到 <b>2.9</b>。<br>" +
+        "拿 10 年：9.75% 对 10.16% —— <b>反过来了</b>，等回撤再买反而略输。<br>" +
+        "「创新高当天买」也一样：1 年是最好的几条之一（13.4%），到 15 年、20 年变成最差" +
+        "（8.5% / 8.2%）。<b>买入时点的影响随持有期衰减，十年上下就基本消失了。</b>" +
+        "</div>";
+
+      if (g.waiting) {
+        h += "<h3 style='font-size:14px;margin:18px 0 6px'>等待的代价：手上有一笔钱，马上买还是等回调？</h3>" +
+          "<div class='btdesc'>对每个月的第一个交易日各模拟一次：一边当天就全买了拿到今天，" +
+          "另一边持币等待、直到标普从 52 周高点回撤够深的第一天才买、再拿到今天。" +
+          "现金不计息——这对等待方是偏宽松的假设。</div>" +
+          "<div class='btwrap2'><table><tr><th>等多深的回调</th><th class='r'>等赢的概率</th>" +
+          "<th class='r'>平均差</th><th class='r'>中位差</th><th class='r'>最好</th>" +
+          "<th class='r'>最差</th><th class='r'>中位要等</th><th class='r'>至今没等到</th></tr>" +
+          g.waiting.map(function (w) {
+            return "<tr><td>等回撤 <b>" + w.dd + "%</b> 再买</td>" +
+              "<td class='r'>" + w.win + "%</td>" +
+              "<td class='r'>" + pct(w.mean) + "</td>" +
+              "<td class='r'>" + pct(w.med) + "</td>" +
+              "<td class='r'>" + pct(w.best) + "</td>" +
+              "<td class='r'>" + pct(w.worst) + "</td>" +
+              "<td class='r'>" + (w.wait_med === null ? "—" : w.wait_med + " 年") + "</td>" +
+              "<td class='r'>" + w.never + " 次</td></tr>";
+          }).join("") + "</table></div>" +
+          "<div class='btnote'><b>等待的期望是负的，而且等得越深亏得越多。</b><br>" +
+          "等 10% 的回调：只有 <b>28%</b> 的时候等赢了，平均落后 12.1%，最差的一次落后 67.3%，" +
+          "还有 5 次到今天都没等到。<br>" +
+          "等 20% 的回调：只有 <b>26%</b> 等赢，平均落后 25.6%，中位要空等 <b>3.7 年</b>，" +
+          "<b>34 次到今天都没等到</b>——那些钱干躺了十几年。<br>" +
+          "为什么会这样：标普500 长期向上，等待期间踏空的涨幅，通常比等到的那点折扣更大。" +
+          "而且真等到 20% 回撤的时候，往往是 2008、2020 那种局面，那时候敢不敢按计划买是另一回事。" +
+          "</div>";
+      }
+
+      h += "<div class='warn' style='margin-top:14px'><b>所以「一次性买入什么时候收益最大」的答案是：" +
+        "就是现在。</b><br>" +
+        "这不是鸡汤，是上面两张表的直接读数——等待的期望为负（三档回调深度全是负的），" +
+        "而时点的影响在十年持有期上已经衰减到看不见。<br>" +
+        "唯一说得通的例外：如果你恰好赶上已经回撤 20% 的时刻，那一年的赔率确实好看（19.6%），" +
+        "但那是<b>已经发生</b>的状态，不是可以等来的计划——历史上有 34 次，等的人到今天还没等到。" +
+        "</div>";
+    }
+
     if (g.always) {
       g.always.forEach(function (blk) {
         h += "<h3 style='font-size:14px;margin:16px 0 6px'>" + esc(blk.label) +
