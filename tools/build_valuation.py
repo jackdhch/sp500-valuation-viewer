@@ -585,6 +585,15 @@ def main():
                     want += (json.load(f).get("tickers") or [])
             except (json.JSONDecodeError, OSError):
                 pass
+        # Alpha Picks 公开可核实的那几只。注意那份名单**不是完整持仓**——
+        # 完整的 30 只在付费墙后面拿不到，_sa_alpha_picks.json 的 _重要 字段写明了。
+        ap_path = f"{VAL}/_sa_alpha_picks.json"
+        if os.path.exists(ap_path):
+            try:
+                with open(ap_path) as f:
+                    want += [h["ticker"] for h in (json.load(f).get("holdings") or [])]
+            except (json.JSONDecodeError, OSError, KeyError, TypeError):
+                pass
         seen, targets = set(), []
         for t in want:                       # 去重且保持顺序
             if t not in seen and os.path.exists(f"{VAL}/{t}.csv"):

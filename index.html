@@ -225,6 +225,9 @@ main{max-width:1360px;margin:0 auto;padding:16px}
 /* 投资组合 */
 #view-val .pfwrap{display:grid;grid-template-columns:1fr 1.3fr;gap:14px}
 @media(max-width:900px){#view-val .pfwrap{grid-template-columns:1fr}}
+#view-val #cfgBox{width:100%;min-height:110px;margin-top:10px;resize:vertical;padding:9px;
+  border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+  font:12px/1.6 "IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
 #view-val #pfInput{width:100%;min-height:190px;resize:vertical;padding:10px;border-radius:9px;
   border:1px solid var(--line);background:var(--panel2);color:var(--ink);
   font:13px/1.7 "IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
@@ -493,6 +496,21 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
       <div class="vhd"><span>管理清单</span><span class="vnote">点一下切换显示 / 隐藏，只影响你自己这台浏览器</span></div>
       <div class="cmppick" id="pickList"></div>
       <div class="vnote" id="pickHint" style="margin-top:10px"></div>
+      <div class="vhd" style="margin-top:16px"><span>备份与换设备</span>
+        <span class="vnote">设置只存在这台浏览器里，换设备或清缓存就没了</span></div>
+      <div class="seg">
+        <button id="cfgExport">导出配置</button>
+        <button id="cfgCopy">复制到剪贴板</button>
+        <button id="cfgImportBtn">导入配置</button>
+        <input type="file" id="cfgFile" accept=".json,application/json" hidden>
+      </div>
+      <textarea id="cfgBox" spellcheck="false" hidden
+        placeholder="把导出的那段内容粘在这里，然后点下面的「确认导入」"></textarea>
+      <div class="seg" id="cfgImportRow" hidden style="margin-top:8px">
+        <button id="cfgImportOk" class="on">确认导入</button>
+        <button id="cfgImportCancel">取消</button>
+      </div>
+      <div class="vnote" id="cfgMsg" style="margin-top:9px"></div>
     </div>
 
     <div class="cards" id="valCards"></div>

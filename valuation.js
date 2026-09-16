@@ -1852,6 +1852,104 @@ window.addEventListener("resize", function () {
   }, 120);
 });
 
+/* ---------------- 配置备份 ----------------
+ * 这个站是纯静态的，没有后端，所以持仓、隐藏的标的、亮暗偏好这些都只存在
+ * 当前这台浏览器的 localStorage 里——换设备、换浏览器、清缓存都会丢。
+ * 在真正接上账号体系之前，先给一条手动搬运的路：导出成一小段 JSON，
+ * 在另一台设备上粘回去。顺带也能当备份。
+ */
+var CFG_KEYS = ["sv_pf", "sv_val_hidden", "sv_theme", "sv_lang",
+                "sv_ticker", "sv_range", "sv_sigs", "sv_watch"];
+
+function collectConfig() {
+  var out = {};
+  CFG_KEYS.forEach(function (k) {
+    try {
+      var v = localStorage.getItem(k);
+      if (v !== null) out[k] = v;
+    } catch (e) { /* 隐私模式下读不了 */ }
+  });
+  return { _what: "股票查看器的本地配置备份", _built: D.built,
+           _exported: new Date().toISOString().slice(0, 19).replace("T", " "),
+           data: out };
+}
+
+function applyConfig(obj) {
+  if (!obj || typeof obj !== "object" || !obj.data || typeof obj.data !== "object") {
+    return "这段内容不像是本站导出的配置";
+  }
+  var n = 0;
+  Object.keys(obj.data).forEach(function (k) {
+    // 只认白名单里的键，别人给的文件里夹带别的东西一律忽略
+    if (CFG_KEYS.indexOf(k) < 0) return;
+    var v = obj.data[k];
+    if (typeof v !== "string" || v.length > 200000) return;
+    try { localStorage.setItem(k, v); n++; } catch (e) { /* 写不了就算了 */ }
+  });
+  return n ? null : "里面没有本站认得的设置项";
+}
+
+function cfgMsg(t, bad) {
+  var el = $("#cfgMsg");
+  el.textContent = t;
+  el.style.color = bad ? "var(--rich)" : "var(--cheap)";
+}
+
+$("#cfgExport").addEventListener("click", function () {
+  download("股票查看器配置_" + D.built + ".json",
+           new Blob([JSON.stringify(collectConfig(), null, 1)],
+                    { type: "application/json" }));
+  cfgMsg("已导出。换设备时在那边点「导入配置」，把这个文件选进去。");
+});
+
+$("#cfgCopy").addEventListener("click", function () {
+  var txt = JSON.stringify(collectConfig());
+  function fallback() {
+    $("#cfgBox").hidden = false;
+    $("#cfgBox").value = txt;
+    $("#cfgBox").select();
+    cfgMsg("浏览器不让自动复制，内容已经填在下面的框里，手动复制走。");
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(function () {
+      cfgMsg("已复制到剪贴板，在另一台设备上点「导入配置」粘进去。");
+    }, fallback);
+  } else fallback();
+});
+
+$("#cfgImportBtn").addEventListener("click", function () {
+  $("#cfgBox").hidden = false;
+  $("#cfgBox").value = "";
+  $("#cfgImportRow").hidden = false;
+  cfgMsg("把导出的内容粘进下面的框，或者点这里选文件：", false);
+  $("#cfgFile").click();
+});
+
+$("#cfgFile").addEventListener("change", function (e) {
+  var f = e.target.files && e.target.files[0];
+  if (!f) return;
+  var fr = new FileReader();
+  fr.onload = function () { $("#cfgBox").value = String(fr.result || ""); };
+  fr.readAsText(f);
+});
+
+$("#cfgImportOk").addEventListener("click", function () {
+  var raw = ($("#cfgBox").value || "").trim();
+  if (!raw) return cfgMsg("框里是空的", true);
+  var obj;
+  try { obj = JSON.parse(raw); } catch (e) { return cfgMsg("这不是一段合法的 JSON", true); }
+  var err = applyConfig(obj);
+  if (err) return cfgMsg(err, true);
+  cfgMsg("导入成功，正在刷新页面…");
+  setTimeout(function () { location.reload(); }, 700);
+});
+
+$("#cfgImportCancel").addEventListener("click", function () {
+  $("#cfgBox").hidden = true;
+  $("#cfgImportRow").hidden = true;
+  cfgMsg("");
+});
+
 $("#pfCalc").addEventListener("click", renderPortfolio);
 $("#pfDemo").addEventListener("click", function () {
   $("#pfInput").value = PF_DEMO;
