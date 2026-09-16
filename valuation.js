@@ -982,6 +982,49 @@ function renderSA() {
   if (!Object.keys(sa).length) { box.innerHTML = "<div class='vnote'>没有名单数据</div>"; return; }
   var html = "";
 
+  /* 先摆这块：只看两个月的样本很容易得出「买贵了就会跌」，而把样本拉到 3.7 年，
+     结论恰恰相反。两条都摆出来，各自标明样本长度，比只留一条诚实。 */
+  var mo = sa.momentum;
+  if (mo) {
+    html += "<div class='vcard' style='margin-bottom:14px;border-left:3px solid var(--accent)'>" +
+      "<div class='vhd'><span>先看这个：它们买的是什么样的股票</span>" +
+      "<span class='vnote'>" + esc(mo.span) + "，" + mo.n + "/" + mo.n_total + " 个仓位算得出</span></div>" +
+      "<div class='kpis' style='grid-template-columns:repeat(4,1fr)'>" +
+      kpi("入选前一年上涨的比例", mo.all_positive ? "100%" : "—", "hi") +
+      kpi("入选前一年涨幅中位", "+" + mo.med + "%", "amber") +
+      kpi("入选前已翻倍的", mo.double + "%", "") +
+      kpi("涨得最少的那只也已涨", "+" + mo.min + "%", "") +
+      "</div>" +
+      "<div style='overflow-x:auto;margin-top:12px'><table class='satab'>" +
+      "<tr><th>按入选前一年涨幅分组</th><th class='r'>入选前涨幅中位</th>" +
+      "<th class='r'>之后平均收益</th><th class='r'>中位</th><th class='r'>胜率</th>" +
+      "<th class='r'>跑赢基准</th></tr>" +
+      mo.groups.map(function (g) {
+        var hi = g.name.indexOf("最高") === 0;
+        return "<tr" + (hi ? " style='background:rgba(47,211,155,.07)'" : "") + ">" +
+          "<td>" + esc(g.name) + (hi ? "　←" : "") + "</td>" +
+          "<td class='r'>+" + g.before + "%</td>" +
+          "<td class='r' style='font-weight:600;color:var(--cheap)'>+" + g.after_mean + "%</td>" +
+          "<td class='r'>+" + g.after_med + "%</td>" +
+          "<td class='r'>" + g.win + "%</td>" +
+          "<td class='r'>" + g.beat + "%</td></tr>";
+      }).join("") +
+      "</table></div>" +
+      "<div class='sanote'>" +
+      "<b>第一条（硬结论）</b>：这套方法<b>只买已经涨过的股票</b>——" + mo.n + " 个算得出动量的仓位里，" +
+      "入选前一年上涨的占 100%，一只跌着入选的都没有；中位数涨了 " + mo.med + "%，" +
+      mo.double + "% 已经翻倍，涨得最少的那只也涨了 " + mo.min + "%。" +
+      "我在下面两张表里算的「加入时估值分位偏高」，其实是同一件事从估值角度的投影——股价先涨，估值分位自然就上去了。<br>" +
+      "<b>第二条（反直觉，但数据如此）</b>：入选前<b>涨得最多</b>的那一组，之后表现<b>最好</b>" +
+      "（平均 +" + mo.groups[3].after_mean + "%、胜率 " + mo.groups[3].win + "%、跑赢基准 " +
+      mo.groups[3].beat + "%），不是最差。所以准确的说法不是「买贵了会跌」，而是" +
+      "<b>「只买涨过的，而这段样本期恰好是动量策略的好时候」</b>。<br>" +
+      "<b>真正的风险不在买得高，在于这 3.7 年从没经历过完整熊市</b>：" +
+      "该产品 2022 年 7 月才启动，2022 年那轮杀估值没赶上。下面半年榜那个「两个月」的观察" +
+      "如果是转折的开始，会是第一个真实的压力测试样本——但两个月还不能下结论。" +
+      "</div></div>";
+  }
+
   ["alpha_picks", "top10"].forEach(function (k) {
     var g = sa[k];
     if (!g) return;
@@ -1035,9 +1078,12 @@ function renderSA() {
     } else {
       html += "<div class='sanote'>" +
         "半年榜是 2026-07-14 一次性发布的，所以十只的「加入」都按发布月算。" +
-        "两个月的样本说明不了长期问题，但可以看一个对照：" +
-        "买在历史最贵一成（分位 90% 以上）的那几只，两个月里跌得最多；" +
-        "唯一买在分位 1% 以下的 AMZN 基本没动。" +
+        "这两个月里，买在历史最贵一成（分位 90% 以上）的那几只跌得最多，" +
+        "唯一买在分位 1% 以下的 AMZN 基本没动。<br>" +
+        "<b>别从这两个月推出「买贵了就会跌」</b>——上面那张 3.7 年、" + (mo ? mo.n : "59") +
+        " 个仓位的表说的正相反：入选前涨得最多的一组之后表现最好。" +
+        "两个月只是一个还没定性的样本，它要么是这套打法第一次遇到真正的逆风，" +
+        "要么只是一段正常回调，现在分不出来。" +
         "</div>";
     }
     html += "</div>";

@@ -725,6 +725,63 @@ def main():
     write_payload(payload)
 
 
+def summarize_momentum():
+    """把「入选前一年涨了多少」汇总一下。
+
+    数据是另一个会话整理的 analysis/seeking_alpha_top10/holdings_with_momentum.csv
+    （Top 10 半年榜 2023-01 至今 80 个仓位，其中 59 个上市满一年、算得出 12 个月动量）。
+    本函数只做汇总，明细不进页面。
+
+    为什么要这一栏：页面上原本只有「两个月的观察」——半年榜里买在最贵一成的那几只
+    两个月跌了三成。那是事实，但两个月的样本很容易让人推出「买贵了就会跌」，
+    而把样本拉到 3.7 年看，结论恰恰相反：入选前涨得最多的那一组，之后表现最好。
+    两条都摆出来，并写明各自的样本长度，比只留一条诚实。
+    """
+    path = f"{ROOT}/analysis/seeking_alpha_top10/holdings_with_momentum.csv"
+    if not os.path.exists(path):
+        return None
+    try:
+        import statistics as st
+        rows = list(csv.DictReader(open(path)))
+    except (OSError, csv.Error):
+        return None
+    m = []
+    for r in rows:
+        try:
+            m.append((float(r["动量12M"]), float(r["收益"]), float(r["超额"])))
+        except (ValueError, KeyError, TypeError):
+            continue
+    if len(m) < 20:
+        return None
+    m.sort(key=lambda x: x[0])
+    vals = [x[0] for x in m]
+    q = len(m) // 4
+    groups = []
+    for i, name in enumerate(["最低 25%", "次低 25%", "次高 25%", "最高 25%"]):
+        seg = m[i * q:(i + 1) * q] if i < 3 else m[3 * q:]
+        rets = [x[1] for x in seg]
+        exc = [x[2] for x in seg]
+        groups.append({
+            "name": name,
+            "before": round(st.median([x[0] for x in seg]) * 100, 1),
+            "after_mean": round(sum(rets) / len(rets) * 100, 1),
+            "after_med": round(st.median(rets) * 100, 1),
+            "win": round(sum(1 for x in rets if x > 0) / len(rets) * 100),
+            "beat": round(sum(1 for x in exc if x > 0) / len(exc) * 100),
+        })
+    return {
+        "n_total": len(rows), "n": len(m),
+        "all_positive": all(v > 0 for v in vals),
+        "med": round(st.median(vals) * 100, 1),
+        "mean": round(sum(vals) / len(vals) * 100, 1),
+        "min": round(vals[0] * 100, 1),
+        "over50": round(sum(1 for v in vals if v > 0.5) / len(vals) * 100, 1),
+        "double": round(sum(1 for v in vals if v > 1.0) / len(vals) * 100, 1),
+        "groups": groups,
+        "span": "2023-01 至 2026-09，约 3.7 年",
+    }
+
+
 def attach_sa_analysis(payload):
     """给两份 Seeking Alpha 名单算「加入时的估值分位 → 现在的估值分位」。
 
@@ -786,9 +843,14 @@ def attach_sa_analysis(payload):
                         row["px_chg"] = round((row["cur_px"] / row["at_px"] - 1) * 100, 1)
             rows.append(row)
         out[fname.replace("_sa_", "").replace(".json", "")] = {"label": label, "rows": rows}
+    mom = summarize_momentum()
+    if mom:
+        out["momentum"] = mom
     if out:
         payload["sa"] = out
         for k, v in out.items():
+            if "rows" not in v:          # momentum 那条是汇总统计，没有逐只明细
+                continue
             withp = [r for r in v["rows"] if r.get("at_pct") is not None]
             if withp:
                 avg = sum(r["at_pct"] for r in withp) / len(withp)
