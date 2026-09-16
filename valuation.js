@@ -282,10 +282,14 @@ function sortValue(t, key) {
   var m = D.meta[t] || {};
   if (key === "mcap") return mcapNum(m.mcap);
   if (!m.has_series) return null;            // 只有当前值的 ETF 参与不了后两种排序
-  var p10 = (m.pct10y && m.pct10y.pe) || {};
+  // 按各自的主指标取，不能写死 pe：黄金和比特币没有市盈率，它们的主指标是「实际价格」。
+  // 写死 pe 的话这两个永远取不到值、被当成「没有数据」垫到最后，
+  // 可卡片上明明显示着分位和状态——排序和卡片对不上。
+  var main = metricsFor(t)[0].key;
+  var p10 = (m.pct10y && m.pct10y[main]) || {};
   if (key === "pct") return (p10.neg ? null : p10.pct);
   if (key === "pe") {
-    var v = (m.cur || {}).pe;
+    var v = (m.cur || {})[main];
     return (v === null || v === undefined || v < 0) ? null : v;  // 负市盈率不参与排序
   }
   return null;
@@ -327,8 +331,8 @@ function renderSortBar() {
     if (on) b.className = "on";
     b.title = it.key === "default" ? "ETF 在前，个股按代码"
             : it.key === "mcap" ? "个股按市值，ETF 按基金规模"
-            : it.key === "pct" ? "固定十年窗口的 PE 分位；样本不足与盈利为负的排在最后"
-            : "当前 PE (TTM)；负市盈率排在最后";
+            : it.key === "pct" ? "固定十年窗口的分位（黄金与比特币按各自的主指标）；样本不足与盈利为负的排在最后"
+            : "当前 PE (TTM)；黄金与比特币按各自的主指标；负市盈率排在最后";
     b.addEventListener("click", function () {
       if (sortBy === it.key && it.key !== "default") sortDesc = !sortDesc;
       else { sortBy = it.key; sortDesc = it.desc; }
@@ -2273,6 +2277,106 @@ function applyHash() {
 
 window.addEventListener("hashchange", applyHash);
 
+/* ---------------- 顶栏搜索 ----------------
+ *
+ * 那个搜索框原本归 viewer.js 管，只认低点信号页里那五个标的。但 viewer.js 现在是
+ * 点「低点信号」才加载的，所以停在估值面板时点搜索框**什么反应都没有**。
+ *
+ * 这里在估值面板激活时接管它：搜本页全部标的（代码和名字都能搜），选中直接进详情页。
+ * 用捕获阶段监听 + stopImmediatePropagation，免得 viewer.js 加载之后两套逻辑
+ * 抢同一个建议框。切回信号页就放手，让它按原来的方式工作。
+ */
+function setupSearch() {
+  var input = document.getElementById("search");
+  var sugg = document.getElementById("sugg");
+  if (!input || !sugg) return;
+
+  function active() { return !wrap.hidden; }   // 只在估值面板这边接管
+
+  function list(q) {
+    q = (q || "").trim().toLowerCase();
+    var out = [];
+    Object.keys(D.meta).forEach(function (t) {
+      if (isHidden(t)) return;
+      var nm = (D.meta[t].name || "").toLowerCase();
+      if (!q || t.toLowerCase().indexOf(q) >= 0 || nm.indexOf(q) >= 0) {
+        out.push(t);
+      }
+    });
+    // 代码前缀命中的排前面，其次名字命中
+    out.sort(function (a, b) {
+      var pa = a.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var pb = b.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      return pa !== pb ? pa - pb : (a < b ? -1 : 1);
+    });
+    return out.slice(0, 40);
+  }
+
+  function show(q) {
+    var items = list(q);
+    if (!items.length) {
+      sugg.innerHTML = "<div style='color:var(--ink3);cursor:default'>没有这个标的。" +
+        "本页只收录了预先抓过估值数据的标的，" +
+        "要加新的得先在本地跑 fetch_valuation.py。</div>";
+      sugg.hidden = false;
+      return;
+    }
+    sugg.innerHTML = items.map(function (t) {
+      var m2 = D.meta[t];
+      var kind = m2.kind === "macro" ? "商品"
+               : m2.kind && m2.kind !== "stock" ? "ETF / 指数" : "美股";
+      return "<div data-k='" + esc(t) + "'><b>" + esc(t) + "</b><span>" +
+             esc(m2.name || "") + "　" + kind + (m2.has_series ? "" : "　仅当前值") +
+             "</span></div>";
+    }).join("");
+    sugg.hidden = false;
+    sugg.querySelectorAll("div[data-k]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        pick(el.dataset.k);
+      });
+    });
+  }
+
+  function pick(t) {
+    if (!D.meta[t]) return;
+    sugg.hidden = true;
+    input.value = "";
+    input.blur();
+    showTab("val");
+    openDetail(t);
+  }
+
+  function intercept(e) {
+    if (!active()) return;               // 在信号页就让 viewer.js 自己处理
+    e.stopImmediatePropagation();
+    if (e.type === "keydown") {
+      var items = Array.prototype.slice.call(sugg.querySelectorAll("div[data-k]"));
+      if (e.key === "Escape") { sugg.hidden = true; input.blur(); return; }
+      if (!items.length) { if (e.key === "Enter") show(input.value); return; }
+      var i = items.findIndex(function (el) { return el.classList.contains("on"); });
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if (i >= 0) items[i].classList.remove("on");
+        i = e.key === "ArrowDown" ? (i + 1) % items.length : (i <= 0 ? items.length - 1 : i - 1);
+        items[i].classList.add("on");
+        items[i].scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        pick(items[i >= 0 ? i : 0].dataset.k);
+      }
+      return;
+    }
+    show(input.value);
+  }
+
+  ["input", "focus", "keydown"].forEach(function (ev) {
+    input.addEventListener(ev, intercept, true);
+  });
+  document.addEventListener("click", function (e) {
+    if (active() && !sugg.contains(e.target) && e.target !== input) sugg.hidden = true;
+  }, true);
+}
+
 /* ---------------- 页签切换 ---------------- */
 
 /* 「低点信号」那套数据有 2.8 MB，是整个页面里最重的东西，而且只有那个页签用得上。
@@ -2464,6 +2568,7 @@ try {
   if (savedPf) $("#pfInput").value = savedPf;
 } catch (e) { /* 同上 */ }
 
+setupSearch();
 renderGrid();
 if (location.hash) applyHash();
 
