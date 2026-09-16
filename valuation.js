@@ -2230,6 +2230,7 @@ function exportPng() {
 var routing = false;      // 正在按 URL 布置画面，这期间不要反过来改 URL
 
 function currentHash() {
+  if (!document.getElementById("view-bt").hidden) return "#backtest";
   if (!$("#view-val").hidden && !$("#valDetail").hidden && cur.ticker) {
     return "#t/" + encodeURIComponent(cur.ticker) + "/" + cur.metric + "/" + cur.range;
   }
@@ -2254,6 +2255,7 @@ function applyHash() {
   routing = true;
   try {
     if (raw === "signal") { showTab("signal"); return; }
+    if (raw === "backtest") { showTab("bt"); return; }
     var m = raw.match(/^t\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?$/);
     if (m) {
       var t = decodeURIComponent(m[1]).toUpperCase();
@@ -2491,6 +2493,21 @@ function loadSignalApp(done) {
 }
 
 function showTab(which) {
+  // 策略回测是第三个页签，数据（backtest.js）点进去才加载
+  if (which === "bt") {
+    wrap.hidden = true;
+    document.getElementById("view-signal").hidden = true;
+    document.getElementById("view-bt").hidden = false;
+    document.getElementById("tabVal").className = "";
+    document.getElementById("tabSignal").className = "";
+    document.getElementById("tabBt").className = "on";
+    var boot0 = document.getElementById("boot");
+    if (boot0) boot0.hidden = true;
+    if (window.__showBacktest) window.__showBacktest();
+    return;
+  }
+  document.getElementById("view-bt").hidden = true;
+  document.getElementById("tabBt").className = "";
   var sig = which === "signal";
   wrap.hidden = sig;
   document.getElementById("tabSignal").className = sig ? "on" : "";
@@ -2514,6 +2531,9 @@ document.getElementById("tabSignal").addEventListener("click", function () {
 });
 document.getElementById("tabVal").addEventListener("click", function () {
   showTab("val"); syncHash(true);
+});
+document.getElementById("tabBt").addEventListener("click", function () {
+  showTab("bt"); syncHash(true);
 });
 $("#valBack").addEventListener("click", function (e) {
   e.preventDefault();

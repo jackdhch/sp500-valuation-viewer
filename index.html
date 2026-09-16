@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh" data-public="1" data-build="202609161153">
+<html lang="zh" data-public="1" data-build="202609161219">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -63,7 +63,7 @@ main{max-width:1360px;margin:0 auto;padding:16px}
 #view-signal{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
 /* hidden 属性只是 display:none 的一个低优先级默认值，会被上面这条 display:grid 盖掉，
    所以切页签时必须显式把它压回去，否则两个视图会同时出现 */
-#view-signal[hidden],#view-val[hidden]{display:none}
+#view-signal[hidden],#view-val[hidden],#view-bt[hidden]{display:none}
 /* 同样的坑：.cards / .seg 这些自己设了 display，会把 hidden 属性盖掉，
    导致切视图时卡片墙和对比视图同时出现。这里一次性压住。 */
 #view-val [hidden]{display:none !important}
@@ -84,6 +84,25 @@ main{max-width:1360px;margin:0 auto;padding:16px}
   padding:5px 12px;cursor:pointer;font-size:13px}
 .verbar button.go{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
 .verbar label{display:flex;align-items:center;gap:5px;color:var(--ink3);font-size:12px;cursor:pointer}
+
+/* ---------- 策略回测 ---------- */
+#view-bt{--panel2:var(--hover);max-width:1100px;margin:0 auto}
+#view-bt h2{font-size:20px;margin:0 0 4px}
+#view-bt .btsec{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:16px 18px;margin-bottom:16px}
+#view-bt .btdesc{font-size:12.5px;color:var(--ink2);line-height:1.8;margin-bottom:12px}
+#view-bt table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+#view-bt th{text-align:left;font-weight:500;color:var(--ink3);font-size:11px;
+  padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+#view-bt td{padding:8px;border-bottom:1px solid var(--line2)}
+#view-bt td.r,#view-bt th.r{text-align:right}
+#view-bt .pos{color:var(--buy);font-weight:600} #view-bt .neg{color:var(--sell);font-weight:600}
+#view-bt .kindrow{background:var(--hover);font-weight:700}
+#view-bt .sub{font-size:11px;color:var(--ink3)}
+#view-bt .btnote{margin-top:12px;font-size:11.5px;color:var(--ink3);line-height:1.8}
+#view-bt .btwrap2{overflow-x:auto}
+#view-bt .warn{background:var(--warnbg);border:1px solid var(--warnline);border-radius:9px;
+  padding:10px 13px;font-size:12.5px;line-height:1.8;margin-bottom:14px}
 
 /* ---------- 首屏加载提示 ---------- */
 #boot{padding:64px 16px;text-align:center;color:var(--ink3);font-size:14px;line-height:2}
@@ -452,6 +471,7 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
     </div>
     <div class="tabs">
       <button id="tabVal" class="on">估值面板</button>
+      <button id="tabBt">策略回测</button>
       <button id="tabSignal">低点信号</button>
     </div>
     <div class="spacer"></div>
@@ -769,6 +789,9 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
     <div class="vfoot" id="valDetailFoot"></div>
   </section>
 </div><!-- /#view-val -->
+
+<!-- ============ 策略回测（只读；策略写死在 scripts/backtest.py 里）============ -->
+<div id="view-bt" hidden></div>
 </main>
 
 <footer>
@@ -779,9 +802,12 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
 <!-- viewer_data.js（2.8 MB）与 viewer.js 不在这里加载：
      它们是「低点信号」页签才用得上的，点到那个页签时由 valuation.js 动态插入。
      首屏只需要 11 KB 的估值索引，这样页面几乎是秒开的。 -->
-<script src="valuation_index.js?v=202609161153"></script>
-<script src="plot.js?v=202609161153"></script>
-<script src="valuation.js?v=202609161153"></script>
+<script src="valuation_index.js?v=202609161219"></script>
+<script src="plot.js?v=202609161219"></script>
+<!-- backtest_ui.js 要排在 valuation.js 前面：后者末尾会按地址栏里的 # 直接布置画面，
+     那时如果回测页的入口函数还没定义，打开 #backtest 会是一片空白 -->
+<script src="backtest_ui.js?v=202609161219"></script>
+<script src="valuation.js?v=202609161219"></script>
 
 </body>
 </html>
