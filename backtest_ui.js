@@ -54,25 +54,37 @@ function render(D) {
          "<div class='btdesc'>" + esc(g.desc) + "</div>";
 
     if (g.horizons) {
-      var H = g.horizons;
-      h += "<div class='btwrap2'><table><tr><th>哪天买</th>" +
-        H.horizons.map(function (x) { return "<th class='r'>拿 " + esc(x) + "</th>"; }).join("") +
-        "</tr>" +
-        H.rows.map(function (r) {
-          var base = r.name.indexOf("任意") === 0;
-          return "<tr" + (base ? " class='kindrow'" : "") + "><td>" + esc(r.name) + "</td>" +
-            r.cells.map(function (c) {
-              return "<td class='r'>" + (c.n ? pct(c.cagr, 2) +
-                "<br><span class='sub'>" + c.n + " 次</span>" : "—") + "</td>";
-            }).join("") + "</tr>";
-        }).join("") + "</table></div>";
+      (g.horizons || []).forEach(function (H) {
+        h += "<h3 style='font-size:14px;margin:18px 0 6px'>" + esc(H.label) +
+             "　<span class='sub'>" + esc(H.span[0]) + " ~ " + esc(H.span[1]) +
+             "　每格：平均 / 中位</span></h3>";
+        h += "<div class='btwrap2'><table><tr><th>哪天买</th>" +
+          H.horizons.map(function (x) { return "<th class='r'>拿 " + esc(x) + "</th>"; }).join("") +
+          "</tr>" +
+          H.rows.map(function (r) {
+            var base = r.name.indexOf("任意") === 0;
+            return "<tr" + (base ? " class='kindrow'" : "") + "><td>" + esc(r.name) + "</td>" +
+              r.cells.map(function (c) {
+                if (!c.n) return "<td class='r'>—</td>";
+                return "<td class='r'>" + pct(c.cagr, 2) +
+                  "<br><span class='sub'>中位 " + c.med.toFixed(2) + "%</span></td>";
+              }).join("") + "</tr>";
+          }).join("") + "</table></div>";
+      });
 
-      h += "<div class='btnote'><b>横着看每一行，差距是怎么塌掉的。</b><br>" +
-        "拿 1 年：「回撤 20% 时买」年化 19.6%，「任意一天买」12.7%，差 <b>7 个百分点</b>。<br>" +
-        "拿 5 年：13.8% 对 10.9%，差缩到 <b>2.9</b>。<br>" +
-        "拿 10 年：9.75% 对 10.16% —— <b>反过来了</b>，等回撤再买反而略输。<br>" +
-        "「创新高当天买」也一样：1 年是最好的几条之一（13.4%），到 15 年、20 年变成最差" +
-        "（8.5% / 8.2%）。<b>买入时点的影响随持有期衰减，十年上下就基本消失了。</b>" +
+      h += "<div class='btnote'><b>两段的结论是反的，这比任何单段的数字都重要。</b><br>" +
+        "<b>全样本</b>（含 2000、2008 两次腰斩）：拿 1 年「回撤 20% 时买」19.6% 对「任意一天」12.7%，" +
+        "差 7 个百分点；拿到 10 年反而输（9.75% 对 10.16%）。时点影响随持有期衰减到消失。<br>" +
+        "<b>2010 年起</b>：「回撤 10% 时买」1 年 24.5%、中位 23.1%，把「任意一天」（15.1%）甩开近十个百分点，" +
+        "而且**拿到 15 年都还领先**（15.5% 对 14.2%）。连「200 日均线下方买」都反超了。<br><br>" +
+        "为什么会反过来：<b>2010 年以后每一次回撤都是 V 型反弹</b>（2010、2011、2015、2018、2020、2022），" +
+        "没有一次演变成 2000、2008 那种跌两年半、腰斩一半的长熊。" +
+        "「逢跌买入」在这种环境里几乎必胜，但它赌的是<b>每次跌都会很快涨回来</b>——" +
+        "而这恰恰是被那十六年的样本喂出来的假设。<br>" +
+        "所以你让我排除 00 和 08 是对的（平均确实会被拖），但排除之后要意识到：" +
+        "<b>剩下的这段里没有一次真正的长熊，逢跌买入的漂亮数字是这个前提的产物</b>，不是它自身的属性。" +
+        "中位数我也一并列出来了——这两段里平均和中位是同向移动的，说明不是被少数极端值拖累，" +
+        "是整个分布搬了家。" +
         "</div>";
 
       if (g.waiting) {
@@ -80,35 +92,52 @@ function render(D) {
           "<div class='btdesc'>对每个月的第一个交易日各模拟一次：一边当天就全买了拿到今天，" +
           "另一边持币等待、直到标普从 52 周高点回撤够深的第一天才买、再拿到今天。" +
           "现金不计息——这对等待方是偏宽松的假设。</div>" +
-          "<div class='btwrap2'><table><tr><th>等多深的回调</th><th class='r'>等赢的概率</th>" +
+          "<div class='btwrap2'><table><tr><th>样本</th><th>等多深的回调</th>" +
+          "<th class='r'>年化·马上买</th><th class='r'>年化·等待</th>" +
+          "<th class='r'>等赢的概率</th>" +
           "<th class='r'>平均差</th><th class='r'>中位差</th><th class='r'>最好</th>" +
           "<th class='r'>最差</th><th class='r'>中位要等</th><th class='r'>至今没等到</th></tr>" +
-          g.waiting.map(function (w) {
-            return "<tr><td>等回撤 <b>" + w.dd + "%</b> 再买</td>" +
-              "<td class='r'>" + w.win + "%</td>" +
-              "<td class='r'>" + pct(w.mean) + "</td>" +
-              "<td class='r'>" + pct(w.med) + "</td>" +
-              "<td class='r'>" + pct(w.best) + "</td>" +
-              "<td class='r'>" + pct(w.worst) + "</td>" +
-              "<td class='r'>" + (w.wait_med === null ? "—" : w.wait_med + " 年") + "</td>" +
-              "<td class='r'>" + w.never + " 次</td></tr>";
+          g.waiting.map(function (blk) {
+            return blk.rows.map(function (w, i) {
+              return "<tr>" + (i === 0 ? "<td rowspan='" + blk.rows.length + "'><b>" +
+                     esc(blk.label) + "</b></td>" : "") +
+                "<td>等回撤 <b>" + w.dd + "%</b></td>" +
+                "<td class='r'>" + (w.now_cagr === null ? "—" : w.now_cagr.toFixed(2) + "%") + "</td>" +
+                "<td class='r'>" + (w.wait_cagr === null ? "—" :
+                  "<span class='" + (w.wait_cagr < w.now_cagr ? "neg" : "pos") + "'>" +
+                  w.wait_cagr.toFixed(2) + "%</span>") + "</td>" +
+                "<td class='r'>" + w.win + "%</td>" +
+                "<td class='r'>" + pct(w.mean) + "</td>" +
+                "<td class='r'>" + pct(w.med) + "</td>" +
+                "<td class='r'>" + pct(w.best) + "</td>" +
+                "<td class='r'>" + pct(w.worst) + "</td>" +
+                "<td class='r'>" + (w.wait_med === null ? "—" : w.wait_med + " 年") + "</td>" +
+                "<td class='r'>" + w.never + " 次</td></tr>";
+            }).join("");
           }).join("") + "</table></div>" +
-          "<div class='btnote'><b>等待的期望是负的，而且等得越深亏得越多。</b><br>" +
-          "等 10% 的回调：只有 <b>28%</b> 的时候等赢了，平均落后 12.1%，最差的一次落后 67.3%，" +
-          "还有 5 次到今天都没等到。<br>" +
-          "等 20% 的回调：只有 <b>26%</b> 等赢，平均落后 25.6%，中位要空等 <b>3.7 年</b>，" +
-          "<b>34 次到今天都没等到</b>——那些钱干躺了十几年。<br>" +
-          "为什么会这样：标普500 长期向上，等待期间踏空的涨幅，通常比等到的那点折扣更大。" +
-          "而且真等到 20% 回撤的时候，往往是 2008、2020 那种局面，那时候敢不敢按计划买是另一回事。" +
+          "<div class='btnote'><b>年化这两列是怎么算的</b>（这正是「持币等待要不要计入分母」那个问题）：" +
+          "两边的考察期完全相同——都从同一天出发、都算到今天。等待方前面那段空仓，" +
+          "<b>收益按 0 算（现金不计息），但它照样占着时间，所以年化的分母里包含了它</b>。" +
+          "所以「等 20% 回调」那行年化只有 9.53%（全样本）不是因为买得差，" +
+          "是因为中位要空等 3.7 年，那 3.7 年摊进了分母。<br><br>" +
+          "<b>这张表两段的结论是一致的：等待的期望是负的。</b><br>" +
+          "去掉 2000 和 2008 之后，等 10% 回调的胜率从 28% 升到 36%、平均落后从 12.1% 收窄到 6.6%——" +
+          "确实好看一些，<b>但仍然是负的</b>。等 20% 回调那一行几乎没变（26% → 27%，" +
+          "两段都是 34 次到今天没等到）。<br>" +
+          "为什么两段都负：标普500 长期向上，等待期间踏空的涨幅通常比等到的那点折扣更大，" +
+          "这一条不依赖于有没有大熊市。<br>" +
+          "<b>要把两件事分开</b>：「已经处在回撤 20% 的状态」买入，回报确实好（上面那张表）；" +
+          "「持币等待回撤 20% 出现」，期望是负的（这张表）。前者是状态，后者是计划，不是一回事。" +
           "</div>";
       }
 
-      h += "<div class='warn' style='margin-top:14px'><b>所以「一次性买入什么时候收益最大」的答案是：" +
-        "就是现在。</b><br>" +
-        "这不是鸡汤，是上面两张表的直接读数——等待的期望为负（三档回调深度全是负的），" +
-        "而时点的影响在十年持有期上已经衰减到看不见。<br>" +
-        "唯一说得通的例外：如果你恰好赶上已经回撤 20% 的时刻，那一年的赔率确实好看（19.6%），" +
-        "但那是<b>已经发生</b>的状态，不是可以等来的计划——历史上有 34 次，等的人到今天还没等到。" +
+      h += "<div class='warn' style='margin-top:14px'><b>「一次性买入什么时候收益最大」——两段样本给的答案不同，" +
+        "但有一条在两段里都成立。</b><br>" +
+        "· <b>手上有钱就买，别等</b>：三档回调深度、两段样本，六个格子全是负期望。这条最稳。<br>" +
+        "· <b>如果市场已经在回撤中</b>：全样本里这个优势会随持有期消失（10 年就反超了），" +
+        "2010 年起这段则一直保持到 15 年。差别在于 2010 年后没出现过长熊——" +
+        "所以这个优势能不能延续，等于在赌「以后的下跌还会像过去十六年那样很快涨回来」。<br>" +
+        "· <b>拿得越久，怎么买越不重要</b>：全样本 10 年期上各条规则已经挤在 9.1%~10.2% 之间。" +
         "</div>";
     }
 
