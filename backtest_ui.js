@@ -131,6 +131,71 @@ function render(D) {
           "</div>";
       }
 
+      if (g.sweep) {
+        h += "<h3 style='font-size:14px;margin:20px 0 6px'>回撤阈值扫得细一点：10% 是不是最优？</h3>" +
+          "<div class='btdesc'>把「回撤至少这么深时买入」的门槛从 0 扫到 40，" +
+          "每一档都看买入后持有一年的中位收益。中位和样本量一起看——" +
+          "门槛越深数字越漂亮，但样本越少，到后面就是几次危机的连续日子在撑着。</div>";
+        g.sweep.forEach(function (blk) {
+          var show = blk.rows.filter(function (r) { return r.th % 2 === 0 || r.th === 1; });
+          h += "<div style='margin-top:8px'><b>" + esc(blk.label) + "</b>" +
+            (blk.best_solid ? "　<span class='sub'>样本 ≥200 天里中位最高：回撤 ≥ " +
+              blk.best_solid.th + "%（" + blk.best_solid.med + "%，" +
+              blk.best_solid.n + " 天）</span>" : "") + "</div>" +
+            "<div class='btwrap2'><table><tr><th>门槛</th>" +
+            show.map(function (r) { return "<th class='r'>≥" + r.th + "%</th>"; }).join("") +
+            "</tr><tr><td>一年后中位</td>" +
+            show.map(function (r) { return "<td class='r'>" + pct(r.med, 1) + "</td>"; }).join("") +
+            "</tr><tr><td>样本天数</td>" +
+            show.map(function (r) { return "<td class='r'><span class='sub'>" + r.n + "</span></td>"; }).join("") +
+            "</tr></table></div>";
+        });
+        h += "<div class='btnote'><b>10% 不是最优，但也没有一个真正的「最优点」。</b><br>" +
+          "· <b>全样本</b>：中位数从 14.1%（不设门槛）一路单调升到 42.8%（≥40%），" +
+          "<b>没有拐点</b>——越深越好。但样本从 9240 天掉到 76 天，那 76 天全是 2008 和 2020 的谷底附近，" +
+          "说的是「在历史大底买很赚」，这句话正确但没法执行。样本还站得住（≥200 天）的范围里，" +
+          "最好的是回撤 ≥29%（中位 30.5%，216 天）。<br>" +
+          "· <b>2010 年起</b>：中位在 <b>11%</b> 见顶（23.1%，363 天），10% 和 12% 都差不多，" +
+          "再深反而回落（14% 只有 20.7%）——因为这十六年里超过 15% 的回撤只出现过三四次，" +
+          "样本稀薄到失去意义。<br>" +
+          "· 所以「把 10% 调成 11%」是有据可依的微调，但那点差别（16.5%→16.7% / 23.1%→23.1%）" +
+          "远小于「选哪段历史」带来的差别。<b>调阈值不是这里的主要矛盾。</b>" +
+          "</div>";
+      }
+
+      if (g.bvw) {
+        h += "<h3 style='font-size:14px;margin:20px 0 6px'>只有两个选项：现在全仓买，还是继续等更深的回撤？</h3>" +
+          "<div class='btdesc'>按<b>当天的回撤深度</b>分桶。同一个桶里两条路：" +
+          "「买」当天全仓买入；「等」持币等到回撤比现在再深 5 个百分点才买。" +
+          "两边起点终点完全相同（都算到 2 年后），等待期收益按 0 算、时间照算。" +
+          "看从哪个深度开始「买」稳定压过「等」。</div>";
+        g.bvw.forEach(function (blk) {
+          h += "<div style='margin-top:8px'><b>" + esc(blk.label) + "</b></div>" +
+            "<div class='btwrap2'><table><tr><th>当前回撤</th><th class='r'>现在买·中位</th>" +
+            "<th class='r'>继续等·中位</th><th class='r'>差</th>" +
+            "<th class='r'>买赢的比例</th><th class='r'>样本</th></tr>" +
+            blk.rows.map(function (r) {
+              return "<tr><td>" + r.lo + " ~ " + r.hi + "%</td>" +
+                "<td class='r'><b>" + pct(r.buy_med, 1) + "</b></td>" +
+                "<td class='r'>" + pct(r.wait_med, 1) + "</td>" +
+                "<td class='r'>" + pct(r.gap, 1) + "</td>" +
+                "<td class='r'>" + r.buy_win + "%</td>" +
+                "<td class='r'><span class='sub'>" + r.n + "</span></td></tr>";
+            }).join("") + "</table></div>";
+        });
+        h += "<div class='btnote'><b>临界点是 0%——没有哪个深度值得再等。</b><br>" +
+          "两段样本、七个深度桶，「现在买」的中位收益<b>全部</b>高于「继续等」。<br>" +
+          "为什么差距这么大：看「继续等」那一列，回撤 5% 以上的桶里中位数<b>全是 0.00%</b>——" +
+          "意思是超过一半的情况下，市场根本没有再深 5 个百分点，钱就一直空在手里，两年后还是那些钱。<br>" +
+          "<b>但注意「买赢的比例」那一列只有 33%~64%</b>，不到一半的情况也不少。" +
+          "这不矛盾：等待是「多数时候颗粒无收、少数时候抄到更低」，" +
+          "中位数衡量的是多数时候，胜率衡量的是次数。" +
+          "你问的是中位数，那答案就是——<b>任何深度，现在买都更好</b>。<br>" +
+          "唯一的例外藏在最浅那个桶（0~2%）：差距只有 1.2~1.4 个百分点，" +
+          "接近没有差别——市场在高位附近时，早买晚买确实差不多。" +
+          "</div>";
+      }
+
       h += "<div class='warn' style='margin-top:14px'><b>「一次性买入什么时候收益最大」——两段样本给的答案不同，" +
         "但有一条在两段里都成立。</b><br>" +
         "· <b>手上有钱就买，别等</b>：三档回调深度、两段样本，六个格子全是负期望。这条最稳。<br>" +
