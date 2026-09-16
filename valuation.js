@@ -108,6 +108,54 @@ function bisectRight(a, v) {
   return lo;
 }
 
+/* 把超出 1%–99% 分位的点压到边界上，并给出对应的 Y 轴范围。
+   返回的是新数组，原序列不动——气泡和导出用的还是原值。 */
+function clipSeries(vals, i0, i1) {
+  var seg = [];
+  for (var i = i0; i <= i1; i++) {
+    var v = vals[i];
+    if (v !== null && v !== undefined) seg.push(v);
+  }
+  if (seg.length < 50) return { data: vals, clipped: 0, fixed: null };
+  seg.sort(function (a, b) { return a - b; });
+  var lo = seg[Math.floor(seg.length * 0.02)];
+  var hi = seg[Math.floor((seg.length - 1) * 0.98)];
+  if (!(hi > lo)) return { data: vals, clipped: 0, fixed: null };
+  var pad = (hi - lo) * 0.08;
+  lo -= pad; hi += pad;
+  /* 再套一层绝对上下限。亚马逊 2013-2015 那段有好几百天的市盈率在几百到几万倍之间，
+     光靠分位裁不掉（它们占了 2% 以上的样本）。而市盈率超过 300 倍或低于 -100 倍
+     本来就没有解读价值——那只说明当时盈利接近 0，不说明贵不贵。 */
+  lo = Math.max(lo, -100);
+  hi = Math.min(hi, 300);
+  if (!(hi > lo)) return { data: vals, clipped: 0, fixed: null };
+  var n = 0;
+  var out = vals.map(function (v, i) {
+    if (v === null || v === undefined) return v;
+    if (v < lo) { if (i >= i0 && i <= i1) n++; return lo; }
+    if (v > hi) { if (i >= i0 && i <= i1) n++; return hi; }
+    return v;
+  });
+  /* 符号翻转处断开。每股收益由正转负要经过 0，市盈率在那一刻从 +∞ 跳到 -∞，
+     是不连续的——把两边连起来会画出一根贯穿整张图的垂线（亚马逊 2022 年那根就是）。
+     数学上它们之间本来就没有线。 */
+  // 只把翻转那一个点置空还不够：点数远多于像素时，画图引擎会把每列像素里的
+  // 最小值和最大值连成一根竖线来表示这一列的范围，而翻转前后的两个点常常落在同一列，
+  // 于是还是会出现一根从顶到底的贯穿线。所以翻转处前后各留一段空白，让那一列没有数据。
+  // 翻转点两边常常隔着一段空白（合成时已经把绝对值上万倍的那些置空了），
+  // 所以要跟「上一个非空值」比符号，不能只看紧挨着的前一个点。
+  var GAP = 12, prevI = -1;
+  for (var k = 0; k < vals.length; k++) {
+    var v2 = vals[k];
+    if (v2 === null || v2 === undefined) continue;
+    if (prevI >= 0 && (vals[prevI] > 0) !== (v2 > 0)) {
+      for (var q = Math.max(0, prevI - GAP); q <= Math.min(vals.length - 1, k + GAP); q++) out[q] = null;
+    }
+    prevI = k;
+  }
+  return { data: out, clipped: n, fixed: [lo, hi] };
+}
+
 /* 区间内的滚动分位：第 i 个点只跟区间起点到它自己的历史比，不用未来数据。
  * 末点的值因此就等于「当前值在整个区间里的分位」，也就是 KPI 卡上那个数。
  * 负值（盈利为负导致的负市盈率）不参与排名，该点留空。 */
@@ -317,6 +365,7 @@ function finishGrid() {
     "分位口径：估值卡上的「PE 分位」是<b>固定十年窗口</b>；点进详情页后的「百分位（当前区间）」" +
     "是<b>区间相对量</b>，会随 1Y/5Y/全部 的切换而变，两者本来就不是同一个数。<br>" +
     "日频市盈率的分子是真实当日收盘价，分母是季度财报锚点插值出来的每股收益（与本站其余页面同口径）。" +
+    "每股收益由正转负的途中会经过 0，那几段市盈率冲到上万倍、没有解读价值，图上直接断开（亚马逊 2013 与 2022 各有一段）。" +
     "每股收益、每股净资产来自 macrotrends（约 20 年季度锚点），前瞻市盈率来自 stockanalysis（约 5 年）。";
 }
 
@@ -433,10 +482,16 @@ function renderViewBar() {
     var b = document.createElement("button");
     b.textContent = it.label;
     if (it.key === view) b.className = "on";
-    b.addEventListener("click", function () { view = it.key; renderGrid(); syncHash(true); });
+    b.addEventListener("click", function () {
+      view = it.key;
+      $("#pickPanel").hidden = true;     // 管理面板不是第五个视图，切走就收起来
+      renderGrid();
+      syncHash(true);
+    });
     box.appendChild(b);
   });
   var mg = document.createElement("button");
+  mg.style.marginLeft = "10px";          // 和前面四个视图按钮拉开，看着不像同一组
   mg.textContent = "管理";
   if (!$("#pickPanel").hidden) mg.className = "on";
   mg.addEventListener("click", function () {
@@ -1075,10 +1130,18 @@ function redrawDetail() {
   }
   cur.i0 = i0; cur.i1 = i1;
 
+  /* Y 轴按区间内 1%–99% 分位裁一刀。
+     每股收益由正转负的途中会经过 0，那几段市盈率冲到成百上千倍（亚马逊 2013 与 2022 各有一段），
+     不裁的话整张图只剩两根尖峰，正常那二三十倍的区间被压成一条平线，什么也看不出来。
+     被裁的点贴着边界画，数量写在标题右边，不假装它们不存在；
+     鼠标划过时气泡给的仍是原值。 */
+  var clip = clipSeries(vals, i0, i1);
+
   var spanLabel = rng ? rng.label : "自定义";
   $("#valSpan").textContent = spanLabel + " · " + dates[i0] + " — " + dates[i1] +
                               "（" + (i1 - i0 + 1) + " 个交易日）";
-  $("#trendNote").textContent = met.label + " 走势";
+  $("#trendNote").textContent = met.label + " 走势" +
+    (clip.clipped ? "　Y 轴已裁剪，" + clip.clipped + " 个极端点贴边" : "");
 
   // 该指标在这个区间里一个有效值都没有（例如前瞻市盈率只有约 5 年，切到 20Y 的早段）
   var any = false;
@@ -1112,10 +1175,11 @@ function redrawDetail() {
   if (curPct !== null) knob.style.left = curPct + "%";
 
   viewCtx = { dates: dates, vals: vals, pct: pctSeries || [], i0: i0, i1: i1, met: met };
-  renderBrush(dates, vals, i0, i1);
+  renderBrush(dates, clip.data, i0, i1);
   hideCursorTip();
 
-  trendPlot.o.series = [{ data: vals, color: "--accent",
+  trendPlot.o.fixed = clip.fixed;
+  trendPlot.o.series = [{ data: clip.data, color: "--accent",
                           extrap: expandFlags((part.extrap || {})[met.key], dates.length) }];
   if (showPrice && part.px) {
     // 价格走右轴：股价两三百块、市盈率二三十倍，塞进同一根轴市盈率会被压成直线

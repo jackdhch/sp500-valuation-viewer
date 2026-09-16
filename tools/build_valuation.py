@@ -43,6 +43,16 @@ PRICE_MAX_AGE_DAYS = int(os.environ.get("SP500_PRICE_MAX_AGE", "1"))
 # 最后一个锚点之后最多外推多少个日历天（季度财报间隔 ~90 天，给 120 天留一期余量）
 MAX_EXTRAP = 120
 
+# 比率的绝对值超过这个就当没意义，置空。
+#
+# 为什么要这条：市盈率 = 价格 ÷ 每股收益，每股收益在由正转负的途中会经过 0，
+# 这一段市盈率会冲到 ±∞。亚马逊 2013 和 2022 两次就是——插值出来的市盈率飙到
+# 35 万倍再翻成 -9 万倍，画在图上是一根从天到地的垂线，还会把同一张图里其余部分
+# 全压成直线。这种数字本来也没有任何解读价值（盈利接近 0 的时候「贵不贵」无从谈起），
+# 所以直接断开，图上留白，分位也不统计它们。
+# 1000 倍这个门槛对正常标的没有影响：本页最高的 BE 是 338 倍、TSLA 332 倍。
+RATIO_CAP = 1000
+
 # 只合成前端要画的三个指标。市销率的锚点照抓不误（留在 CSV 里），
 # 但不进 valuation_data.js——页面上没有它的入口，白白撑大文件。
 METRICS = [("pe", "eps"), ("fwd_pe", None), ("pb", "bvps")]
@@ -167,8 +177,13 @@ def build_one(ticker):
             continue
         vals = interp(pts, dates, extend=True)
         vals, flag = clip_extrap(vals, max(p[0] for p in pts), dates, MAX_EXTRAP)
-        series = [round(prices[d] / v, 3) if (v not in (None, 0)) else None
-                  for d, v in zip(dates, vals)]
+        series = []
+        for d, v in zip(dates, vals):
+            if v in (None, 0):
+                series.append(None)
+                continue
+            x = prices[d] / v
+            series.append(round(x, 3) if abs(x) <= RATIO_CAP else None)
         out[ratio_key] = series
         extrap[ratio_key] = flag
         p, n, years = fixed_window_percentile(series, dates, days=3650)
