@@ -82,7 +82,9 @@ def read_anchors(ticker):
 
 
 # 内部代码 → yfinance 代码。黄金期货的代码里有等号，不适合直接当文件名和标的 id
-YF_ALIAS = {"GOLD": "GC=F"}
+YF_ALIAS = {"GOLD": "GC=F",
+            # 伯克希尔 B 股在 yfinance 里的代码用横杠不用点，照搬 BRK.B 会查不到
+            "BRK.B": "BRK-B"}
 
 
 def read_prices(ticker):
@@ -695,9 +697,11 @@ def main():
                         return "" if v in ("", None) or float(v) == 0 else str(v)
                     except (TypeError, ValueError):
                         return "" if v in ("n/a", "N/A", None) else str(v)
+                sec0 = sectors.get(t, "")
                 payload["meta"][t] = {
                     "name": sn.get("name", t), "peg": sn.get("peg", ""),
                     "mcap": sn.get("mcap", ""), "kind": "stock", "has_series": False,
+                    "sector": sec0, "sector_zh": SECTOR_ZH.get(sec0, sec0 or "未分类"),
                     "cur_pe": _clean(sn.get("pe")), "cur_pb": _clean(sn.get("pb")),
                     "note": why, "first": "", "last": "",
                 }
