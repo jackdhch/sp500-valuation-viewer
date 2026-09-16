@@ -346,12 +346,14 @@ function renderGrid() {
   $("#valCompare").hidden = view !== "cmp";
   $("#valPortfolio").hidden = view !== "pf";
   $("#valSA").hidden = view !== "sa";
+  $("#valPoster").hidden = view !== "poster";
   $("#valSort").hidden = view !== "cards";
   if (!$("#pickPanel").hidden) renderPickPanel();
   if (view === "heat") { renderHeat(); finishGrid(); return; }
   if (view === "cmp") { renderCompare(); finishGrid(); return; }
   if (view === "pf") { renderPortfolio(); finishGrid(); return; }
   if (view === "sa") { renderSA(); finishGrid(); return; }
+  if (view === "poster") { renderPoster(); finishGrid(); return; }
 
   var box = $("#valCards");
   box.innerHTML = "";
@@ -378,7 +380,8 @@ var VIEWS = [{ key: "cards", label: "卡片" },
              { key: "heat", label: "热力图" },
              { key: "cmp", label: "对比" },
              { key: "pf", label: "组合" },
-             { key: "sa", label: "SA 榜单" }];
+             { key: "sa", label: "SA 榜单" },
+             { key: "poster", label: "事件图" }];
 var view = "cards";
 var heatMetric = "pe";
 
@@ -1097,6 +1100,285 @@ function renderSA() {
       if (D.meta[t]) openDetail(t);
     });
   });
+}
+
+/* ---------------- 事件图（一页纸，方便截图）----------------
+ *
+ * 版式照着「价格曲线 + 事件打点 + 下方清单」那种信息图排：蓝底标题条、
+ * 曲线上按顺序标出每次调息并编号、下面两张表把日期和幅度列全。
+ * 宽度固定 900px，竖向排下来接近 3:4，手机截屏正好。
+ *
+ * 曲线画的是 20 日均线而不是原始收盘价——日线抖动太密，打上三十个点之后根本看不清
+ * 点落在哪儿；均线平滑之后点位和走势的关系才读得出来。
+ */
+var PST_LIST = [
+  { t: "VOO", label: "标普500", title: "标普500 怎么走？" },
+  { t: "QQQ", label: "纳斯达克100", title: "纳指怎么走？" },
+  { t: "GOLD", label: "黄金", title: "黄金怎么走？" },
+  { t: "BTC", label: "比特币", title: "比特币怎么走？" }
+];
+var pstT = "QQQ", pstMA = true;
+
+function renderPoster() {
+  seg($("#pstPick"), PST_LIST.map(function (x) { return { key: x.t, label: x.label }; }),
+      function (it) { return it.key === pstT; },
+      function (it) { pstT = it.key; renderPoster(); });
+  seg($("#pstOpt"), [{ key: "ma", label: "用 20 日均线" }, { key: "png", label: "存成图片" }],
+      function (it) { return it.key === "ma" ? pstMA : false; },
+      function (it) {
+        if (it.key === "ma") { pstMA = !pstMA; renderPoster(); }
+        else exportPoster();
+      });
+
+  var cfg = PST_LIST.filter(function (x) { return x.t === pstT; })[0];
+  // 用 poster_px.js 里的完整价格，不用分片里那条——后者被裁到了估值序列的起点，
+  // 纳指的估值锚点只有 2024-01 起，拿它画事件图会把 2016-2023 的加息全甩在区间外。
+  if (!window.POSTER_PX) {
+    $("#pstTitle").textContent = "加载中…";
+    var sc = document.createElement("script");
+    sc.src = "poster_px.js";
+    sc.onload = function () { if (view === "poster") renderPoster(); };
+    sc.onerror = function () { $("#pstTitle").textContent = "价格数据加载失败"; };
+    document.head.appendChild(sc);
+    return;
+  }
+  var part = window.POSTER_PX[pstT];
+  if (!part) { $("#pstTitle").textContent = "没有这个标的的价格数据"; return; }
+  var dates = expandDates(part), px = part.px || [];
+  if (!D.fed) { $("#pstTitle").textContent = "没有调息数据"; return; }
+
+  // 只画两边都有数据的那一段
+  var i0 = 0;
+  while (i0 < px.length && px[i0] == null) i0++;
+  var i1 = px.length - 1;
+  while (i1 > i0 && px[i1] == null) i1--;
+
+  var ev = D.fed.events.filter(function (e) {
+    return e[0] >= dates[i0] && e[0] <= dates[i1];
+  });
+  var hikes = ev.filter(function (e) { return e[1] > 0; });
+  var cuts = ev.filter(function (e) { return e[1] < 0; });
+
+  $("#pstTitle").textContent = "先看过去：" + cfg.title;
+  $("#pstSub").textContent = "近十年调息记录｜生效日期、调整幅度，一次列清";
+  $("#pstLineNote").textContent = (pstMA ? "蓝线：收盘价的 20 日均线" : "蓝线：收盘价");
+  $("#pstThUp").textContent = "加息 " + hikes.length + " 次";
+  $("#pstThDn").textContent = "降息 " + cuts.length + " 次";
+
+  var span2223 = hikes.filter(function (e) { return e[0] >= "2022-01-01" && e[0] <= "2023-12-31"; });
+  $("#pstKey").textContent = span2223.length
+    ? ("2022—2023：" + span2223.length + " 次加息，累计 +" +
+       span2223.reduce(function (a, e) { return a + e[1]; }, 0) + "bp；密集不等于重复统计。")
+    : "";
+
+  function table(list, prefix, cls) {
+    return "<tr><td class='n'></td><td></td><td class='v'></td></tr>"
+      .replace("<tr>", "") && list.map(function (e, i) {
+      var id = prefix + String(i + 1).padStart(2, "0");
+      return "<tr class='" + cls + "'><td class='n'>" + id + "</td><td>" + esc(e[0]) +
+        "</td><td class='v'>" + (e[1] > 0 ? "+" : "") + e[1] + "bp</td></tr>";
+    }).join("");
+  }
+  $("#pstTabUp").innerHTML = table(hikes, "A", "up");
+  $("#pstTabDn").innerHTML = table(cuts, "B", "dn");
+
+  // 右下角那段小结：用真实数据说「利率上调 ≠ 股价必跌」，不是喊口号
+  function after(list) {
+    var pos = {}, out = [];
+    for (var i = i0; i <= i1; i++) pos[dates[i]] = i;
+    list.forEach(function (e) {
+      var a = pos[e[0]];
+      if (a === undefined) { for (var k = i0; k <= i1; k++) if (dates[k] >= e[0]) { a = k; break; } }
+      if (a === undefined || a + 60 > i1) return;
+      var p0 = px[a], p1 = px[a + 60];
+      if (p0 && p1) out.push((p1 / p0 - 1) * 100);
+    });
+    if (!out.length) return null;
+    return { n: out.length,
+             mean: out.reduce(function (x, y) { return x + y; }, 0) / out.length,
+             win: out.filter(function (x) { return x > 0; }).length / out.length * 100 };
+  }
+  var ah = after(hikes), ac = after(cuts);
+  function line(s2, name) {
+    if (!s2) return "";
+    return name + "后三个月：平均 <b style='color:" + (s2.mean > 0 ? "#0e9f6e" : "#e02424") +
+      "'>" + (s2.mean > 0 ? "+" : "") + s2.mean.toFixed(1) + "%</b>，上涨占 " +
+      s2.win.toFixed(0) + "%（" + s2.n + " 次）<br>";
+  }
+  $("#pstMini").innerHTML =
+    "<b>25bp = 0.25 个百分点</b><br>" +
+    line(ah, "加息") + line(ac, "降息") +
+    "<span class='hl'>利率上调 ≠ 股价必跌</span><br>" +
+    "<span class='hl'>利率下调 ≠ 股价必涨</span>";
+
+  $("#pstFoot").innerHTML =
+    "走势：" + esc(dates[i0]) + " 至 " + esc(dates[i1]) +
+    "｜不复权收盘价，不含股息；不是收益率曲线。<br>" +
+    "调息日期是<b>生效日</b>（美联储目标利率序列里新利率生效那天），" +
+    "新闻常标的是 FOMC 公布日，两者差一个工作日。幅度由相邻两天的目标利率上限之差算出，" +
+    "不是手抄的会议纪要。<br>" +
+    "来源：美联储（FRED DFEDTARU）；价格来自 Yahoo Finance。数据生成于 " + esc(D.built) +
+    "。只呈现公开数据，不构成投资建议。";
+
+  drawPoster(dates, px, i0, i1, hikes, cuts);
+}
+
+/* 把整页导成一张 PNG。
+   浏览器截屏也行，但那样会带上页面其余部分，还得自己裁；这里直接按这一页的尺寸出图。
+   做法是把 DOM 转成 SVG 的 foreignObject 再画进 canvas——纯前端，不依赖任何库。 */
+function exportPoster() {
+  var el = $("#pstSheet");
+  var w = el.offsetWidth, h = el.offsetHeight;
+  var cv = $("#pstCanvas");
+  // 画布内容在 SVG 里渲染不出来，先转成图片塞回去
+  var chartUrl = cv.toDataURL("image/png");
+  var clone = el.cloneNode(true);
+  var holder = clone.querySelector(".pstchart");
+  if (holder) {
+    holder.innerHTML = "<img src='" + chartUrl + "' style='width:100%;height:100%'>";
+  }
+  // 把计算后的样式内联进去，SVG 里没有外部样式表
+  var css = "";
+  try {
+    for (var i = 0; i < document.styleSheets.length; i++) {
+      var rules = document.styleSheets[i].cssRules || [];
+      for (var j = 0; j < rules.length; j++) css += rules[j].cssText + "\n";
+    }
+  } catch (e) { /* 跨域样式表读不了，忽略 */ }
+  var theme = document.documentElement.dataset.theme || "light";
+  var html = "<div xmlns='http://www.w3.org/1999/xhtml'><style>" + css + "</style>" +
+             "<div id='view-val' data-theme-root='" + theme + "' style='padding:0;background:none'>" +
+             clone.outerHTML + "</div></div>";
+  var svg = "<svg xmlns='http://www.w3.org/2000/svg' width='" + w + "' height='" + h + "'>" +
+            "<foreignObject width='100%' height='100%'>" + html + "</foreignObject></svg>";
+  var img = new Image();
+  img.onload = function () {
+    var out = document.createElement("canvas");
+    var dpr = 2;
+    out.width = w * dpr; out.height = h * dpr;
+    var g = out.getContext("2d");
+    g.scale(dpr, dpr);
+    g.fillStyle = window.VPlot.cssv("--panel") || "#fff";
+    g.fillRect(0, 0, w, h);
+    g.drawImage(img, 0, 0, w, h);
+    out.toBlob(function (blob) {
+      if (blob) download("事件图_" + pstT + "_" + D.built + ".png", blob);
+    }, "image/png");
+  };
+  img.onerror = function () {
+    alert("这个浏览器不支持直接导出，直接截屏也一样——整页宽 " + w + "px。");
+  };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+function drawPoster(dates, px, i0, i1, hikes, cuts) {
+  var cv = $("#pstCanvas");
+  var box = cv.parentNode.getBoundingClientRect();
+  var w = box.width, h = box.height;
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  var g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+
+  // 20 日均线
+  var line = px.slice();
+  if (pstMA) {
+    var acc = [], sum = 0;
+    line = px.map(function (v, i) {
+      if (v == null) return null;
+      acc.push(v); sum += v;
+      if (acc.length > 20) sum -= acc.shift();
+      return acc.length === 20 ? sum / 20 : null;
+    });
+  }
+
+  var pad = { l: 52, r: 14, t: 34, b: 30 };
+  var lo = Infinity, hi = -Infinity;
+  for (var i = i0; i <= i1; i++) {
+    var v = line[i];
+    if (v == null) continue;
+    if (v < lo) lo = v; if (v > hi) hi = v;
+  }
+  if (!isFinite(lo)) return;
+  var padY = (hi - lo) * 0.16;
+  lo -= padY * 0.4; hi += padY;
+  var X = function (i) { return pad.l + (w - pad.l - pad.r) * (i - i0) / Math.max(1, i1 - i0); };
+  var Y = function (v) { return pad.t + (h - pad.t - pad.b) * (1 - (v - lo) / Math.max(1e-9, hi - lo)); };
+
+  var ink3 = window.VPlot.cssv("--ink3") || "#9ca3af";
+  var grid = window.VPlot.cssv("--line2") || "#eee";
+
+  // 横向网格 + 纵轴
+  g.font = '11px "IBM Plex Mono", monospace'; g.textBaseline = "middle"; g.textAlign = "right";
+  var step = niceStep(lo, hi, 4);
+  for (var v2 = Math.ceil(lo / step) * step; v2 <= hi; v2 += step) {
+    g.strokeStyle = grid; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(pad.l, Y(v2) + .5); g.lineTo(w - pad.r, Y(v2) + .5); g.stroke();
+    g.fillStyle = ink3;
+    g.fillText(v2 >= 1000 ? Math.round(v2).toLocaleString("en-US") : String(Math.round(v2)),
+               pad.l - 7, Y(v2));
+  }
+  // 年份刻度
+  g.textAlign = "center"; g.textBaseline = "top";
+  var lastYear = "";
+  for (var k = i0; k <= i1; k++) {
+    var y2 = dates[k].slice(0, 4);
+    if (y2 !== lastYear) {
+      lastYear = y2;
+      if (parseInt(y2, 10) % 1 === 0) {
+        g.fillStyle = ink3;
+        g.fillText(y2, X(k), h - pad.b + 6);
+      }
+    }
+  }
+
+  // 主线
+  g.strokeStyle = "#1a56db"; g.lineWidth = 2.2; g.lineJoin = "round"; g.lineCap = "round";
+  g.beginPath();
+  var started = false;
+  for (var j = i0; j <= i1; j++) {
+    var vv = line[j];
+    if (vv == null) { started = false; continue; }
+    var x = X(j), y = Y(vv);
+    started ? g.lineTo(x, y) : (g.moveTo(x, y), started = true);
+    started = true;
+  }
+  g.stroke();
+
+  // 事件点 + 编号。标签上下交错放，避免挤成一团
+  var pos = {};
+  for (var q = i0; q <= i1; q++) pos[dates[q]] = q;
+  function plot(list, prefix, color) {
+    list.forEach(function (e, idx) {
+      var a = pos[e[0]];
+      if (a === undefined) { for (var k2 = i0; k2 <= i1; k2++) if (dates[k2] >= e[0]) { a = k2; break; } }
+      if (a === undefined) return;
+      var vv2 = line[a];
+      if (vv2 == null) return;
+      var x = X(a), y = Y(vv2);
+      // 2022 年那一片加息挨得很密，两档高度还是会叠；用三档轮流放，上、下、更上
+      var slot = idx % 3;
+      var dy = slot === 0 ? -15 : slot === 1 ? 15 : -30;
+      var up = dy < 0;
+      g.strokeStyle = color; g.lineWidth = 1.4;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + dy); g.stroke();
+      g.fillStyle = color;
+      g.beginPath(); g.arc(x, y, 3.4, 0, 7); g.fill();
+      g.font = '600 10px "IBM Plex Mono", monospace';
+      g.textAlign = "center"; g.textBaseline = up ? "bottom" : "top";
+      g.fillText(prefix + String(idx + 1).padStart(2, "0"), x, y + dy + (up ? -2 : 2));
+    });
+  }
+  plot(hikes, "A", "#e02424");
+  plot(cuts, "B", "#0e9f6e");
+}
+
+function niceStep(lo, hi, target) {
+  var raw = (hi - lo) / Math.max(1, target);
+  var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  return [1, 2, 2.5, 5, 10].map(function (m) { return m * mag; })
+    .filter(function (x) { return x >= raw; })[0] || 10 * mag;
 }
 
 /* ---------------- 详情视图 ---------------- */
@@ -1978,7 +2260,7 @@ function applyHash() {
         return;
       }
     }
-    if (["cards", "heat", "cmp", "pf", "sa"].indexOf(raw) >= 0) view = raw;
+    if (["cards", "heat", "cmp", "pf", "sa", "poster"].indexOf(raw) >= 0) view = raw;
     showTab("val");
     $("#valDetail").hidden = true;
     $("#valGrid").hidden = false;

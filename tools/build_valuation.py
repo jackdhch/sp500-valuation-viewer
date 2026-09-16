@@ -82,7 +82,7 @@ def read_anchors(ticker):
 
 
 # 内部代码 → yfinance 代码。黄金期货的代码里有等号，不适合直接当文件名和标的 id
-YF_ALIAS = {"GOLD": "GC=F",
+YF_ALIAS = {"GOLD": "GC=F", "BTC": "BTC-USD",
             # 伯克希尔 B 股在 yfinance 里的代码用横杠不用点，照搬 BRK.B 会查不到
             "BRK.B": "BRK-B"}
 
@@ -412,18 +412,9 @@ def build_gold():
     prices = read_prices("GOLD")
     if not prices:
         return None, "拿不到金价（yfinance GC=F）"
-    cpi_pts = []
-    cpi_path = f"{DATA}/cpi_monthly.csv"
-    if os.path.exists(cpi_path):
-        with open(cpi_path) as f:
-            for r in csv.DictReader(f):
-                try:
-                    cpi_pts.append((datetime.date.fromisoformat(r["date"]), float(r["value"])))
-                except (ValueError, KeyError):
-                    pass
+    cpi_pts = read_cpi()
     if not cpi_pts:
         return None, "缺 data/cpi_monthly.csv"
-    cpi_pts.sort()
 
     spx = {}
     spx_path = f"{DATA}/sp500_index.csv"
@@ -546,6 +537,82 @@ SECTOR_ZH = {
 }
 
 
+# ------------------------------------------------------------------ 比特币
+#
+# 和黄金一样，没有盈利也没有净资产，市盈率市净率不适用。三把尺子：
+#   real      实际价格：名义价按 CPI 折算到当月购买力
+#   vs_gold   一枚比特币值多少盎司黄金——把两种「非生息资产」直接比，
+#             比各自看美元价更能说明相对贵贱
+#   nominal   名义美元价，只作参照；它的分位没有意义（历史上多数时间都在创新高）
+BTC_METRICS = [
+    {"key": "real", "label": "实际价格", "kpi": "实际价格（按今天的购买力）", "unit": " 美元"},
+    {"key": "vs_gold", "label": "BTC ÷ 金价", "kpi": "一枚比特币值多少盎司黄金", "unit": " 盎司"},
+    {"key": "nominal", "label": "名义价格", "kpi": "名义价格", "unit": " 美元"},
+]
+
+
+def build_btc(gold_prices):
+    prices = read_prices("BTC")
+    if not prices:
+        return None, "拿不到比特币价格（yfinance BTC-USD）"
+    cpi_pts = read_cpi()
+    if not cpi_pts:
+        return None, "缺 data/cpi_monthly.csv"
+
+    dates = sorted(prices)
+    cpi = interp(cpi_pts, dates, extend=True)
+    cpi_now = cpi_pts[-1][1]
+    cpi_last = max(d for d, _ in cpi_pts)
+
+    out = {"d": [d.isoformat() for d in dates],
+           "px": [round(prices[d], 2) for d in dates]}
+    nominal, real, vsg = [], [], []
+    for i, d in enumerate(dates):
+        px = prices[d]
+        nominal.append(round(px, 2))
+        c = cpi[i]
+        real.append(round(px / c * cpi_now, 2) if c else None)
+        g = gold_prices.get(d)
+        vsg.append(round(px / g, 3) if (g and px) else None)
+    out["nominal"], out["real"], out["vs_gold"] = nominal, real, vsg
+
+    pct10 = {}
+    for key in ("real", "vs_gold"):
+        p, n, years = fixed_window_percentile(out[key], dates, days=3650)
+        pct10[key] = {"pct": p, "n": n, "years": years, "neg": False,
+                      "status": status_label(p)}
+    pct10["nominal"] = {"pct": None, "n": 0, "years": 0, "neg": False, "status": "不适用"}
+
+    y1 = dates[-1] - datetime.timedelta(days=365)
+    i1 = next((i for i, d in enumerate(dates) if d >= y1), None)
+    chg = (round(100.0 * (real[-1] / real[i1] - 1), 1)
+           if (i1 is not None and real[-1] and real[i1]) else None)
+
+    note = ("比特币没有盈利与净资产，市盈率、市净率不适用。这里用三把尺子："
+            "实际价格（名义价按 CPI 折算到当月购买力，CPI 更新到 "
+            f"{cpi_last.isoformat()}）、一枚比特币值多少盎司黄金、名义美元价。"
+            "名义价的分位没有意义（历史上多数时间都在创新高），不参与高估/低估判断。"
+            "价格用 yfinance 的 BTC-USD，2014 年 9 月起。")
+    return {"series": out, "extrap": {}, "pct10y": pct10, "pe_chg_1y": chg,
+            "anchors": [], "px": round(prices[dates[-1]], 2),
+            "px_date": dates[-1].isoformat(),
+            "first": dates[0].isoformat(), "last": dates[-1].isoformat(),
+            "note": note}, None
+
+
+def read_cpi():
+    pts = []
+    path = f"{DATA}/cpi_monthly.csv"
+    if os.path.exists(path):
+        with open(path) as f:
+            for r in csv.DictReader(f):
+                try:
+                    pts.append((datetime.date.fromisoformat(r["date"]), float(r["value"])))
+                except (ValueError, KeyError):
+                    pass
+    return sorted(pts)
+
+
 def load_etf_snapshot():
     path = f"{VAL}/_etf_snapshot.csv"
     if not os.path.exists(path):
@@ -662,6 +729,22 @@ def main():
         print(f"GOLD   {g['first']}~{g['last']}  名义 ${g['px']}  "
               f"实际金价十年分位={p10.get('pct')}({p10.get('years')}年) {p10.get('status')}")
 
+    # 比特币：拿黄金的价格序列算「一枚比特币值多少盎司黄金」
+    bt, berr = build_btc(read_prices("GOLD"))
+    if bt is None:
+        print(f"BTC    跳过：{berr}")
+    else:
+        payload["meta"]["BTC"] = {
+            "name": "比特币", "peg": "", "mcap": "", "kind": "macro",
+            "note": bt["note"], "metrics": BTC_METRICS,
+            "px": bt["px"], "px_date": bt["px_date"],
+            "first": bt["first"], "last": bt["last"]}
+        payload["data"]["BTC"] = {k: bt.get(k) for k in
+                                  ("series", "extrap", "pct10y", "pe_chg_1y", "anchors")}
+        p10b = bt["pct10y"]["real"]
+        print(f"BTC    {bt['first']}~{bt['last']}  名义 ${bt['px']:,.0f}  "
+              f"实际价十年分位={p10b.get('pct')}({p10b.get('years')}年) {p10b.get('status')}")
+
     # 只给当前值的 ETF
     for t, why in SNAPSHOT_ONLY_ETF.items():
         es = esnap.get(t)
@@ -727,6 +810,43 @@ def main():
 
     attach_sa_analysis(payload)
     write_payload(payload)
+    write_poster_prices()
+
+
+def write_poster_prices():
+    """事件图要用的完整价格序列，单独出一个小文件。
+
+    不能直接用分片里的 px：那条被裁到了估值序列的起点（QQQ 的估值锚点只有 2024-01 起，
+    可价格是 1999 年就有的），画事件图时 2016-2023 那一片加息全落在区间外，图上一个点都看不到。
+    这里从 2015 年起取完整价格，覆盖 2016 年以来的每一次调息。
+    """
+    want = ["VOO", "QQQ", "GOLD", "BTC"]
+    since = datetime.date(2015, 1, 1)
+    out = {}
+    for t in want:
+        prices = read_prices(t)
+        if not prices:
+            continue
+        ds = [d for d in sorted(prices) if d >= since]
+        if len(ds) < 100:
+            continue
+        d0 = ds[0]
+        prev = d0
+        dd = []
+        for d in ds[1:]:
+            dd.append((d - prev).days)
+            prev = d
+        out[t] = {"d0": d0.isoformat(), "dd": dd,
+                  "px": [round(prices[d], 2) for d in ds]}
+    if not out:
+        return
+    path = f"{SITE}/poster_px.js"
+    with open(path, "w") as f:
+        f.write("window.POSTER_PX=")
+        json.dump(out, f, separators=(",", ":"), ensure_ascii=False)
+        f.write(";")
+    print(f"写出 {path}  {os.path.getsize(path)/1024:.0f} KB"
+          f"（事件图用的完整价格：{', '.join(out)}）")
 
 
 def load_fed_events():
