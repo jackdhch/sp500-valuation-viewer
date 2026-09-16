@@ -77,6 +77,7 @@ var cur = { ticker: null, metric: "pe", range: "5y", i0: null, i1: null };
 // 详情页上的两个叠加开关
 var showPrice = false;    // 右轴叠加股价，看「涨是因为赚钱了还是因为变贵了」
 var showAnchors = false;  // 图上标出财季末（每股收益锚点换挡的位置）
+var showFed = false;      // 图上标出美联储调息：加息红、降息绿
 var sortBy = "default", sortDesc = true;
 var trendPlot = null, pctPlot = null;
 var pctSeries = null;      // 当前区间的滚动分位序列，随区间变化重算
@@ -1232,10 +1233,15 @@ function redrawDetail() {
   seg($("#valRanges"), RANGES, function (it) { return it.key === cur.range; },   // custom 时一个都不亮
       function (it) { cur.range = it.key; cur.i0 = null; cur.i1 = null; redrawDetail(); syncHash(false); });
   seg($("#valToggles"),
-      [{ key: "px", label: "叠加股价" }, { key: "anc", label: "标财季末" }],
-      function (it) { return it.key === "px" ? showPrice : showAnchors; },
+      [{ key: "px", label: "叠加股价" }, { key: "anc", label: "标财季末" },
+       { key: "fed", label: "标美联储调息" }],
       function (it) {
-        if (it.key === "px") showPrice = !showPrice; else showAnchors = !showAnchors;
+        return it.key === "px" ? showPrice : it.key === "anc" ? showAnchors : showFed;
+      },
+      function (it) {
+        if (it.key === "px") showPrice = !showPrice;
+        else if (it.key === "anc") showAnchors = !showAnchors;
+        else showFed = !showFed;
         redrawDetail();
       });
   seg($("#valExport"),
@@ -1321,10 +1327,21 @@ function redrawDetail() {
   }
   trendPlot.o.yfmt2 = function (v) { return "$" + (v >= 100 ? Math.round(v) : v.toFixed(1)); };
   // 财季末竖线。注意这是**财季结束日**，不是财报发布日——后者通常还要晚三到六周。
-  trendPlot.o.vmarks = (showAnchors && part.anchors)
-    ? part.anchors.filter(function (i) { return i >= i0 && i <= i1; })
-                  .map(function (i) { return dates[i]; })
-    : null;
+  var marks = [];
+  if (showAnchors && part.anchors) {
+    part.anchors.filter(function (i) { return i >= i0 && i <= i1; })
+      .forEach(function (i) { marks.push({ ds: dates[i] }); });
+  }
+  if (showFed && D.fed) {
+    // 加息红、降息绿；标签直接写幅度，不用去对编号
+    var lo = dates[i0], hi2 = dates[i1];
+    D.fed.events.forEach(function (e) {
+      if (e[0] < lo || e[0] > hi2) return;
+      marks.push({ ds: e[0], color: e[1] > 0 ? "--rich" : "--cheap",
+                   label: (e[1] > 0 ? "+" : "") + e[1] });
+    });
+  }
+  trendPlot.o.vmarks = marks.length ? marks : null;
   pctPlot.o.series[0].data = full;
   window.VPlot.setDates(dates);
   window.VPlot.setRange(i0, i1);
@@ -1336,8 +1353,10 @@ function redrawDetail() {
   renderWhatIf(vals, i0, i1, met, curVal, curPct);
   runBacktest();
 
+  var fedNote = (showFed && D.fed) ? fedSummary(part, dates, i0, i1) : "";
+
   var kindNote = D.meta[cur.ticker].note ? ("口径：" + D.meta[cur.ticker].note + "<br>") : "";
-  $("#valDetailFoot").innerHTML = kindNote +
+  $("#valDetailFoot").innerHTML = fedNote + kindNote +
     "「百分位（当前区间）」= 当前值在 <b>" + spanLabel + "</b> 这段里的排名，换区间就会变；" +
     "估值卡上那个是固定十年窗口的分位（本指标为 " +
     (p10.pct === null || p10.pct === undefined ? "样本不足" : p10.pct + "%，覆盖 " + p10.years + " 年") +
@@ -1774,6 +1793,66 @@ function drawScatter() {
   g.setLineDash([3, 3]); g.lineWidth = 1.2;
   g.beginPath(); g.moveTo(X(btTh) + .5, pad.t); g.lineTo(X(btTh) + .5, h - pad.b); g.stroke();
   g.setLineDash([]);
+}
+
+/* 调息之后这只标的实际怎么走的。
+   那张广为流传的图想说的就是「利率上调 ≠ 股价必跌」，这里直接把数算出来，
+   而不是让人对着图自己感觉。 */
+function fedSummary(part, dates, i0, i1) {
+  if (!D.fed || !part.px) return "";
+  var pos = {};
+  for (var i = 0; i < dates.length; i++) pos[dates[i]] = i;
+  var HOLD = 60;      // 约三个月交易日
+  function stat(dir) {
+    var rets = [];
+    D.fed.events.forEach(function (e) {
+      if ((dir > 0) !== (e[1] > 0)) return;
+      if (e[0] < dates[i0] || e[0] > dates[i1]) return;
+      var a = pos[e[0]];
+      if (a === undefined) {           // 调息日不是交易日，取之后最近一个
+        for (var k = i0; k <= i1; k++) if (dates[k] >= e[0]) { a = k; break; }
+      }
+      if (a === undefined || a + HOLD > i1) return;
+      var p0 = part.px[a], p1 = part.px[a + HOLD];
+      if (p0 && p1) rets.push((p1 / p0 - 1) * 100);
+    });
+    if (!rets.length) return null;
+    var up = rets.filter(function (x) { return x > 0; }).length;
+    return { n: rets.length,
+             mean: rets.reduce(function (a2, b) { return a2 + b; }, 0) / rets.length,
+             win: up / rets.length * 100 };
+  }
+  var h = stat(1), c = stat(-1);
+  if (!h && !c) return "";
+  function fmt2(s2, name) {
+    if (!s2) return name + "：区间内样本不足";
+    return name + " " + s2.n + " 次，其后 3 个月平均 <b style='color:" +
+      (s2.mean > 0 ? "var(--cheap)" : "var(--rich)") + "'>" +
+      (s2.mean > 0 ? "+" : "") + s2.mean.toFixed(1) + "%</b>，上涨占 " + s2.win.toFixed(0) + "%";
+  }
+  // 完整清单折起来放，想核对日期的人点开就有，不占详情页的版面
+  var ev = D.fed.events;
+  var hikes = ev.filter(function (e) { return e[1] > 0; });
+  var cuts = ev.filter(function (e) { return e[1] < 0; });
+  function col(list, title, color) {
+    return "<div style='flex:1;min-width:190px'><div style='font-weight:600;color:" + color +
+      ";margin-bottom:4px'>" + title + " " + list.length + " 次</div>" +
+      list.map(function (e) {
+        return "<div style='display:flex;justify-content:space-between;padding:1px 0'>" +
+          "<span>" + esc(e[0]) + "</span><span style='color:" + color + "'>" +
+          (e[1] > 0 ? "+" : "") + e[1] + "bp</span></div>";
+      }).join("") + "</div>";
+  }
+  var total = hikes.reduce(function (a2, e) { return a2 + e[1]; }, 0);
+
+  return "<b>调息之后这只标的怎么走</b>（当前区间内）：" +
+    fmt2(h, "加息") + "；" + fmt2(c, "降息") + "。<br>" +
+    "红线加息、绿线降息，标签是幅度（基点）。" + esc(D.fed.note).replace(/\*\*/g, "") +
+    "<details style='margin-top:6px'><summary style='cursor:pointer;color:var(--accent)'>" +
+    "看完整调息清单（2016 年以来 " + ev.length + " 次，加息累计 +" + total + "bp）</summary>" +
+    "<div style='display:flex;gap:26px;flex-wrap:wrap;margin-top:8px'>" +
+    col(hikes, "加息", "var(--rich)") + col(cuts, "降息", "var(--cheap)") +
+    "</div></details>";
 }
 
 /* ---------------- 导出 ---------------- */

@@ -207,21 +207,24 @@ class Plot {
 
     // 操作者标注的低点：竖线
     if (this.o.vmarks) {
-      const vis = this.o.vmarks.map(ds => ({ ds, i: D.indexOf(ds) }))
+      const vis = this.o.vmarks
+        .map(m => (typeof m === "string" ? { ds: m } : m))
+        .map(m => ({ ds: m.ds, color: m.color, label: m.label, i: D.indexOf(m.ds) }))
         .filter(o => o.i >= state.r0 && o.i <= state.r1).sort((a, c) => a.i - c.i);
       g.font = '10px "IBM Plex Mono", monospace'; g.textAlign = "center"; g.textBaseline = "bottom";
       const showLabels = (state.r1 - state.r0) <= 1500;   // 区间太长时标签会挤成一团
       vis.forEach((o, k) => {
         const x = Math.round(this.xOf(o.i)) + .5;
-        g.save(); g.setLineDash([2, 3]); g.strokeStyle = cssv("--ink-3"); g.lineWidth = 1;
+        g.save(); g.setLineDash([2, 3]);
+        g.strokeStyle = o.color ? cssv(o.color) : cssv("--ink-3"); g.lineWidth = 1;
         g.beginPath(); g.moveTo(x, t); g.lineTo(x, this.h - b); g.stroke(); g.restore();
         if (!showLabels) return;
         // 相邻标签交替两行，避免挤在一起
         const ly = this.h - b - 2 - (k % 2) * 12;
-        const lbl = o.ds.slice(2);
+        const lbl = o.label || o.ds.slice(2);
         const w = g.measureText(lbl).width + 6;
         g.fillStyle = cssv("--surface"); g.fillRect(x - w / 2, ly - 10, w, 11);
-        g.fillStyle = cssv("--ink-3"); g.fillText(lbl, x, ly);
+        g.fillStyle = o.color ? cssv(o.color) : cssv("--ink-3"); g.fillText(lbl, x, ly);
       });
       g.textAlign = "right"; g.textBaseline = "middle"; g.font = '11px "IBM Plex Mono", monospace';
     }

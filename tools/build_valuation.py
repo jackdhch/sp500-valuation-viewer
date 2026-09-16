@@ -729,6 +729,40 @@ def main():
     write_payload(payload)
 
 
+def load_fed_events():
+    """读 data/fed_rate_changes.csv（由 scripts/fetch_fed.py 从 FRED 反推而来）。
+
+    只取 2016 年以来的，早于此的价格数据大多也没有，摆上去是空的。
+    事件压成 [日期, 基点] 的紧凑数组，省得在索引里塞一堆字段名。
+    """
+    path = f"{DATA}/fed_rate_changes.csv"
+    if not os.path.exists(path):
+        return None
+    try:
+        rows = list(csv.DictReader(open(path)))
+    except (OSError, csv.Error):
+        return None
+    ev = []
+    for r in rows:
+        d = r.get("effective_date") or ""
+        if d < "2016-01-01":
+            continue
+        try:
+            ev.append([d, int(r["bp"])])
+        except (ValueError, KeyError, TypeError):
+            continue
+    if not ev:
+        return None
+    return {
+        "events": ev,
+        # 这条口径差异必须写在页面上，不能让人以为这就是 FOMC 的公布日
+        "note": ("日期是**生效日**：美联储用的 DFEDTARU 序列记的是新利率生效那天，"
+                 "而新闻和图表通常标 FOMC 的公布日，两者差一个工作日"
+                 "（会议当天下午宣布，次日生效）。幅度由相邻两天的目标利率上限之差算出，"
+                 "不是手抄的会议纪要。"),
+    }
+
+
 def summarize_momentum():
     """把「入选前一年涨了多少」汇总一下。
 
@@ -847,6 +881,13 @@ def attach_sa_analysis(payload):
                         row["px_chg"] = round((row["cur_px"] / row["at_px"] - 1) * 100, 1)
             rows.append(row)
         out[fname.replace("_sa_", "").replace(".json", "")] = {"label": label, "rows": rows}
+    fed = load_fed_events()
+    if fed:
+        payload["fed"] = fed
+        print(f"美联储调息事件 {len(fed['events'])} 次（2016 年以来），"
+              f"加息 {sum(1 for e in fed['events'] if e[1] > 0)} 次、"
+              f"降息 {sum(1 for e in fed['events'] if e[1] < 0)} 次")
+
     mom = summarize_momentum()
     if mom:
         out["momentum"] = mom
