@@ -58,7 +58,21 @@ jobs:
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add valuation_index.js v/ alerts_state.json
+          # 每天的数据更新也要让开着页面的人知道，所以顺手把 version.json 的数据日期改掉
+          python - <<'EOF'
+import json, os
+p = "version.json"
+v = {}
+if os.path.exists(p):
+    try:
+        v = json.load(open(p))
+    except Exception:
+        v = {}
+s = open("valuation_index.js").read()
+v["data"] = json.loads(s[s.index("=") + 1:].rstrip().rstrip(";"))["built"]
+json.dump(v, open(p, "w"), ensure_ascii=False, indent=1)
+EOF
+          git add valuation_index.js v/ alerts_state.json version.json
           # 分片加起来十几兆，价格天天变就等于天天全量改一遍。
           # 要是每天都留一个提交，一年下来仓库会涨到几个 G，所以把连续的数据提交
           # 折叠成一个：上一个提交如果也是自动更新，就 amend 掉再强推。
