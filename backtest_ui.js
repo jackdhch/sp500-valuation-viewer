@@ -53,6 +53,40 @@ function render(D) {
     h += "<div class='btsec'><h2>" + esc(g.title) + "</h2>" +
          "<div class='btdesc'>" + esc(g.desc) + "</div>";
 
+    if (g.priors) {
+      var base = g.priors[0];
+      h += "<div class='btwrap2'><table><tr><th>策略</th><th class='r'>触发天数</th>" +
+           "<th class='r'>一年后平均</th><th class='r'>中位</th><th class='r'>胜率</th>" +
+           "<th class='r'>对基准</th></tr>";
+      g.priors.forEach(function (o) {
+        var isBase = o === base;
+        var gap = isBase ? null : Math.round((o.mean - base.mean) * 10) / 10;
+        h += "<tr" + (isBase ? " class='kindrow'" : "") + ">" +
+          "<td><b>" + esc(o.name) + "</b><br><span class='sub'>" + esc(o.desc) + "</span></td>" +
+          "<td class='r'>" + o.n + "</td>" +
+          "<td class='r'>" + pct(o.mean) + "</td>" +
+          "<td class='r'>" + pct(o.med) + "</td>" +
+          "<td class='r'>" + o.win + "%</td>" +
+          "<td class='r'>" + (gap === null ? "—" :
+            "<span class='" + (gap > 0 ? "pos" : gap < 0 ? "neg" : "") + "'>" +
+            (gap > 0 ? "+" : "") + gap.toFixed(1) + "pp</span>") + "</td></tr>";
+      });
+      h += "</table></div>";
+      h += "<div class='btnote'>" +
+        "<b>读这张表要小心三件事。</b><br>" +
+        "一、<b>触发天数不是独立样本</b>。「回撤 20% 以上」那 " +
+        (g.priors[3] ? g.priors[3].n : "几百") + " 天几乎全挤在 2008、2020 那几次里，" +
+        "相邻两天的持有期重叠 99%，实际上只相当于三四次独立事件。它那个漂亮的平均值" +
+        "说的是「那几次危机之后一年涨得多」，不是「这个规则可靠」。<br>" +
+        "二、<b>平均和中位打架的地方要看中位</b>。「回撤 10% 以上」平均只有 " +
+        (g.priors[2] ? g.priors[2].mean : "") + "%、低于基准，中位却有 " +
+        (g.priors[2] ? g.priors[2].med : "") + "%、高于基准——" +
+        "说明它多数时候还行，但少数几次亏得特别狠（2008 那种），把平均拖下去了。<br>" +
+        "三、<b>定投和基准完全一样不是巧合</b>。每月买一次本来就是在时间轴上均匀采样，" +
+        "它的期望就等于「随机挑一天买」。定投的价值从来不在提高收益，在于让人真的买得下去。" +
+        "</div>";
+    }
+
     if (g.kinds) {
       h += "<div class='btwrap2'><table><tr><th>周期类型</th><th class='r'>次数</th>" +
            "<th class='r'>平均收益</th><th class='r'>中位</th><th class='r'>最差</th>" +
