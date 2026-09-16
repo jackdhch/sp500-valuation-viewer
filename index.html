@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh" data-public="1" data-build="202609161150">
+<html lang="zh" data-public="1" data-build="202609161153">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -74,6 +74,16 @@ main{max-width:1360px;margin:0 auto;padding:16px}
 .tabs button{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px}
 .tabs button:hover{background:var(--hover)}
 .tabs button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+
+/* ---------- 新版本提示条 ---------- */
+.verbar{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:60;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:11px 16px;box-shadow:0 10px 32px rgba(0,0,0,.22);font-size:13px;max-width:92vw}
+.verbar button{border:1px solid var(--line);background:var(--panel);border-radius:8px;
+  padding:5px 12px;cursor:pointer;font-size:13px}
+.verbar button.go{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.verbar label{display:flex;align-items:center;gap:5px;color:var(--ink3);font-size:12px;cursor:pointer}
 
 /* ---------- 首屏加载提示 ---------- */
 #boot{padding:64px 16px;text-align:center;color:var(--ink3);font-size:14px;line-height:2}
@@ -769,9 +779,9 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
 <!-- viewer_data.js（2.8 MB）与 viewer.js 不在这里加载：
      它们是「低点信号」页签才用得上的，点到那个页签时由 valuation.js 动态插入。
      首屏只需要 11 KB 的估值索引，这样页面几乎是秒开的。 -->
-<script src="valuation_index.js?v=202609161150"></script>
-<script src="plot.js?v=202609161150"></script>
-<script src="valuation.js?v=202609161150"></script>
+<script src="valuation_index.js?v=202609161153"></script>
+<script src="plot.js?v=202609161153"></script>
+<script src="valuation.js?v=202609161153"></script>
 
 </body>
 </html>

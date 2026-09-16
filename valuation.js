@@ -2278,6 +2278,85 @@ function applyHash() {
 
 window.addEventListener("hashchange", applyHash);
 
+/* ---------------- 新版本提醒 ----------------
+ *
+ * 这个站是纯静态的，页面一旦打开就不会自己变。改完代码推上去，正开着页面的人
+ * 还在跑旧的那份——排序修好之后对方看到的仍是旧行为，就是这么来的。
+ *
+ * 做法：部署时写一个很小的 version.json（构建号 + 数据日期），页面每 5 分钟拉一次，
+ * 对不上就在顶部弹一条提示。
+ *
+ * 为什么不直接替人刷新：刷新会丢掉正在填的组合、拖了一半的区间、展开的对比选择。
+ * 所以默认只提示、点一下才刷；勾上「以后自动」的人才替他刷。
+ */
+var VER_URL = "version.json";
+var VER_EVERY = 5 * 60 * 1000;
+var verBar = null;
+
+function myVersion() {
+  return { build: document.documentElement.dataset.build || "", data: D.built || "" };
+}
+
+function showVerBar(remote) {
+  if (verBar) return;
+  var auto = false;
+  try { auto = localStorage.getItem("sv_autoreload") === "1"; } catch (e) { /* 隐私模式 */ }
+  var codeChanged = remote.build && remote.build !== myVersion().build;
+
+  if (auto) { doReload(remote); return; }
+
+  verBar = document.createElement("div");
+  verBar.className = "verbar";
+  verBar.innerHTML =
+    "<span>" + (codeChanged ? "页面有新版本" : "数据已更新到 " + esc(remote.data)) + "</span>" +
+    "<button class='go'>立即刷新</button>" +
+    "<label><input type='checkbox' class='au'> 以后自动刷新</label>" +
+    "<button class='later'>稍后</button>";
+  document.body.appendChild(verBar);
+  verBar.querySelector(".go").addEventListener("click", function () { doReload(remote); });
+  verBar.querySelector(".later").addEventListener("click", function () {
+    verBar.remove(); verBar = null;
+  });
+  verBar.querySelector(".au").addEventListener("change", function (e) {
+    try { localStorage.setItem("sv_autoreload", e.target.checked ? "1" : "0"); } catch (err) { /* 同上 */ }
+    if (e.target.checked) doReload(remote);
+  });
+}
+
+function doReload(remote) {
+  // 给地址挂上新构建号再刷：GitHub Pages 对 HTML 也有缓存，
+  // 直接 reload 有可能又拿回旧的那份 HTML，连带又是旧脚本。
+  var u = location.pathname + "?b=" + encodeURIComponent(remote.build || Date.now()) + location.hash;
+  location.replace(u);
+}
+
+function checkVersion() {
+  if (document.hidden) return;          // 页面在后台就别打扰服务器
+  fetch(VER_URL + "?t=" + Date.now(), { cache: "no-store" })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (v) {
+      if (!v) return;
+      var mine = myVersion();
+      if ((v.build && mine.build && v.build !== mine.build) ||
+          (v.data && mine.data && v.data !== mine.data)) {
+        showVerBar(v);
+      }
+    })
+    .catch(function () { /* 拉不到就算了，下次再说 */ });
+}
+
+function startVersionWatch() {
+  // 进来时地址上如果挂着刷新用的 ?b=，清掉，别留在地址栏里碍眼
+  if (/[?&]b=/.test(location.search)) {
+    try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) { /* 忽略 */ }
+  }
+  setTimeout(checkVersion, 20000);      // 开页面 20 秒后先看一次
+  setInterval(checkVersion, VER_EVERY);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) checkVersion();   // 切回这个标签页时顺手看一眼
+  });
+}
+
 /* ---------------- 顶栏搜索 ----------------
  *
  * 那个搜索框原本归 viewer.js 管，只认低点信号页里那五个标的。但 viewer.js 现在是
@@ -2570,6 +2649,7 @@ try {
 } catch (e) { /* 同上 */ }
 
 setupSearch();
+startVersionWatch();
 renderGrid();
 if (location.hash) applyHash();
 
