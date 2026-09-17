@@ -1,0 +1,561 @@
+<title>标普500 买点位置</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Libre+Franklin:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#f5f6f7; --surface:#ffffff; --surface-2:#edeff1; --sunken:#e6e9eb;
+  --ink:#111417; --ink-2:#565e66; --ink-3:#868e97; --line:#e0e3e7; --line-2:#c9ced4;
+  --live:#12876a; --decay:#c2531f; --dead:#7d858e;
+  --live-bg:#e3f4ee; --decay-bg:#fbeee6; --dead-bg:#eef0f2;
+  --accent:#4a3aa7; --accent-soft:#eceafa;
+  --pos:#2a78d6; --neg:#c53b3a;
+  --fs:"Libre Franklin","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --fm:"JetBrains Mono","SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1113; --surface:#171b1e; --surface-2:#1f2428; --sunken:#121619;
+  --ink:#e9edf0; --ink-2:#9aa3ab; --ink-3:#6b737b; --line:#262c31; --line-2:#39424a;
+  --live:#199e70; --decay:#d95926; --dead:#6b737b;
+  --live-bg:#102c23; --decay-bg:#2e1b11; --dead-bg:#1d2226;
+  --accent:#9085e9; --accent-soft:#1d1a34;
+  --pos:#3987e5; --neg:#e66767;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1113; --surface:#171b1e; --surface-2:#1f2428; --sunken:#121619;
+  --ink:#e9edf0; --ink-2:#9aa3ab; --ink-3:#6b737b; --line:#262c31; --line-2:#39424a;
+  --live:#199e70; --decay:#d95926; --dead:#6b737b;
+  --live-bg:#102c23; --decay-bg:#2e1b11; --dead-bg:#1d2226;
+  --accent:#9085e9; --accent-soft:#1d1a34;
+  --pos:#3987e5; --neg:#e66767;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--fs);line-height:1.72;margin:0;font-size:15px;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:0 76px}
+h1,h2,h3{text-wrap:balance;margin:0}
+.eyebrow{font-family:var(--fm);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);font-weight:500}
+header{padding-block:46px 26px;border-bottom:3px solid var(--ink)}
+h1{font-size:clamp(30px,5.6vw,50px);line-height:1.08;font-weight:800;letter-spacing:-.025em;margin-block:12px 14px}
+.sub{color:var(--ink-2);max-width:60ch;font-size:16px}
+.meta{font-family:var(--fm);font-size:11px;color:var(--ink-3);margin-top:18px;display:flex;flex-wrap:wrap;gap:5px 16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);margin-top:26px}
+.stat{background:var(--surface);padding:15px 16px}
+.stat .k{font-family:var(--fm);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.stat .v{font-size:32px;font-weight:800;line-height:1.08;margin-top:6px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat .d{font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.45}
+.stat .v.live{color:var(--live)} .stat .v.dead{color:var(--dead)} .stat .v.decay{color:var(--decay)}
+section{padding-block:50px 0}
+.shead{display:flex;gap:13px;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:9px;margin-bottom:22px}
+.snum{font-family:var(--fm);font-size:11.5px;font-weight:600;color:var(--accent);letter-spacing:.05em}
+.shead h2{font-size:clamp(19px,3.1vw,26px);font-weight:700;letter-spacing:-.015em}
+p{margin:0 0 15px;max-width:68ch}
+.lead{font-size:16.5px}
+strong{font-weight:650}
+em{font-style:normal;background:var(--accent-soft);padding:1px 5px;border-radius:2px;font-weight:500}
+.num{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:.93em}
+figure{margin:24px 0;background:var(--surface);border:1px solid var(--line);padding:17px 17px 13px}
+figcaption{font-size:12.5px;color:var(--ink-2);margin-top:11px;padding-top:10px;border-top:1px solid var(--line);line-height:1.6}
+.figtitle{font-size:15px;font-weight:650;margin-bottom:2px}
+.figsub{font-size:12.5px;color:var(--ink-2);margin-bottom:13px}
+.chartbox{position:relative;width:100%}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--fm);font-variant-numeric:tabular-nums}
+.ax{fill:var(--ink-3);font-size:10.5px}
+.axb{fill:var(--ink-2);font-size:11px}
+.vl{fill:var(--ink-2);font-size:10px}
+.gl{stroke:var(--line);stroke-width:1}
+.zl{stroke:var(--line-2);stroke-width:1.5}
+.hit{fill:transparent;cursor:crosshair}
+.tt{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-family:var(--fm);font-size:11.5px;
+  padding:7px 9px;line-height:1.55;border-radius:3px;white-space:nowrap;z-index:9;opacity:0;transition:opacity .09s;
+  box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 17px;font-size:12.5px;color:var(--ink-2);margin-bottom:11px;align-items:center}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.sw{width:11px;height:11px;border-radius:2px;flex:none}
+.tabs{display:flex;margin-bottom:13px;border:1px solid var(--line-2);width:fit-content;max-width:100%;flex-wrap:wrap}
+.tabs button{font-family:var(--fm);font-size:11.5px;padding:6px 12px;background:transparent;border:0;
+  border-right:1px solid var(--line-2);color:var(--ink-2);cursor:pointer}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:500}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tablewrap{overflow-x:auto;margin:20px 0;border:1px solid var(--line);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:620px}
+th,td{padding:7px 11px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--fm);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:500;text-align:right;background:var(--surface-2)}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--fm);font-variant-numeric:tabular-nums}
+td.t{font-family:var(--fs);white-space:normal;min-width:190px}
+tbody tr:hover{background:var(--surface-2)}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+/* 状态标签：颜色 + 文字 + 符号，不依赖单一通道 */
+.tag{display:inline-flex;align-items:center;gap:4px;font-family:var(--fm);font-size:10.5px;font-weight:600;
+  padding:2px 7px;border-radius:2px;letter-spacing:.03em;white-space:nowrap}
+.tag.live{background:var(--live-bg);color:var(--live)}
+.tag.decay{background:var(--decay-bg);color:var(--decay)}
+.tag.dead{background:var(--dead-bg);color:var(--dead)}
+.note{border-left:3px solid var(--accent);background:var(--surface);padding:14px 17px;margin:20px 0}
+.note.warn{border-left-color:var(--decay)}
+.note.kill{border-left-color:var(--dead)}
+.note .nt{font-family:var(--fm);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.note p:last-child{margin-bottom:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:13px;margin:22px 0}
+.card{background:var(--surface);border:1px solid var(--line);padding:15px 16px}
+.card .ct{font-family:var(--fm);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:7px}
+.card .cv{font-size:24px;font-weight:750;letter-spacing:-.015em;line-height:1.2;margin-bottom:6px}
+.card p{font-size:12.5px;color:var(--ink-2);margin:0;line-height:1.58}
+.src{font-size:13px;color:var(--ink-2);border-top:1px solid var(--line);padding-top:15px;margin-top:8px}
+.src ol{padding-left:20px;margin:0} .src li{margin-bottom:6px}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+.foot{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3);line-height:1.7}
+@media (max-width:600px){
+  body{font-size:14.5px} .stat .v{font-size:26px} figure{padding:13px 11px 11px} .wrap{padding-inline:16px}
+  td.t{min-width:150px}
+}
+</style><style>
+/* 本页专用：三档收益语义色。蓝=达到实际 3% 目标，橙=正但不达标，红=亏损 */
+:root{ --good:#2a78d6; --mid:#c2531f; --bad:#c53b3a; --band:#9aa3ab; }
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){ --good:#4b93e8; --mid:#e0722f; --bad:#e66767; --band:#6b737b; }}
+:root[data-theme="dark"]{ --good:#4b93e8; --mid:#e0722f; --bad:#e66767; --band:#6b737b; }
+.s-good{fill:var(--good)} .s-mid{fill:var(--mid)} .s-bad{fill:var(--bad)}
+.ln-nav{fill:none;stroke:var(--ink);stroke-width:1.1}
+.ln-mid{fill:none;stroke:var(--accent);stroke-width:1.4}
+.bd1{fill:var(--accent);opacity:.17} .bd2{fill:var(--accent);opacity:.08}
+.ln-p50{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-dasharray:5 3}
+.ln-p10{fill:none;stroke:var(--ink);stroke-width:2}
+.ln-now{stroke:var(--mid);stroke-width:1.6}
+.ln-ref{stroke:var(--line-2);stroke-width:1;stroke-dasharray:3 3}
+.band-fill{fill:var(--band);opacity:.16}
+.band-fill2{fill:var(--band);opacity:.3}
+.ln-med{fill:none;stroke:var(--accent);stroke-width:2}
+.dotm{fill:var(--accent)}
+.nowline{stroke:var(--mid);stroke-width:1.6;stroke-dasharray:4 3}
+tr.hl td{background:var(--accent-soft);font-weight:600}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:22px 0}
+.kv div{background:var(--surface);padding:13px 15px}
+.kv .k{font-family:var(--fm);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.kv .v{font-size:19px;font-weight:700;margin-top:5px;font-variant-numeric:tabular-nums}
+</style>
+<div class="wrap">
+<header>
+  <div class="eyebrow">标普500 · 1871–2026 · 月频 · 实际全收益（含股息、已扣通胀）</div>
+  <h1>买点位置</h1>
+  <p class="sub">同样是买标普500，买在什么位置，会把之后十几年的年化收益拉开好几个百分点。
+  这一页用 155 年、<span class="num" id="nMonths"></span> 个月的数据把这件事量化：
+  <strong>先看持有周期能解决多少问题，再看买点位置能解释多少剩下的部分。</strong></p>
+  <div class="meta">
+    <span id="mRange"></span><span id="mSpx"></span><span>口径与脚本见页末</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="k">当前位置</div><div class="v" id="kZ"></div><div class="d">相对累计样本趋势线的标准差偏离</div></div>
+  <div class="stat"><div class="k">同档买点 · 持有15年</div><div class="v" id="kM15"></div><div class="d">历史中位数（实际年化），最坏 10% 见下</div></div>
+  <div class="stat"><div class="k">同档买点 · 持有20年</div><div class="v" id="kM20"></div><div class="d">历史中位数（实际年化）</div></div>
+  <div class="stat"><div class="k">回到 +1.00σ 需要</div><div class="v" id="kPx"></div><div class="d" id="kPxD"></div></div>
+</div>
+
+<section>
+<div class="shead"><span class="snum">01</span><h2>这一页用的是什么数</h2></div>
+<p class="lead">全部建立在一条序列上：<strong>标普500 的实际全收益净值</strong>——股息全部再投资、再扣掉通胀，
+1871 年 1 月记作 1。到今天是 <span class="num" id="pTotal"></span> 倍，
+折合实际年化 <span class="num" id="pReal"></span>%、名义年化 <span class="num" id="pNom"></span>%。</p>
+<p>为什么一定要用这个口径：只看指数点位会漏掉股息（一百多年里股息是总收益的大头），
+只看名义收益会把通胀当成赚钱。<em>唯一有意义的问题是「这笔钱的购买力变成了多少」</em>，
+所以下面所有的年化都是实际年化。需要换算时记住：<strong>实际 3% ≈ 名义 5~6%</strong>。</p>
+<div class="note">
+<div class="nt">买点年化是怎么算的</div>
+<p>从 1871 年 1 月起，<strong>每个月都当成一个独立的买点</strong>：这个月一次性买入，持有 N 年后卖出，
+把净值比值开 N 次方，得到这一个买点的年化。然后逐月往后滚。
+所以最后一个能出数的买点是「今天往前推 N 年」——持有 15 年这条线，最新的买点停在 15 年前。</p>
+</div>
+</section>
+
+<section>
+<div class="shead"><span class="snum">02</span><h2>第一层：持有周期</h2></div>
+<p class="lead">九种持有周期，每一种都把全部买点的年化从高到低排开。
+三件事一眼可见：<strong>中位数一直在 7% 上下不动；周期越长分布越窄；周期越长下限越高。</strong></p>
+<figure>
+  <div class="figtitle">不同持有周期下，全部买点的实际年化分布</div>
+  <div class="figsub">灰带是第 10–90 分位，深灰带是第 25–75 分位，虚线端点是历史最高/最低，圆点连线是中位数</div>
+  <div class="chartbox"><div id="c1"></div></div>
+  <figcaption>持有 3 年时，最好的买点年化 +39.2%、最差 −35.2%，相差 74 个百分点；
+  持有 30 年时这个区间收窄到 +11.2% 与 +1.9%。买点的运气成分随着时间被摊薄，但没有消失。</figcaption>
+</figure>
+<div class="tablewrap"><table>
+<thead><tr><th>持有</th><th>样本</th><th>最低</th><th>P10</th><th>中位数</th><th>P90</th><th>最高</th><th>亏损占比</th><th>低于实际3%</th></tr></thead>
+<tbody id="tbHor"></tbody>
+</table></div>
+<p><strong>20 年是一道坎。</strong>155 年里持有满 20 年的买点几乎没有亏过（比例 <span class="num" id="pLoss20"></span>%，
+且全部落在 1920 年之前）；25 年以上没有一个买点亏损，低于实际 3% 的也只剩零星几个。
+反过来，<strong>持有 15 年仍有 <span class="num" id="pLoss15"></span>% 的买点是亏的</strong>——这就是下面要处理的问题。</p>
+</section>
+
+<section>
+<div class="shead"><span class="snum">03</span><h2>第二层：买点位置</h2></div>
+<p class="lead">把净值画在对数坐标上，它围着一条隐形的直线上下摆动。
+这条线的斜率是 <span class="num" id="pSlope"></span>%/年，和上面那些中位数几乎是同一个数。
+偏离这条线多远，用标准差来量。</p>
+<div class="note">
+<div class="nt">一条必须守住的规矩：不许用未来数据</div>
+<p>趋势线不是拿 155 年整段数据拟合出来、再回头去评判 1930 年的位置的——那样 1930 年的人根本算不出这条线。
+这里用的是<strong>累计样本</strong>：每个月的趋势线和标准差，都只用这个月以及之前的数据算。
+所以图上每一个 σ 读数，<em>都是当时就能算出来的数</em>。这也是为什么早年那一段的带子特别窄——样本还不够。</p>
+</div>
+<figure>
+  <div class="figtitle">实际全收益净值与累计样本的标准差带</div>
+  <div class="figsub">纵轴是对数刻度的倍数（1871-01 = 1 倍）；紫线是趋势中枢，两层带分别是 ±1σ 与 ±2σ</div>
+  <div class="chartbox"><div id="c2"></div></div>
+  <figcaption id="cap2"></figcaption>
+</figure>
+</section>
+
+<section>
+<div class="shead"><span class="snum">04</span><h2>把两层放在一起</h2></div>
+<p class="lead">横轴换成买点当时所处的 σ 位置，纵轴是这个买点之后 15 年（或 20 年）的实际年化。
+一个点就是一个月度买点。<strong>整片点云从左上向右下倾斜：买得越贵，之后的年化越低。</strong></p>
+<div class="tabs" id="tabH">
+  <button data-h="15" aria-pressed="true">持有 15 年</button>
+  <button data-h="20" aria-pressed="false">持有 20 年</button>
+</div>
+<figure>
+  <div class="figtitle" id="f3t"></div>
+  <div class="figsub">蓝点 ≥ 实际 3%，橙点 0~3%，红点亏损；虚线是每 0.25σ 档的中位数，实线是每档的第 10 分位（最坏十分之一）；两条线只连样本 ≥ 20 个月的档</div>
+  <div class="legend">
+    <span class="lg"><span class="sw" style="background:var(--good)"></span>达到实际 3%</span>
+    <span class="lg"><span class="sw" style="background:var(--mid)"></span>0~3%，正但不达标</span>
+    <span class="lg"><span class="sw" style="background:var(--bad)"></span>亏损</span>
+    <span class="lg"><span class="sw" style="background:repeating-linear-gradient(to bottom,var(--mid) 0 3px,transparent 3px 5px);height:13px;width:2px;border-radius:0"></span>当前位置</span>
+  </div>
+  <div class="chartbox"><div id="c3"></div></div>
+  <figcaption id="cap3"></figcaption>
+</figure>
+<div class="tablewrap"><table>
+<thead><tr><th>σ 档位</th><th>样本</th><th>15年 中位数</th><th>15年 最坏10%</th><th>20年 中位数</th><th>20年 最坏10%</th></tr></thead>
+<tbody id="tbBin"></tbody>
+</table></div>
+<p>只统计 <strong>1920 年 1 月及以后的买点</strong>。更早的年份累计样本只有几十年，
+算出来的 σ 自成一排，混进来会把分档搞乱。</p>
+<div class="note warn">
+<div class="nt">这张图不能当预测用</div>
+<p>同一个 σ 档里，最好和最差的买点能差七八个百分点——<strong>位置决定的是分布，不是结果</strong>。
+而且 +1σ 以上这些点，155 年里只发生过三段（1929 年前后、1960 年代中期、1990 年代末至今），
+样本之间高度重叠，不是三次独立的实验。把它当成「最坏情况该怎么准备」的参考，而不是「未来会怎样」的答案。</p>
+</div>
+</section>
+
+<section>
+<div class="shead"><span class="snum">05</span><h2>现在在哪，以及跌到哪算便宜</h2></div>
+<p class="lead" id="pNow"></p>
+<div class="kv" id="kvNow"></div>
+<p>把每一档 σ 反解回指数点位就是下面这张表。<strong>注意这些点位不是固定数字。</strong>
+趋势线本身在往上走（实际口径每月 <span class="num" id="pSlopeM"></span>%，加 2.5% 的年通胀假设后名义每月约 0.75%），
+所以同一条 σ 线，明年的点位比今天高。表里最后几列就是这条线在未来若干个月的位置。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>档位</th><th>现在对应点位</th><th>相对现价</th><th>3 个月后</th><th>6 个月后</th><th>12 个月后</th><th>24 个月后</th></tr></thead>
+<tbody id="tbLv"></tbody>
+</table></div>
+<div class="note">
+<div class="nt">这几条线分别意味着什么</div>
+<p><strong>+1.00σ</strong>：历史上这一档往左，持有 15 年的最坏十分之一还守得住实际 3%。
+<strong>+0.50σ</strong>：中位数回到 5% 附近。
+<strong>0σ</strong>：回到趋势线上，中位数回到 7% 一带，也就是这 155 年的常态水平。
+越往下的线越少出现——回到 0σ 意味着从现价跌接近四成，155 年里这种位置并不是每个十年都有。</p>
+</div>
+</section>
+
+<section>
+<div class="shead"><span class="snum">06</span><h2>口径、限制与来源</h2></div>
+<p><strong>净值序列</strong>：1871-01 至 2023-09 用 Robert Shiller 官方数据表的 Real Total Return Price；
+2023-09 之后用标普500 全收益指数（^SP500TR）除以 CPI 接续，接口在 <span class="num">tweaks/build_base.py</span>。
+这一段拼接是本页与原始研究可能出现小幅出入的地方。</p>
+<p><strong>已知限制</strong>：① σ 的有效性本身依赖「均值回归到一条恒定斜率的直线」这个假设，
+155 年成立不等于下一个 15 年成立；② 1920 年以后 +1σ 以上只有三段历史，样本重叠严重；
+③ 本页只描述公开数据的历史分布，<strong>不构成任何买卖建议</strong>。</p>
+<div class="src">
+<ol>
+<li>研究方法复现自 B 站视频《标普500买点的统计性研究与启发》（UP 主 BiangBiangChi，2026-09-09）。
+本页所有数字由本地脚本独立算出，与该视频公布的数字逐项核对过。</li>
+<li>Robert J. Shiller, <em>Irrational Exuberance</em> 配套数据表（月频，1871 起）。</li>
+<li>价格与全收益指数：Yahoo Finance；通胀：美国劳工统计局 CPIAUCSL（经 FRED）。</li>
+<li>计算脚本：<span class="num">analysis/entry_sigma/calc.py</span>。</li>
+</ol>
+</div>
+<div class="foot" id="foot"></div>
+</section>
+</div>
+<script src="data.js?v=202609171047"></script>
+<script>
+(function(){
+var D=window.ENTRY_DATA, M=D.meta;
+var MONTH_DAYS=30.4375;
+
+/* 当前状态：默认用 data.js 里的基准日；页面加载后若站内的每日估值数据更新到了更晚的
+   交易日，就用那一天的收盘价把它顶掉（见文件末尾的 loadLive）。 */
+var S={z:M.z_now, spx:M.spx, date:M.spx_date, drift:0, live:false, src:""};
+
+function el(id){return document.getElementById(id)}
+function n1(x){return x.toFixed(1)}
+function n2(x){return x.toFixed(2)}
+function px(x){return Math.round(x).toLocaleString("en-US")}
+function sgn(x){return (x>=0?"+":"")+n2(x)}
+function svg(w,h,body){return '<svg viewBox="0 0 '+w+' '+h+'" role="img">'+body+'</svg>'}
+
+/* 目标 σ 在「今天」对应的指数点位。趋势线每天都在往上走，所以要带上 drift。 */
+function levelPx(zt){return M.spx*Math.exp((zt-M.z_now)*M.sd_now+S.drift)}
+/* 再往后 m 个月，这条线会走到哪 */
+function levelPxAfter(zt,m){return levelPx(zt)*Math.exp(M.daily_rate*m*MONTH_DAYS)}
+function binAt(h,z){
+  var bs=D.focus[String(h)].bins;
+  for(var i=0;i<bs.length;i++) if(bs[i].lo<=z && z<bs[i].hi) return bs[i];
+  return null;
+}
+
+/* ---------- 不随价格变化的部分 ---------- */
+el("nMonths").textContent=M.months;
+el("mRange").textContent="样本 "+M.start+" ~ "+M.end;
+el("pTotal").textContent=px(M.total_x);
+el("pReal").textContent=M.real_annual;
+el("pNom").textContent=M.nominal_annual;
+el("pSlope").textContent=M.slope_annual;
+el("pSlopeM").textContent=M.slope_monthly;
+var h15=D.horizons.filter(function(h){return h.years===15})[0];
+var h20=D.horizons.filter(function(h){return h.years===20})[0];
+el("pLoss15").textContent=h15.loss;
+el("pLoss20").textContent=h20.loss;
+
+el("tbHor").innerHTML=D.horizons.map(function(h){
+  return "<tr><td class='t'>"+h.years+" 年</td><td>"+h.n+"</td>"+
+    "<td class='"+(h.p0<0?"neg":"pos")+"'>"+n2(h.p0)+"%</td><td>"+n2(h.p10)+"%</td>"+
+    "<td><strong>"+n2(h.p50)+"%</strong></td><td>"+n2(h.p90)+"%</td><td>"+n2(h.p100)+"%</td>"+
+    "<td>"+n2(h.loss)+"%</td><td>"+n2(h.below3)+"%</td></tr>";
+}).join("");
+
+/* ---------- 图 1：持有周期分布（静态） ---------- */
+(function(){
+var H=D.horizons, W=880,HT=380, L=54,R=18,T=18,B=40;
+var lo=-40, hi=45;
+function Y(v){return T+(hi-v)/(hi-lo)*(HT-T-B)}
+var bw=(W-L-R)/H.length;
+function X(i){return L+bw*(i+0.5)}
+var s="";
+for(var g=-40;g<=40;g+=10){
+  s+='<line class="gl" x1="'+L+'" y1="'+Y(g)+'" x2="'+(W-R)+'" y2="'+Y(g)+'"/>';
+  s+='<text class="ax" x="'+(L-7)+'" y="'+(Y(g)+3.5)+'" text-anchor="end">'+g+'%</text>';
+}
+s+='<line class="zl" x1="'+L+'" y1="'+Y(0)+'" x2="'+(W-R)+'" y2="'+Y(0)+'"/>';
+var mid="";
+H.forEach(function(h,i){
+  var x=X(i), w=Math.min(bw*0.54,44);
+  s+='<line class="ln-ref" x1="'+x+'" y1="'+Y(h.p100)+'" x2="'+x+'" y2="'+Y(h.p0)+'"/>';
+  s+='<rect class="band-fill" x="'+(x-w/2)+'" y="'+Y(h.p90)+'" width="'+w+'" height="'+(Y(h.p10)-Y(h.p90))+'"/>';
+  s+='<rect class="band-fill2" x="'+(x-w/2)+'" y="'+Y(h.p75)+'" width="'+w+'" height="'+(Y(h.p25)-Y(h.p75))+'"/>';
+  s+='<line class="ln-ref" x1="'+(x-w/2)+'" y1="'+Y(h.p100)+'" x2="'+(x+w/2)+'" y2="'+Y(h.p100)+'"/>';
+  s+='<line class="ln-ref" x1="'+(x-w/2)+'" y1="'+Y(h.p0)+'" x2="'+(x+w/2)+'" y2="'+Y(h.p0)+'"/>';
+  s+='<text class="ax" x="'+x+'" y="'+(Y(h.p100)-6)+'" text-anchor="middle">'+n1(h.p100)+'</text>';
+  s+='<text class="ax" x="'+x+'" y="'+(Y(h.p0)+13)+'" text-anchor="middle">'+n1(h.p0)+'</text>';
+  s+='<text class="axb" x="'+x+'" y="'+(HT-B+20)+'" text-anchor="middle">'+h.years+' 年</text>';
+  mid+=(i?"L":"M")+x+" "+Y(h.p50);
+});
+s+='<path class="ln-med" d="'+mid+'"/>';
+H.forEach(function(h,i){
+  s+='<circle class="dotm" cx="'+X(i)+'" cy="'+Y(h.p50)+'" r="3.4"><title>持有 '+h.years+' 年：中位数 '+h.p50+'%</title></circle>';
+  s+='<text class="vl" x="'+X(i)+'" y="'+(Y(h.p50)-9)+'" text-anchor="middle">'+n1(h.p50)+'</text>';
+});
+el("c1").innerHTML=svg(W,HT,s);
+})();
+
+/* ---------- 图 2：净值与 σ 带 ---------- */
+function drawC2(){
+var C=D.curve, W=880,HT=400, L=52,R=14,T=16,B=34;
+var n=C.t.length;
+var lg=[0,1,2,3,4,5], lab=["1 倍","10 倍","100 倍","1000 倍","1万倍","10万倍"];
+function X(i){return L+i/(n-1)*(W-L-R)}
+function Y(v){return T+(5.2-v)/(5.2-(-0.35))*(HT-T-B)}
+function lgv(x){return Math.log(x)/Math.LN10}
+var s="";
+lg.forEach(function(g,i){
+  s+='<line class="gl" x1="'+L+'" y1="'+Y(g)+'" x2="'+(W-R)+'" y2="'+Y(g)+'"/>';
+  s+='<text class="ax" x="'+(L-7)+'" y="'+(Y(g)+3.5)+'" text-anchor="end">'+lab[i]+'</text>';
+});
+function bandPath(k){
+  var up="",dn=[],i;
+  for(i=0;i<n;i++){
+    if(C.mid[i]==null||C.sd[i]==null) continue;
+    var m=lgv(C.mid[i]), d=C.sd[i]*k/Math.LN10;
+    up+=(up?"L":"M")+n1(X(i))+" "+n1(Y(m+d));
+    dn.push("L"+n1(X(i))+" "+n1(Y(m-d)));
+  }
+  return up+dn.reverse().join("")+"Z";
+}
+s+='<path class="bd2" d="'+bandPath(2)+'"/>';
+s+='<path class="bd1" d="'+bandPath(1)+'"/>';
+var mp="",np="";
+for(var i=0;i<n;i++){
+  np+=(i?"L":"M")+n1(X(i))+" "+n1(Y(lgv(C.nav[i])));
+  if(C.mid[i]!=null) mp+=(mp?"L":"M")+n1(X(i))+" "+n1(Y(lgv(C.mid[i])));
+}
+s+='<path class="ln-mid" d="'+mp+'"/>';
+s+='<path class="ln-nav" d="'+np+'"/>';
+for(var y=1880;y<=2000;y+=20){
+  var j=(y-1871)*12; if(j<0||j>=n) continue;
+  s+='<text class="axb" x="'+X(j)+'" y="'+(HT-B+20)+'" text-anchor="middle">'+y+'</text>';
+}
+s+='<text class="axb" x="'+(W-R)+'" y="'+(HT-B+20)+'" text-anchor="end">2026</text>';
+var li=n-1;
+s+='<circle cx="'+X(li)+'" cy="'+Y(lgv(C.nav[li]))+'" r="3.6" fill="var(--mid)"/>';
+s+='<text class="vl" x="'+(X(li)-6)+'" y="'+(Y(lgv(C.nav[li]))-8)+'" text-anchor="end" fill="var(--mid)">'+sgn(S.z)+'σ</text>';
+el("c2").innerHTML=svg(W,HT,s);
+el("cap2").textContent="155 年里净值在这条带子里上下摆动，大部分时间落在 ±1σ 之内。"+
+  "最新读数 "+sgn(S.z)+"σ（"+S.date+"），是 1929 年前后、1960 年代中期、1990 年代末之后的第三段明显高于趋势线的时期。";
+}
+
+/* ---------- 图 3：σ 与未来年化 ---------- */
+var cur=15;
+function drawC3(){
+  var F=D.focus[String(cur)], W=880,HT=430, L=52,R=16,T=16,B=38;
+  var zlo=-3.85,zhi=2.85, lo=-6,hi=20;
+  function X(z){return L+(z-zlo)/(zhi-zlo)*(W-L-R)}
+  function Y(v){return T+(hi-v)/(hi-lo)*(HT-T-B)}
+  var s="";
+  for(var g=-5;g<=20;g+=5){
+    s+='<line class="gl" x1="'+L+'" y1="'+Y(g)+'" x2="'+(W-R)+'" y2="'+Y(g)+'"/>';
+    s+='<text class="ax" x="'+(L-7)+'" y="'+(Y(g)+3.5)+'" text-anchor="end">'+g+'%</text>';
+  }
+  for(var z=-3;z<=2;z+=1){
+    s+='<line class="gl" x1="'+X(z)+'" y1="'+T+'" x2="'+X(z)+'" y2="'+(HT-B)+'"/>';
+    s+='<text class="axb" x="'+X(z)+'" y="'+(HT-B+20)+'" text-anchor="middle">'+(z>0?"+":"")+z+'σ</text>';
+  }
+  s+='<line class="zl" x1="'+L+'" y1="'+Y(0)+'" x2="'+(W-R)+'" y2="'+Y(0)+'"/>';
+  s+='<line class="ln-ref" x1="'+L+'" y1="'+Y(3)+'" x2="'+(W-R)+'" y2="'+Y(3)+'"/>';
+  s+='<text class="ax" x="'+(L+5)+'" y="'+(Y(3)-5)+'">实际 3% 目标线</text>';
+  F.points.forEach(function(p){
+    var c=p[1]<0?"s-bad":(p[1]<3?"s-mid":"s-good");
+    s+='<circle class="'+c+'" cx="'+n1(X(p[0]))+'" cy="'+n1(Y(p[1]))+'" r="1.9" opacity=".72"/>';
+  });
+  /* 分位线只连样本足够的档（n>=20）；档位不连续时断开，不跨着空档画线 */
+  var a="",b="",prev=null;
+  F.bins.forEach(function(bn){
+    if(bn.n<20){prev=null;return}
+    var xm=X((bn.lo+bn.hi)/2), cmd=(prev!==null&&Math.abs(bn.lo-prev)<1e-9)?"L":"M";
+    a+=cmd+n1(xm)+" "+n1(Y(bn.p50));
+    b+=cmd+n1(xm)+" "+n1(Y(bn.p10));
+    prev=bn.hi;
+  });
+  s+='<path class="ln-p50" d="'+a+'"/>';
+  s+='<path class="ln-p10" d="'+b+'"/>';
+  s+='<line class="nowline" x1="'+X(S.z)+'" y1="'+T+'" x2="'+X(S.z)+'" y2="'+(HT-B)+'"/>';
+  s+='<text class="vl" x="'+(X(S.z)+6)+'" y="'+(T+12)+'" fill="var(--mid)">现在 '+sgn(S.z)+'σ</text>';
+  if(F.line_break!=null){
+    s+='<line class="zl" x1="'+X(F.line_break)+'" y1="'+T+'" x2="'+X(F.line_break)+'" y2="'+(HT-B)+'"/>';
+    s+='<text class="vl" x="'+(X(F.line_break)-6)+'" y="'+(HT-B-6)+'" text-anchor="end">'+n2(F.line_break)+'σ 起，最坏10% 转亏</text>';
+  }
+  el("c3").innerHTML=svg(W,HT,s);
+  el("f3t").textContent="买点所处的 σ 位置，与之后 "+cur+" 年的实际年化（买点 "+F.first+" ~ "+F.last+"，共 "+F.n+" 个月）";
+  var t="相关系数 "+F.corr+"。这段样本里最差的一个买点是 "+F.worst_at+"，之后 "+cur+" 年实际年化 "+F.worst+"%。";
+  if(F.line_break==null) t+=" 持有 "+cur+" 年在 1920 年以后没有出现过亏损档——任何 σ 位置买入，最坏十分之一也是正的。";
+  else t+=" 第 10 分位线在 "+n2(F.line_break)+"σ 处跌破 0%：再往右，最坏的十分之一买点是亏钱的。";
+  el("cap3").textContent=t;
+}
+
+/* ---------- 随价格变化的读数 ---------- */
+function renderLive(){
+  var b15=binAt(15,S.z), b20=binAt(20,S.z);
+  el("mSpx").textContent="标普500 "+px(S.spx)+"（"+S.date+(S.live?" · "+S.src:"")+"）";
+  el("kZ").textContent=sgn(S.z)+"σ";
+  el("kM15").textContent=(b15?n1(b15.p50):"—")+"%";
+  el("kM20").textContent=(b20?n1(b20.p50):"—")+"%";
+  el("kPx").textContent=px(levelPx(1.0));
+  el("kPxD").textContent="较现价 "+n1(levelPx(1.0)/S.spx*100-100)+"%，且这条线每月还在上移";
+  el("foot").textContent="行情数据截至 "+S.date+"；历史统计基座截至 "+M.end+"。"+
+    "本页只呈现公开数据与其历史分布位置，不构成投资建议。";
+
+  if(b15&&b20){
+    el("pNow").innerHTML="当前位置 <strong>"+sgn(S.z)+"σ</strong>（标普500 "+px(S.spx)+"，"+S.date+"）。"+
+      "1920 年以来落在同一档（"+sgn(b15.lo)+"σ ~ "+sgn(b15.hi)+"σ，共 "+b15.n+" 个月度买点）的历史买点，"+
+      "之后 15 年的实际年化中位数是 <strong>"+n2(b15.p50)+"%</strong>、最坏十分之一 <strong>"+n2(b15.p10)+"%</strong>；"+
+      "之后 20 年的中位数 <strong>"+n2(b20.p50)+"%</strong>、最坏十分之一 <strong>"+n2(b20.p10)+"%</strong>。"+
+      "换成名义口径大致要各加 2~3 个百分点。";
+    el("kvNow").innerHTML=
+      '<div><div class="k">15 年 · 中位数</div><div class="v">'+n2(b15.p50)+'%</div></div>'+
+      '<div><div class="k">15 年 · 最坏10%</div><div class="v'+(b15.p10<0?" neg":"")+'">'+n2(b15.p10)+'%</div></div>'+
+      '<div><div class="k">20 年 · 中位数</div><div class="v">'+n2(b20.p50)+'%</div></div>'+
+      '<div><div class="k">20 年 · 最坏10%</div><div class="v'+(b20.p10<0?" neg":"")+'">'+n2(b20.p10)+'%</div></div>';
+  }
+
+  el("tbLv").innerHTML=D.levels.map(function(l){
+    var p=levelPx(l.z), pct=p/S.spx*100-100;
+    return "<tr><td class='t'>"+sgn(l.z)+"σ</td><td><strong>"+px(p)+"</strong></td>"+
+      "<td class='"+(pct<0?"neg":"pos")+"'>"+n1(pct)+"%</td>"+
+      "<td>"+px(levelPxAfter(l.z,3))+"</td><td>"+px(levelPxAfter(l.z,6))+"</td>"+
+      "<td>"+px(levelPxAfter(l.z,12))+"</td><td>"+px(levelPxAfter(l.z,24))+"</td></tr>";
+  }).join("");
+
+  (function(){
+    var map={};
+    ["15","20"].forEach(function(k){D.focus[k].bins.forEach(function(b){
+      map[b.lo]=map[b.lo]||{lo:b.lo,hi:b.hi};
+      map[b.lo]["n"+k]=b.n; map[b.lo]["p50_"+k]=b.p50; map[b.lo]["p10_"+k]=b.p10;})});
+    var rows=Object.keys(map).map(function(k){return map[k]}).sort(function(a,b){return a.lo-b.lo});
+    el("tbBin").innerHTML=rows.map(function(r){
+      var on=(r.lo<=S.z&&S.z<r.hi);
+      function c(v){return v==null?"—":"<span class='"+(v<0?"neg":"")+"'>"+n2(v)+"%</span>"}
+      return "<tr class='"+(on?"hl":"")+"'><td class='t'>"+sgn(r.lo)+"σ ~ "+sgn(r.hi)+"σ"+(on?" ← 现在":"")+"</td>"+
+        "<td>"+(r.n15||r.n20||"—")+"</td><td>"+c(r.p50_15)+"</td><td>"+c(r.p10_15)+"</td>"+
+        "<td>"+c(r.p50_20)+"</td><td>"+c(r.p10_20)+"</td></tr>";
+    }).join("");
+  })();
+
+  drawC2(); drawC3();
+}
+renderLive();
+
+Array.prototype.forEach.call(document.querySelectorAll("#tabH button"),function(btn){
+  btn.addEventListener("click",function(){
+    cur=+btn.dataset.h;
+    Array.prototype.forEach.call(document.querySelectorAll("#tabH button"),function(o){
+      o.setAttribute("aria-pressed", o===btn?"true":"false")});
+    drawC3();
+  });
+});
+
+/* ---------- 跟上最近一个交易日的收盘价 ----------
+   站内的估值数据每交易日更新一次，里面有 VOO 的收盘价与日期。这里用它乘以
+   data.js 记下的「指数 / VOO」比值，把 σ 位置和各档触发点位推到那一天。
+   用的是**已收盘的交易日**，不是盘中实时价——这一页看的是十几年尺度的位置，
+   盘中跳动没有意义，每天动一次就够。
+   只在那一天确实比基准日更新时才覆盖；文件拿不到、格式不对、日期更旧，一律保持原样。 */
+function loadLive(){
+  if(!M.spx_per_voo||!M.daily_rate) return;
+  var sc=document.createElement("script");
+  sc.src="../valuation_index.js";
+  sc.onload=function(){
+    try{
+      var V=window.VAL_INDEX; if(!V||!V.meta||!V.meta.VOO) return;
+      var v=V.meta.VOO;
+      if(!v.px||!v.px_date) return;
+      var d0=Date.parse(M.spx_date+"T00:00:00Z"), d1=Date.parse(v.px_date+"T00:00:00Z");
+      if(!(d1>d0)) return;                       // 不比基准更新，就不动
+      var days=Math.round((d1-d0)/86400000);
+      var spx=v.px*M.spx_per_voo;
+      if(!(spx>0)) return;
+      S.drift=M.daily_rate*days;
+      S.spx=spx; S.date=v.px_date; S.live=true; S.src="由 VOO 收盘价换算";
+      S.z=M.z_now+(Math.log(spx/M.spx)-S.drift)/M.sd_now;
+      renderLive();
+    }catch(e){/* 任何一步不成立就保持 data.js 里的基准读数 */}
+  };
+  document.head.appendChild(sc);
+}
+loadLive();
+
+/* 主题切换时重绘（两张图里有按数值着色的点） */
+if(window.matchMedia){var mq=window.matchMedia("(prefers-color-scheme: dark)");
+  var re=function(){drawC2();drawC3()};
+  if(mq.addEventListener)mq.addEventListener("change",re);}
+new MutationObserver(function(){drawC2();drawC3()})
+  .observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+})();
+</script>

@@ -19,6 +19,7 @@ var LANG = localStorage.getItem("sv_lang") || "zh";
 /* ============ 文案 ============ */
 var T = {
   title:       ["股票查看器", "Stock Viewer"],
+  entryLink:   ["买点位置", "Entry level"],
   searchPh:    ["搜索股票代码…", "Search ticker…"],
   mCur:        ["当前价格", "Current price"],
   mChg:        ["总涨跌幅", "Total change"],
