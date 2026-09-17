@@ -1,143 +1,31 @@
 <title>标普500 买点位置</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Libre+Franklin:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../lab.css?v=202609171102">
 <style>
-:root{
-  --bg:#f5f6f7; --surface:#ffffff; --surface-2:#edeff1; --sunken:#e6e9eb;
-  --ink:#111417; --ink-2:#565e66; --ink-3:#868e97; --line:#e0e3e7; --line-2:#c9ced4;
-  --live:#12876a; --decay:#c2531f; --dead:#7d858e;
-  --live-bg:#e3f4ee; --decay-bg:#fbeee6; --dead-bg:#eef0f2;
-  --accent:#4a3aa7; --accent-soft:#eceafa;
-  --pos:#2a78d6; --neg:#c53b3a;
-  --fs:"Libre Franklin","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
-  --fm:"JetBrains Mono","SFMono-Regular",Menlo,monospace;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0e1113; --surface:#171b1e; --surface-2:#1f2428; --sunken:#121619;
-  --ink:#e9edf0; --ink-2:#9aa3ab; --ink-3:#6b737b; --line:#262c31; --line-2:#39424a;
-  --live:#199e70; --decay:#d95926; --dead:#6b737b;
-  --live-bg:#102c23; --decay-bg:#2e1b11; --dead-bg:#1d2226;
-  --accent:#9085e9; --accent-soft:#1d1a34;
-  --pos:#3987e5; --neg:#e66767;
-}}
-:root[data-theme="dark"]{
-  --bg:#0e1113; --surface:#171b1e; --surface-2:#1f2428; --sunken:#121619;
-  --ink:#e9edf0; --ink-2:#9aa3ab; --ink-3:#6b737b; --line:#262c31; --line-2:#39424a;
-  --live:#199e70; --decay:#d95926; --dead:#6b737b;
-  --live-bg:#102c23; --decay-bg:#2e1b11; --dead-bg:#1d2226;
-  --accent:#9085e9; --accent-soft:#1d1a34;
-  --pos:#3987e5; --neg:#e66767;
-}
-*{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:var(--fs);line-height:1.72;margin:0;font-size:15px;
-  -webkit-font-smoothing:antialiased}
-.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:0 76px}
-h1,h2,h3{text-wrap:balance;margin:0}
-.eyebrow{font-family:var(--fm);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);font-weight:500}
-header{padding-block:46px 26px;border-bottom:3px solid var(--ink)}
-h1{font-size:clamp(30px,5.6vw,50px);line-height:1.08;font-weight:800;letter-spacing:-.025em;margin-block:12px 14px}
-.sub{color:var(--ink-2);max-width:60ch;font-size:16px}
-.meta{font-family:var(--fm);font-size:11px;color:var(--ink-3);margin-top:18px;display:flex;flex-wrap:wrap;gap:5px 16px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:1px;background:var(--line);
-  border:1px solid var(--line);margin-top:26px}
-.stat{background:var(--surface);padding:15px 16px}
-.stat .k{font-family:var(--fm);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
-.stat .v{font-size:32px;font-weight:800;line-height:1.08;margin-top:6px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.stat .d{font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.45}
-.stat .v.live{color:var(--live)} .stat .v.dead{color:var(--dead)} .stat .v.decay{color:var(--decay)}
-section{padding-block:50px 0}
-.shead{display:flex;gap:13px;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:9px;margin-bottom:22px}
-.snum{font-family:var(--fm);font-size:11.5px;font-weight:600;color:var(--accent);letter-spacing:.05em}
-.shead h2{font-size:clamp(19px,3.1vw,26px);font-weight:700;letter-spacing:-.015em}
-p{margin:0 0 15px;max-width:68ch}
-.lead{font-size:16.5px}
-strong{font-weight:650}
-em{font-style:normal;background:var(--accent-soft);padding:1px 5px;border-radius:2px;font-weight:500}
-.num{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:.93em}
-figure{margin:24px 0;background:var(--surface);border:1px solid var(--line);padding:17px 17px 13px}
-figcaption{font-size:12.5px;color:var(--ink-2);margin-top:11px;padding-top:10px;border-top:1px solid var(--line);line-height:1.6}
-.figtitle{font-size:15px;font-weight:650;margin-bottom:2px}
-.figsub{font-size:12.5px;color:var(--ink-2);margin-bottom:13px}
-.chartbox{position:relative;width:100%}
-svg{display:block;width:100%;height:auto;overflow:visible}
-svg text{font-family:var(--fm);font-variant-numeric:tabular-nums}
-.ax{fill:var(--ink-3);font-size:10.5px}
-.axb{fill:var(--ink-2);font-size:11px}
-.vl{fill:var(--ink-2);font-size:10px}
-.gl{stroke:var(--line);stroke-width:1}
-.zl{stroke:var(--line-2);stroke-width:1.5}
-.hit{fill:transparent;cursor:crosshair}
-.tt{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-family:var(--fm);font-size:11.5px;
-  padding:7px 9px;line-height:1.55;border-radius:3px;white-space:nowrap;z-index:9;opacity:0;transition:opacity .09s;
-  box-shadow:0 4px 14px rgba(0,0,0,.25)}
-.legend{display:flex;flex-wrap:wrap;gap:6px 17px;font-size:12.5px;color:var(--ink-2);margin-bottom:11px;align-items:center}
-.lg{display:inline-flex;align-items:center;gap:6px}
-.sw{width:11px;height:11px;border-radius:2px;flex:none}
-.tabs{display:flex;margin-bottom:13px;border:1px solid var(--line-2);width:fit-content;max-width:100%;flex-wrap:wrap}
-.tabs button{font-family:var(--fm);font-size:11.5px;padding:6px 12px;background:transparent;border:0;
-  border-right:1px solid var(--line-2);color:var(--ink-2);cursor:pointer}
-.tabs button:last-child{border-right:0}
-.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:500}
-.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.tablewrap{overflow-x:auto;margin:20px 0;border:1px solid var(--line);background:var(--surface)}
-table{border-collapse:collapse;width:100%;font-size:13px;min-width:620px}
-th,td{padding:7px 11px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-th{font-family:var(--fm);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);
-  font-weight:500;text-align:right;background:var(--surface-2)}
-th:first-child,td:first-child{text-align:left}
-td{font-family:var(--fm);font-variant-numeric:tabular-nums}
-td.t{font-family:var(--fs);white-space:normal;min-width:190px}
-tbody tr:hover{background:var(--surface-2)}
-.pos{color:var(--pos)} .neg{color:var(--neg)}
-/* 状态标签：颜色 + 文字 + 符号，不依赖单一通道 */
-.tag{display:inline-flex;align-items:center;gap:4px;font-family:var(--fm);font-size:10.5px;font-weight:600;
-  padding:2px 7px;border-radius:2px;letter-spacing:.03em;white-space:nowrap}
-.tag.live{background:var(--live-bg);color:var(--live)}
-.tag.decay{background:var(--decay-bg);color:var(--decay)}
-.tag.dead{background:var(--dead-bg);color:var(--dead)}
-.note{border-left:3px solid var(--accent);background:var(--surface);padding:14px 17px;margin:20px 0}
-.note.warn{border-left-color:var(--decay)}
-.note.kill{border-left-color:var(--dead)}
-.note .nt{font-family:var(--fm);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
-.note p:last-child{margin-bottom:0}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:13px;margin:22px 0}
-.card{background:var(--surface);border:1px solid var(--line);padding:15px 16px}
-.card .ct{font-family:var(--fm);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:7px}
-.card .cv{font-size:24px;font-weight:750;letter-spacing:-.015em;line-height:1.2;margin-bottom:6px}
-.card p{font-size:12.5px;color:var(--ink-2);margin:0;line-height:1.58}
-.src{font-size:13px;color:var(--ink-2);border-top:1px solid var(--line);padding-top:15px;margin-top:8px}
-.src ol{padding-left:20px;margin:0} .src li{margin-bottom:6px}
-a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
-.foot{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3);line-height:1.7}
-@media (max-width:600px){
-  body{font-size:14.5px} .stat .v{font-size:26px} figure{padding:13px 11px 11px} .wrap{padding-inline:16px}
-  td.t{min-width:150px}
-}
-</style><style>
-/* 本页专用：三档收益语义色。蓝=达到实际 3% 目标，橙=正但不达标，红=亏损 */
-:root{ --good:#2a78d6; --mid:#c2531f; --bad:#c53b3a; --band:#9aa3ab; }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){ --good:#4b93e8; --mid:#e0722f; --bad:#e66767; --band:#6b737b; }}
-:root[data-theme="dark"]{ --good:#4b93e8; --mid:#e0722f; --bad:#e66767; --band:#6b737b; }
-.s-good{fill:var(--good)} .s-mid{fill:var(--mid)} .s-bad{fill:var(--bad)}
-.ln-nav{fill:none;stroke:var(--ink);stroke-width:1.1}
-.ln-mid{fill:none;stroke:var(--accent);stroke-width:1.4}
-.bd1{fill:var(--accent);opacity:.17} .bd2{fill:var(--accent);opacity:.08}
+/* 本页专用：三档收益语义色 + 各条曲线 */
+.s-good{fill:var(--blue)} .s-mid{fill:var(--gold)} .s-bad{fill:var(--red)}
+.ln-nav{fill:none;stroke:var(--blue);stroke-width:1.1}
+.ln-mid{fill:none;stroke:var(--violet);stroke-width:1.4}
+.bd1{fill:var(--violet);opacity:.20} .bd2{fill:var(--violet);opacity:.09}
 .ln-p50{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-dasharray:5 3}
 .ln-p10{fill:none;stroke:var(--ink);stroke-width:2}
-.ln-now{stroke:var(--mid);stroke-width:1.6}
-.ln-ref{stroke:var(--line-2);stroke-width:1;stroke-dasharray:3 3}
-.band-fill{fill:var(--band);opacity:.16}
-.band-fill2{fill:var(--band);opacity:.3}
-.ln-med{fill:none;stroke:var(--accent);stroke-width:2}
-.dotm{fill:var(--accent)}
-.nowline{stroke:var(--mid);stroke-width:1.6;stroke-dasharray:4 3}
-tr.hl td{background:var(--accent-soft);font-weight:600}
-.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:22px 0}
-.kv div{background:var(--surface);padding:13px 15px}
-.kv .k{font-family:var(--fm);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
-.kv .v{font-size:19px;font-weight:700;margin-top:5px;font-variant-numeric:tabular-nums}
+.ln-ref{stroke:var(--line2);stroke-width:1;stroke-dasharray:3 3}
+.band-fill{fill:var(--ink3);opacity:.20} .band-fill2{fill:var(--ink3);opacity:.36}
+.ln-med{fill:none;stroke:var(--teal);stroke-width:2}
+.dotm{fill:var(--teal)}
+.nowline{stroke:var(--gold);stroke-width:1.6;stroke-dasharray:4 3}
+.vl{fill:var(--ink2)}
 </style>
+<div class="topnav"><div class="in">
+  <span class="lab">S&amp;P 500 LAB</span>
+  <a href="./" aria-current="page">买点位置</a>
+  <a href="../compound/">复利</a>
+  <span class="sp"></span>
+  <a class="home" href="../">← 估值面板</a>
+</div></div>
 <div class="wrap">
 <header>
   <div class="eyebrow">标普500 · 1871–2026 · 月频 · 实际全收益（含股息、已扣通胀）</div>
@@ -286,7 +174,7 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
 <div class="foot" id="foot"></div>
 </section>
 </div>
-<script src="data.js?v=202609171047"></script>
+<script src="data.js?v=202609171102"></script>
 <script>
 (function(){
 var D=window.ENTRY_DATA, M=D.meta;

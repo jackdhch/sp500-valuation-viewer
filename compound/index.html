@@ -1,0 +1,427 @@
+<title>复利 · 十万到千万</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../lab.css?v=202609171102">
+<div class="topnav"><div class="in">
+  <span class="lab">S&amp;P 500 LAB</span>
+  <a href="../entry/">买点位置</a>
+  <a href="./" aria-current="page">复利</a>
+  <span class="sp"></span>
+  <a class="home" href="../">← 估值面板</a>
+</div></div>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">标普500 · 1871–2026 · 名义全收益 · 美元计价</div>
+  <h1>复利</h1>
+  <p class="sub">复利只有三个变量：本金、收益率、年限。三个里面最容易被高估的是收益率，
+  最容易被低估的是年限。<strong>这一页把这三个变量各自能撬动多少，用 155 年的真实数据摆出来。</strong></p>
+  <div class="meta"><span id="mRange"></span><span id="mAsset"></span><span>口径与脚本见页末</span></div>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="k">1 元 · 155 年</div><div class="v blue" id="kX"></div><div class="d">1871 年投入 1 美元买标普500、股息全部再投，到今天的名义金额</div></div>
+  <div class="stat"><div class="k">折合年化</div><div class="v" id="kCagr"></div><div class="d">名义口径，含股息、未扣通胀</div></div>
+  <div class="stat"><div class="k">跌超 20% 的次数</div><div class="v teal" id="kN"></div><div class="d">这 155 年里，相对历史新高的深回撤</div></div>
+  <div class="stat"><div class="k">最深的一次</div><div class="v red" id="kWorst"></div><div class="d" id="kWorstD"></div></div>
+</div>
+
+<section>
+<div class="shead"><span class="snum">01</span><h2>三个变量</h2></div>
+<p class="lead">复利就是 <span class="num">P × (1 + r)<sup>n</sup></span>：本金 P、收益率 r、年限 n。
+指数摆在 n 上，所以<strong>年限是唯一一个能把小数字变成大数字的变量</strong>。</p>
+<figure>
+  <div class="figtitle">10 万元 · 年化 8% · 60 年</div>
+  <div class="figsub">纵轴为线性，单位万元 · 每一格 10 年</div>
+  <div class="chartbox"><div id="c0"></div></div>
+  <figcaption>前 30 年只长到 100.6 万，后 30 年长到 1 013 万——<strong>后一半时间贡献了九成的钱</strong>。
+  这就是为什么复利的说明书上写的是「慢就是快」。</figcaption>
+</figure>
+<div class="tablewrap"><table>
+<thead><tr><th>换个角度</th><th>5 年</th><th>10 年</th><th>20 年</th><th>30 年</th><th>40 年</th><th>50 年</th><th>60 年</th></tr></thead>
+<tbody id="tbYears"></tbody>
+</table></div>
+</section>
+
+<section>
+<div class="shead"><span class="snum">02</span><h2>收益率能有多高</h2></div>
+<p class="lead">先把期望值校准一下。下面四类资产从 2007 年初起算，全部含分红再投、美元计价。</p>
+<figure>
+  <div class="figtitle">四类资产的净值</div>
+  <div class="figsub" id="f2sub"></div>
+  <div class="legend" id="lg2"></div>
+  <div class="chartbox"><div id="c2"></div></div>
+  <figcaption>纵轴是对数刻度——在对数轴上，<strong>同样的斜率代表同样的年化</strong>，
+  所以四条线的陡峭程度可以直接比较。</figcaption>
+  <div class="srcline">数据：yfinance（IEF / GLD / SPY / QQQ，复权收盘价，含分红再投）</div>
+</figure>
+<div class="tablewrap"><table>
+<thead><tr><th>资产</th><th>累计倍数</th><th>年化</th><th>说明</th></tr></thead>
+<tbody id="tbAsset"></tbody>
+</table></div>
+<div class="note">
+<div class="nt">一个现实的锚</div>
+<p><strong>年化 6~10% 已经是很好的结果。</strong>纳斯达克100 这二十年的 16% 是特例，不是常态；
+黄金的 10% 里有很大一块来自这两年的一波行情。想靠一个年化 20% 的假设去做三十年的计划，
+数学上算得通，历史上找不到几个真做到的。</p>
+</div>
+</section>
+
+<section>
+<div class="shead"><span class="snum">03</span><h2>标普500 的 155 年</h2></div>
+<p class="lead">年化 9.43% 听上去很平静。把这 155 年一个月一个月铺开，
+它其实是<strong>由 <span id="pN" class="num"></span> 次跌超 20% 的深坑串起来的</strong>——
+下跌和上涨共同造就了这个收益率。</p>
+<figure>
+  <div class="figtitle">标普 500 的 155 年</div>
+  <div class="figsub" id="f3sub"></div>
+  <div class="legend">
+    <span class="lg"><span class="sw" style="background:var(--blue)"></span>名义全收益净值（对数轴）</span>
+    <span class="lg"><span class="sw" style="background:var(--shade);border:1px dashed var(--line2)"></span>从见顶到重新创新高的区间</span>
+    <span class="lg"><span class="sw" style="background:var(--teal);border-radius:50%"></span>谷底与最大跌幅</span>
+  </div>
+  <div class="chartbox"><div id="c3"></div></div>
+  <figcaption id="cap3"></figcaption>
+  <div class="srcline" id="src3"></div>
+</figure>
+<figure>
+  <div class="figtitle">最深的那一次：1929</div>
+  <div class="figsub" id="f4sub"></div>
+  <div class="chartbox"><div id="c4"></div></div>
+  <figcaption id="cap4"></figcaption>
+</figure>
+<div class="tablewrap"><table>
+<thead><tr><th>见顶</th><th>谷底</th><th>重新创新高</th><th>最大跌幅</th><th>跌了多久</th><th>补回来用了多久</th></tr></thead>
+<tbody id="tbEp"></tbody>
+</table></div>
+<div class="note warn">
+<div class="nt">这张表真正要说的事</div>
+<p>跌幅只是账面数字，<strong>真正难熬的是最后一列</strong>。1929 那次跌了 33 个月，
+补回来用了 151 个月——<strong>十二年半</strong>，中间还夹着整个三十年代。
+其余 13 次里，补回来最久的是 1893 年那次的 48 个月和 2007 年那次的 41 个月。
+把持有周期拉到 15 年、20 年之所以有意义，就是因为这些坑需要这么长时间来填。</p>
+</div>
+</section>
+
+<section>
+<div class="shead"><span class="snum">04</span><h2>本金不够，时间来凑；时间不够，定投来凑</h2></div>
+<p class="lead">把三个变量交给你自己调。左边改数字，右边的曲线和下面的对比表会跟着动；
+点「加入对比」可以把当前这组参数留下来，和别的方案摆在一起看。</p>
+<div class="calc">
+  <div class="panel">
+    <div class="fld"><label>起始本金 <b><span id="vP">10</span> 万</b></label>
+      <input id="iP" type="number" min="0" step="1" value="10"></div>
+    <div class="fld"><label>每年定投 <b><span id="vA">0</span> 万</b></label>
+      <input id="iA" type="number" min="0" step="1" value="0">
+      <div class="hint">每年年末投入，可以留 0</div></div>
+    <div class="fld"><label>定投年增长 <b><span id="vG">0</span> %</b></label>
+      <input id="iG" type="number" min="0" step="0.5" value="0">
+      <div class="hint">每年比上一年多投的比例</div></div>
+    <div class="fld"><label>年化收益率 <b><span id="vR">8</span> %</b></label>
+      <input id="iR" type="number" min="0" step="0.5" value="8"></div>
+    <div class="fld"><label>持有年限 <b><span id="vY">30</span> 年</b></label>
+      <input id="iY" type="number" min="1" max="80" step="1" value="30"></div>
+    <button class="btn" id="bAdd">+ 加入对比</button>
+    <div class="hint" style="text-align:center;margin-top:8px" id="hSaved"></div>
+  </div>
+  <div class="panel">
+    <div class="figtitle" style="margin-bottom:2px">资产增长走势</div>
+    <div class="figsub" id="calcSub"></div>
+    <div class="chartbox"><div id="c5"></div></div>
+  </div>
+</div>
+<div class="tablewrap"><table>
+<thead><tr><th>方案</th><th>起始 万</th><th>定投 万</th><th>增长</th><th>年化</th><th>年限</th><th>终值 万</th><th>其中本金</th><th></th></tr></thead>
+<tbody id="tbCalc"></tbody>
+</table></div>
+<p style="font-size:13px">这个计算器只做一件事：把 <span class="num">P × (1+r)<sup>n</sup></span> 加上定投算清楚。
+它<strong>不预测</strong>任何收益率——年化那一栏填多少，完全是你自己的假设。
+想知道填多少才算现实，往上翻第 02 节。</p>
+</section>
+
+<section>
+<div class="shead"><span class="snum">05</span><h2>口径与来源</h2></div>
+<p><strong>155 年那条曲线</strong>用名义全收益：含股息再投资、<strong>不扣通胀</strong>，起点 1871-01 记作 1 元。
+序列来自 <span class="num">tweaks/base_monthly.csv</span>（1871-01~2023-09 为 Shiller 官方表，
+之后用 ^SP500TR 除 CPI 接续，再乘回 CPI 还原成名义）。</p>
+<p><strong>回撤</strong>按「相对历史新高」逐月计算，只标跌幅 ≥20% 的段。
+「补回来用了多久」指从谷底重新回到前一个高点所用的月数。</p>
+<p><strong>四类资产</strong>用日频复权收盘价（含分红再投），起点对齐 2007-01-05。
+黄金用的是 GLD 这只 ETF，有管理费，所以会比伦敦金现低大约半个百分点。</p>
+<div class="note">
+<div class="nt">这一页不做的事</div>
+<p>不预测未来收益率，不给具体标的建议，也不假设你能拿住。
+历史分布只说明「过去发生过什么」，它既不保证重演，也不排除出现更差的情况。</p>
+</div>
+<div class="src">
+<ol>
+<li>研究方法复现自 B 站视频《复利，十万到千万的自由之路》（UP 主 BiangBiangChi）。
+本页数字由本地脚本独立算出，与视频公布的数字逐项核对过。</li>
+<li>Robert J. Shiller, <em>Irrational Exuberance</em> 配套数据表（月频，1871 起）。</li>
+<li>价格与复权序列：Yahoo Finance；通胀：美国劳工统计局 CPIAUCSL（经 FRED）。</li>
+<li>计算脚本：<span class="num">analysis/compound/calc.py</span>。</li>
+</ol>
+</div>
+<div class="foot" id="foot"></div>
+</section>
+</div>
+<script src="data.js?v=202609171102"></script>
+<script>
+(function(){
+var D=window.COMP_DATA, M=D.meta;
+function el(id){return document.getElementById(id)}
+function n1(x){return x.toFixed(1)}
+function n2(x){return x.toFixed(2)}
+function grp(x){return Math.round(x).toLocaleString("en-US")}
+function svg(w,h,b){return '<svg viewBox="0 0 '+w+' '+h+'" role="img">'+b+'</svg>'}
+function lg10(x){return Math.log(x)/Math.LN10}
+function ymOf(s){return {y:+s.slice(0,4), m:+s.slice(5,7)}}
+function ymText(s){var a=ymOf(s);return a.y+" 年 "+a.m+" 月"}
+function months(a){return a==null?"—":a+" 个月"}
+
+/* ---------- 顶部 ---------- */
+el("mRange").textContent="155 年区间 "+M.start+" ~ "+M.end;
+el("mAsset").textContent="四类资产 "+M.asset_start+" ~ "+M.asset_end;
+el("kX").textContent=grp(M.total_x);
+el("kCagr").textContent=M.cagr+"%";
+el("kN").textContent=M.dd_n+" 次";
+el("pN").textContent=M.dd_n;
+var worst=D.eps.reduce(function(a,b){return b.dd<a.dd?b:a});
+el("kWorst").textContent=n1(worst.dd)+"%";
+el("kWorstD").textContent=ymText(worst.start)+"见顶，跌了 "+worst.down+" 个月，"+months(worst.rec)+"才补回来";
+el("foot").textContent="数据截至 "+M.end+"（月频）与 "+M.asset_end+"（日频）。"+
+  "本页只呈现公开数据与其历史分布，不构成投资建议。";
+
+/* ---------- 图 0：10 万 · 8% · 60 年 ---------- */
+(function(){
+var v=D.comp.base.v, W=880,H=320,L=56,R=20,T=22,B=34;
+var hi=Math.max.apply(null,v)*1.05;
+function X(i){return L+i/(v.length-1)*(W-L-R)}
+function Y(x){return T+(1-x/hi)*(H-T-B)}
+var s="";
+[0,250,500,750,1000].forEach(function(g){
+  s+='<line class="gl" x1="'+L+'" y1="'+Y(g)+'" x2="'+(W-R)+'" y2="'+Y(g)+'"/>';
+  s+='<text class="ax" x="'+(L-8)+'" y="'+(Y(g)+3.5)+'" text-anchor="end">'+g+'</text>';
+});
+var d="",a="";
+v.forEach(function(x,i){d+=(i?"L":"M")+n1(X(i))+" "+n1(Y(x))});
+a="M"+L+" "+Y(0)+"L"+d.slice(1)+"L"+X(v.length-1)+" "+Y(0)+"Z";
+s+='<path d="'+a+'" fill="var(--gold)" opacity=".1"/>';
+s+='<path d="'+d+'" fill="none" stroke="var(--gold)" stroke-width="1.8"/>';
+for(var y=10;y<=60;y+=10){
+  s+='<line class="gl" x1="'+X(y)+'" y1="'+T+'" x2="'+X(y)+'" y2="'+(H-B)+'" opacity=".5"/>';
+  s+='<text class="axb" x="'+X(y)+'" y="'+(H-B+20)+'" text-anchor="middle">'+y+' 年</text>';
+  s+='<circle cx="'+X(y)+'" cy="'+Y(v[y])+'" r="2.6" fill="var(--gold)"/>';
+}
+[[30,"100.6 万"],[60,"1,013 万"]].forEach(function(p){
+  s+='<text class="vl" x="'+(X(p[0])+(p[0]===60?-6:8))+'" y="'+(Y(v[p[0]])-10)+'" fill="var(--gold)" '+
+     'text-anchor="'+(p[0]===60?"end":"start")+'">'+p[1]+'</text>';
+});
+el("c0").innerHTML=svg(W,H,s);
+})();
+
+el("tbYears").innerHTML="<tr><td class='t'>10 万变成</td>"+
+  D.comp.years.map(function(y){return "<td>"+(y.v>=1000?grp(y.v):n1(y.v))+" 万</td>"}).join("")+"</tr>";
+
+/* ---------- 图 2：四类资产 ---------- */
+var COLORS={bond:"var(--ink3)",gold:"var(--gold)",spx:"var(--blue)",ndx:"var(--teal)"};
+(function(){
+var W=880,H=360,L=50,R=16,T=18,B=34;
+var keys=D.assets.map(function(a){return a.key});
+var t=D.series[keys[0]].t;
+var hi=0,lo=1;
+keys.forEach(function(k){D.series[k].v.forEach(function(x){if(x>hi)hi=x;if(x<lo)lo=x})});
+var y0=lg10(lo*0.9), y1=lg10(hi*1.1);
+function Y(x){return T+(y1-lg10(x))/(y1-y0)*(H-T-B)}
+var s="";
+[1,2,5,10,20].forEach(function(g){
+  if(g<lo*0.9||g>hi*1.1) return;
+  s+='<line class="gl" x1="'+L+'" y1="'+Y(g)+'" x2="'+(W-R)+'" y2="'+Y(g)+'"/>';
+  s+='<text class="ax" x="'+(L-8)+'" y="'+(Y(g)+3.5)+'" text-anchor="end">'+g+'x</text>';
+});
+keys.forEach(function(k){
+  var ss=D.series[k], n=ss.v.length, d="";
+  function X(i){return L+i/(n-1)*(W-L-R)}
+  ss.v.forEach(function(x,i){d+=(i?"L":"M")+n1(X(i))+" "+n1(Y(x))});
+  s+='<path d="'+d+'" fill="none" stroke="'+COLORS[k]+'" stroke-width="1.5" opacity=".9"/>';
+});
+var n0=D.series[keys[0]].v.length;
+for(var yy=2008;yy<=2026;yy+=3){
+  var i=t.findIndex(function(x){return x.slice(0,4)==String(yy)});
+  if(i<0) continue;
+  s+='<text class="axb" x="'+(L+i/(n0-1)*(W-L-R))+'" y="'+(H-B+20)+'" text-anchor="middle">'+yy+'</text>';
+}
+el("c2").innerHTML=svg(W,H,s);
+el("f2sub").textContent=M.asset_start+" → "+M.asset_end+" · 起点 = 1.00 · 含分红再投 · 美元计价";
+el("lg2").innerHTML=D.assets.map(function(a){
+  return '<span class="lg"><span class="sw" style="background:'+COLORS[a.key]+'"></span>'+a.name+
+         ' <span class="num" style="color:'+COLORS[a.key]+'">'+n2(a.cagr)+'%</span></span>'}).join("");
+el("tbAsset").innerHTML=D.assets.map(function(a){
+  var note={bond:"利率下行周期的债券基准，2022 年后被加息打回原形",
+            gold:"这里用 GLD（ETF，含管理费），比伦敦金现低约半个百分点",
+            spx:"最宽的美股基准，这一段包含 2008 与 2020 两次大跌",
+            ndx:"科技权重极高，二十年里最好的一条，也是波动最大的一条"}[a.key]||"";
+  return "<tr><td class='t'><span class='dotc' style='background:"+COLORS[a.key]+"'></span>"+a.name+"</td>"+
+    "<td>"+n2(a.x)+"x</td><td class='pos'>"+n2(a.cagr)+"%</td><td class='t' style='color:var(--ink2);font-size:12.5px'>"+note+"</td></tr>";
+}).join("");
+})();
+
+/* ---------- 图 3：155 年 + 回撤标注 ---------- */
+(function(){
+var N=D.nav, W=880,H=470,L=54,R=18,T=54,B=34;
+var n=N.t.length;
+function X(i){return L+i/(n-1)*(W-L-R)}
+var y1=lg10(Math.max.apply(null,N.v)*1.6), y0=lg10(0.55);
+function Y(x){return T+(y1-lg10(x))/(y1-y0)*(H-T-B)}
+var s="";
+[1,100,10000,1000000].forEach(function(g){
+  s+='<line class="gl" x1="'+L+'" y1="'+Y(g)+'" x2="'+(W-R)+'" y2="'+Y(g)+'"/>';
+  s+='<text class="ax" x="'+(L-8)+'" y="'+(Y(g)+3.5)+'" text-anchor="end">'+(g===1?"1 倍":grp(g)+" 倍")+'</text>';
+});
+/* 熊市阴影：从见顶到重新创新高 */
+D.eps.forEach(function(e){
+  var x0=X(e.i0-1<0?0:e.i0-1), x1=X(e.i1);
+  s+='<rect class="shadeband" x="'+n1(x0)+'" y="'+T+'" width="'+n1(Math.max(x1-x0,1.4))+'" height="'+(H-T-B)+'"/>';
+  s+='<line class="shadeedge" x1="'+n1(x0)+'" y1="'+T+'" x2="'+n1(x0)+'" y2="'+(H-B)+'"/>';
+  s+='<line class="shadeedge" x1="'+n1(x1)+'" y1="'+T+'" x2="'+n1(x1)+'" y2="'+(H-B)+'"/>';
+});
+var d="";
+for(var i=0;i<n;i++) d+=(i?"L":"M")+n1(X(i))+" "+n1(Y(N.v[i]));
+s+='<path d="'+d+'" fill="none" stroke="var(--blue)" stroke-width="1.15"/>';
+/* 谷底点 + 跌幅标签。标签可能挤在一起，按 x 距离分两层错开 */
+var lastX=-99, layer=0;
+D.eps.forEach(function(e){
+  var x=X(e.it), y=Y(N.v[e.it]);
+  s+='<circle cx="'+n1(x)+'" cy="'+n1(y)+'" r="3" fill="var(--teal)"/>';
+  layer=(x-lastX<52)?(layer+1)%2:0; lastX=x;
+  /* 最深的那一段谷底扎得很低，标签放上面会压在曲线上，改放点的下方 */
+  var below=e.dd<=-60, ty=below?(y+19):(y-13-layer*15);
+  s+='<line x1="'+n1(x)+'" y1="'+n1(below?y+4:y-4)+'" x2="'+n1(x)+'" y2="'+n1(below?ty-9:ty+3)+'" stroke="var(--teal)" stroke-width=".8" opacity=".5"/>';
+  s+='<text class="vl" x="'+n1(x)+'" y="'+n1(ty)+'" fill="var(--teal)" text-anchor="middle">'+n1(e.dd)+'%</text>';
+});
+for(var yy=1871;yy<=2026;yy+=31){
+  var j=(yy-1871)*12; if(j>=n) j=n-1;
+  s+='<text class="axb" x="'+X(j)+'" y="'+(H-B+20)+'" text-anchor="middle">'+yy+'</text>';
+}
+el("c3").innerHTML=svg(W,H,s);
+el("f3sub").textContent=M.start+"-01 → "+M.end+"-30 · 起点 = 1.00 元 · 美元计价 · 含股息再投、未扣通胀";
+el("cap3").innerHTML="阴影带是从见顶到重新创新高的整段时间，点是那一段的谷底。"+
+  "<strong>155 年里有 "+M.dd_n+" 次跌超 20%，其中 4 次跌超 40%。</strong>"+
+  "同一条曲线，站远看是一条平滑上行的直线，走近看全是坑。";
+el("src3").textContent="数据：Shiller 长期序列 + ^SP500TR（含股息再投）· CPIAUCSL 还原名义口径";
+})();
+
+/* ---------- 图 4：1929 放大 ---------- */
+(function(){
+var Z=D.zoom, e=Z.ep, W=880,H=300,L=56,R=18,T=30,B=34;
+var n=Z.t.length;
+function X(i){return L+i/(n-1)*(W-L-R)}
+var hi=Math.max.apply(null,Z.v)*1.08, lo=Math.min.apply(null,Z.v)*0.85;
+function Y(x){return T+(lg10(hi)-lg10(x))/(lg10(hi)-lg10(lo))*(H-T-B)}
+var i0=Z.t.indexOf(e.start), it=Z.t.indexOf(e.trough), i1=e.end?Z.t.indexOf(e.end):n-1;
+var s='<rect class="shadeband" x="'+n1(X(i0))+'" y="'+T+'" width="'+n1(X(i1)-X(i0))+'" height="'+(H-T-B)+'"/>';
+var d="";
+for(var i=0;i<n;i++) d+=(i?"L":"M")+n1(X(i))+" "+n1(Y(Z.v[i]));
+s+='<path d="'+d+'" fill="none" stroke="var(--blue)" stroke-width="1.5"/>';
+s+='<line class="zl" x1="'+n1(X(i0))+'" y1="'+n1(Y(Z.v[i0]))+'" x2="'+n1(X(i1))+'" y2="'+n1(Y(Z.v[i0]))+'" stroke-dasharray="3 3"/>';
+s+='<text class="vl" x="'+(X(i0)+6)+'" y="'+(Y(Z.v[i0])-7)+'" fill="var(--ink2)">1929 年 9 月的高点</text>';
+s+='<circle cx="'+n1(X(it))+'" cy="'+n1(Y(Z.v[it]))+'" r="3.6" fill="var(--red)"/>';
+s+='<text class="vl" x="'+(X(it)+9)+'" y="'+(Y(Z.v[it])+4)+'" fill="var(--red)">谷底 '+n1(e.dd)+'%</text>';
+s+='<circle cx="'+n1(X(i1))+'" cy="'+n1(Y(Z.v[i1]))+'" r="3.6" fill="var(--teal)"/>';
+s+='<text class="vl" x="'+(X(i1)-8)+'" y="'+(Y(Z.v[i1])-9)+'" fill="var(--teal)" text-anchor="end">'+ymText(e.end)+' 才回到原点</text>';
+for(var k=0;k<n;k+=36){
+  s+='<text class="axb" x="'+X(k)+'" y="'+(H-B+20)+'" text-anchor="middle">'+Z.t[k].slice(0,4)+'</text>';
+}
+el("c4").innerHTML=svg(W,H,s);
+el("f4sub").textContent=Z.t[0]+" → "+Z.t[n-1]+" · 纵轴对数 · 名义全收益";
+el("cap4").innerHTML="从 "+ymText(e.start)+" 的高点算起，最深跌到 <strong>"+n1(e.dd)+"%</strong>"+
+  "——<strong>10 万块只剩 "+grp(100000*(1+e.dd/100))+" 块</strong>。"+
+  "跌用了 "+e.down+" 个月，补回来用了 "+e.rec+" 个月，加起来 "+n1((e.down+e.rec)/12)+" 年。";
+})();
+
+el("tbEp").innerHTML=D.eps.map(function(e){
+  var deep=e.dd<=-40;
+  return "<tr"+(deep?" class='hl'":"")+"><td class='t'>"+ymText(e.start)+"</td><td>"+ymText(e.trough)+"</td>"+
+    "<td>"+(e.end?ymText(e.end):"—")+"</td><td class='neg'>"+n1(e.dd)+"%</td>"+
+    "<td>"+months(e.down)+"</td><td>"+months(e.rec)+"</td></tr>";
+}).join("");
+
+/* ---------- 计算器 ---------- */
+(function(){
+var PAL=["var(--teal)","var(--gold)","var(--blue)","var(--violet)","var(--red)"];
+var saved=[], seq=0;
+function read(){
+  function num(id,dft){var v=parseFloat(el(id).value); return isFinite(v)&&v>=0?v:dft}
+  return {p:num("iP",10), a:num("iA",0), g:num("iG",0), r:num("iR",8),
+          y:Math.max(1,Math.min(80,Math.round(num("iY",30))))};
+}
+function path(c){
+  var v=c.p, add=c.a, out=[c.p], cost=[c.p], cc=c.p;
+  for(var i=0;i<c.y;i++){ v=v*(1+c.r/100)+add; cc+=add; add=add*(1+c.g/100); out.push(v); cost.push(cc); }
+  return {v:out, cost:cost};
+}
+function draw(){
+  var cur=read(), pc=path(cur);
+  el("vP").textContent=cur.p; el("vA").textContent=cur.a; el("vG").textContent=cur.g;
+  el("vR").textContent=cur.r; el("vY").textContent=cur.y;
+  var all=saved.concat([{c:cur,color:"var(--red)",cur:true}]);
+  var W=820,H=330,L=58,R=24,T=26,B=32;
+  var maxY=0,maxX=0;
+  all.forEach(function(o){var p=path(o.c); o._p=p; maxX=Math.max(maxX,o.c.y);
+    p.v.forEach(function(x){if(x>maxY)maxY=x})});
+  maxY*=1.08;
+  function X(i){return L+i/Math.max(maxX,1)*(W-L-R)}
+  function Y(x){return T+(1-x/maxY)*(H-T-B)}
+  var s="";
+  for(var k=0;k<=4;k++){
+    var g=maxY*k/4;
+    s+='<line class="gl" x1="'+L+'" y1="'+Y(g)+'" x2="'+(W-R)+'" y2="'+Y(g)+'"/>';
+    s+='<text class="ax" x="'+(L-8)+'" y="'+(Y(g)+3.5)+'" text-anchor="end">'+(g>=1000?grp(g):n1(g))+'</text>';
+  }
+  s+='<text class="axb" x="'+L+'" y="'+(H-B+20)+'">0 年</text>';
+  s+='<text class="axb" x="'+(W-R)+'" y="'+(H-B+20)+'" text-anchor="end">'+maxX+' 年</text>';
+  all.forEach(function(o){
+    var d="",p=o._p;
+    p.v.forEach(function(x,i){d+=(i?"L":"M")+n1(X(i))+" "+n1(Y(x))});
+    if(o.cur){
+      var a="M"+X(0)+" "+Y(0)+"L"+d.slice(1)+"L"+X(p.v.length-1)+" "+Y(0)+"Z";
+      s+='<path d="'+a+'" fill="var(--red)" opacity=".08"/>';
+    }
+    s+='<path d="'+d+'" fill="none" stroke="'+o.color+'" stroke-width="'+(o.cur?2:1.4)+'"'+
+       (o.cur?"":' opacity=".85"')+'/>';
+    var lx=X(p.v.length-1), ly=Y(p.v[p.v.length-1]);
+    s+='<circle cx="'+n1(lx)+'" cy="'+n1(ly)+'" r="3" fill="'+o.color+'"/>';
+    if(o.cur) s+='<text class="vl" x="'+(lx-6)+'" y="'+(ly-9)+'" fill="'+o.color+'" text-anchor="end">'+
+       (p.v[p.v.length-1]>=1000?grp(p.v[p.v.length-1]):n1(p.v[p.v.length-1]))+' 万</text>';
+  });
+  el("c5").innerHTML=svg(W,H,s);
+  el("calcSub").textContent="纵轴单位万元 · 红线是当前这组参数 · 已存 "+saved.length+"/5 个对比方案";
+  el("hSaved").textContent=saved.length>=5?"对比最多 5 个，再加会顶掉最早的一个":"";
+
+  var rows=saved.map(function(o,i){return row(o.c,o.color,"方案 "+o.id,i)});
+  rows.push(row(cur,"var(--red)","当前",-1));
+  el("tbCalc").innerHTML=rows.join("");
+  Array.prototype.forEach.call(document.querySelectorAll("#tbCalc .xbtn"),function(b){
+    b.addEventListener("click",function(){saved.splice(+b.dataset.i,1);draw()})});
+}
+function row(c,color,label,i){
+  var p=path(c), end=p.v[p.v.length-1], cost=p.cost[p.cost.length-1];
+  return "<tr><td class='t'><span class='dotc' style='background:"+color+"'></span>"+label+"</td>"+
+    "<td>"+c.p+"</td><td>"+(c.a||"—")+"</td><td>"+(c.g?c.g+"%":"—")+"</td>"+
+    "<td>"+c.r+"%</td><td>"+c.y+"</td><td style='color:"+color+"'>"+(end>=1000?grp(end):n1(end))+"</td>"+
+    "<td>"+n1(cost)+"</td><td>"+(i>=0?"<button class='xbtn' data-i='"+i+"' title='删掉这一行'>×</button>":"")+"</td></tr>";
+}
+["iP","iA","iG","iR","iY"].forEach(function(id){
+  el(id).addEventListener("input",draw);
+});
+el("bAdd").addEventListener("click",function(){
+  seq++; saved.push({c:read(), color:PAL[saved.length%PAL.length], id:seq});
+  if(saved.length>5) saved.shift();
+  draw();
+});
+draw();
+})();
+})();
+</script>
