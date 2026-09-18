@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="../lab.css?v=202609171102">
+<link rel="stylesheet" href="../lab.css?v=202609180511">
 <style>
 /* 本页专用：三档收益语义色 + 各条曲线 */
 .s-good{fill:var(--blue)} .s-mid{fill:var(--gold)} .s-bad{fill:var(--red)}
@@ -18,6 +18,24 @@
 .dotm{fill:var(--teal)}
 .nowline{stroke:var(--gold);stroke-width:1.6;stroke-dasharray:4 3}
 .vl{fill:var(--ink2)}
+/* σ ↔ 点位换算器 */
+.calcbox{background:var(--bg2);border:1px solid var(--line);padding:20px;margin:24px 0}
+.cb-row{display:grid;grid-template-columns:300px 1fr;gap:24px;align-items:start}
+.cb-lab{font-family:var(--fm);font-size:10.5px;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;margin-bottom:10px}
+.cb-side input[type=range]{width:100%;accent-color:var(--teal);margin-bottom:14px}
+.cb-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cb-two .fld{margin:0}
+.cb-main .big{font-size:40px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--teal)}
+.cb-main .sub2{font-size:13.5px;color:var(--ink2);margin-top:8px}
+.cb-main .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);margin-top:16px}
+.cb-main .grid div{background:var(--bg2);padding:11px 13px}
+.cb-main .grid .k{font-family:var(--fm);font-size:10px;letter-spacing:.1em;color:var(--ink3);text-transform:uppercase}
+.cb-main .grid .v{font-size:17px;font-weight:600;margin-top:5px;font-variant-numeric:tabular-nums}
+.cb-future{font-family:var(--fm);font-size:12px;color:var(--ink2);margin-top:16px;padding-top:14px;
+  border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 22px}
+.cb-future b{color:var(--ink);font-weight:500}
+@media (max-width:760px){.cb-row{grid-template-columns:1fr}}
 </style>
 <div class="topnav"><div class="in">
   <span class="lab">S&amp;P 500 LAB</span>
@@ -141,6 +159,20 @@
 <p>把每一档 σ 反解回指数点位就是下面这张表。<strong>注意这些点位不是固定数字。</strong>
 趋势线本身在往上走（实际口径每月 <span class="num" id="pSlopeM"></span>%，加 2.5% 的年通胀假设后名义每月约 0.75%），
 所以同一条 σ 线，明年的点位比今天高。表里最后几列就是这条线在未来若干个月的位置。</p>
+<div class="calcbox">
+  <div class="cb-row">
+    <div class="cb-side">
+      <div class="cb-lab">拖到任意位置</div>
+      <input id="sigSlider" type="range" min="-1.5" max="2" step="0.05" value="1">
+      <div class="cb-two">
+        <div class="fld"><label>目标 σ</label><input id="sigIn" type="number" step="0.05" value="1.00"></div>
+        <div class="fld"><label>或者直接填点位</label><input id="pxIn" type="number" step="10"></div>
+      </div>
+    </div>
+    <div class="cb-main" id="cbOut"></div>
+  </div>
+  <div class="cb-future" id="cbFuture"></div>
+</div>
 <div class="tablewrap"><table>
 <thead><tr><th>档位</th><th>现在对应点位</th><th>相对现价</th><th>3 个月后</th><th>6 个月后</th><th>12 个月后</th><th>24 个月后</th></tr></thead>
 <tbody id="tbLv"></tbody>
@@ -155,7 +187,103 @@
 </section>
 
 <section>
-<div class="shead"><span class="snum">06</span><h2>口径、限制与来源</h2></div>
+<div class="shead"><span class="snum">06</span><h2>2010 年以后，是不是不一样了</h2></div>
+<p class="lead">一个很自然的怀疑：<strong>2010 年以后大跌好像没那么狠了，是不是该把这条 σ 的基准整体上提？</strong>
+这一节把它拆成四个可以查的问题，逐个用数据回答。</p>
+
+<div class="shead" style="margin-top:34px"><span class="snum">问题一</span><h2 style="font-size:19px">大跌真的变少了吗</h2></div>
+<div class="tablewrap"><table>
+<thead><tr><th>年代</th><th>跨度</th><th>≥20% 回撤 · 月频</th><th>≥20% 回撤 · 日频</th><th>最深 · 日频</th><th>平均复原</th><th>月波动率（年化）</th></tr></thead>
+<tbody id="tbEra"></tbody>
+</table></div>
+<p style="font-size:12.5px;color:var(--ink3);margin-top:-10px">月频用的是含股息的名义全收益（1871 年起）；
+日频用的是 ^GSPC 价格指数，<strong>只有 1927 年底以后才有</strong>，所以第一行的日频那两格只覆盖 1928–1949。</p>
+<p><strong>月频看，2010 年以后确实一次都没有</strong>；但换成日频，这段时间有 <span class="num" id="pD2010"></span> 次——
+2020 年 3 月那次最深到 <span class="num" id="pW2010"></span>，2022 年那次也跌了两成半。
+<em>它们没进月频那张表，是因为恢复得太快，月末收盘价没留下痕迹。</em>
+这正是「制度变了」这个感觉的来源：跌得一样凶，但补得快了。</p>
+
+<div class="shead" style="margin-top:34px"><span class="snum">问题二</span><h2 style="font-size:19px">跌得浅了，还是恢复快了</h2></div>
+<p id="pRec"></p>
+<div class="note warn">
+<div class="nt">这是一个方向相反的发现</div>
+<p>1950–1989 那 40 年里，跌超 20% 的事发生了 4 次，平均跌 <span class="num">27.9%</span>、平均 <span class="num">13.8</span> 个月补回来。
+1990 年以后只发生过 2 次，但<strong>平均跌 45.3%、平均 42.5 个月才补回来</strong>。
+<strong>次数确实变少了，单次却变得更深、更久。</strong>把这个特征当成「风险变小了」，方向正好反了。</p>
+</div>
+
+<div class="shead" style="margin-top:34px"><span class="snum">问题三</span><h2 style="font-size:19px">换个起点重新拟合，现在还是这么高吗</h2></div>
+<p>这是最直接的检验：<strong>如果趋势线该上提，那么只用近几十年的数据重新拟合，当前位置就应该明显降下来。</strong></p>
+<div class="tablewrap"><table>
+<thead><tr><th>拟合起点</th><th>样本</th><th>拟合出的斜率</th><th>σ 的宽度</th><th>当前位置</th></tr></thead>
+<tbody id="tbAlt"></tbody>
+</table></div>
+<p id="pAlt"></p>
+<div class="note">
+<div class="nt">顺带解释一个数字</div>
+<p>从 2010 年起拟合会得到 <span class="num">11.20%</span> 的年化斜率——这不是「新常态」，
+而是<strong>起点正好踩在 2009 年 3 月大底之后</strong>的样本内偏差。用它当基准，等于假设未来几十年
+都能维持 11.2% 的实际（扣通胀后）年化，那是 155 年里没有任何一个 30 年窗口做到过的事。</p>
+</div>
+
+<div class="shead" style="margin-top:34px"><span class="snum">问题四</span><h2 style="font-size:19px">这个指标本身失效了吗</h2></div>
+<div class="tablewrap"><table>
+<thead><tr><th>买点年代</th><th>样本</th><th>σ 与之后 15 年年化的相关系数</th><th>每高 1σ，年化少多少</th></tr></thead>
+<tbody id="tbPred"></tbody>
+</table></div>
+<p id="pPred"></p>
+
+<div class="shead" style="margin-top:34px"><span class="snum">那么</span><h2 style="font-size:19px">「上提」到底意味着什么</h2></div>
+<p class="lead" id="pCounter"></p>
+<div class="note">
+<div class="nt">为什么这一页的读数和网上那张「已经 +4σ」的图差这么多</div>
+<p>网上流传最广的同类图是 Advisor Perspectives 的 <em>Regression to Trend</em>，用的是<strong>实际价格指数</strong>，
+不含股息。同样的方法、同样的数据源，本地按那个口径重算：斜率 <span class="num" id="pPxSlope"></span>%/年、
+当前 <span class="num" id="pPxZ"></span>σ、高于趋势线 <span class="num" id="pPxAbove"></span>%——和它公布的数字基本一致。</p>
+<p>差别全在股息。<strong>股息率从 1871–1949 年的 5.32% 一路降到 2000 年后的 1.85%</strong>：
+公司把钱越来越多地用于回购而不是分红，同样的股东回报，越来越多地体现在股价里、而不是股息里。
+<em>不含股息的价格趋势线会把这部分当成「涨太多」，于是系统性地高估现在的偏离。</em>
+这一页从头到尾用含股息的全收益口径，正是为了绕开这个偏差。</p>
+<div class="tablewrap" style="margin-top:14px"><table style="min-width:420px">
+<thead><tr><th>年代</th><th>平均股息率</th></tr></thead><tbody id="tbDy"></tbody>
+</table></div>
+</div>
+
+<div class="note warn">
+<div class="nt">结论</div>
+<p><strong>这条 σ 不需要人为上提。</strong>换任何一个合理的起点重新拟合，当前都还在 +1.2σ ~ +1.5σ；
+指标的预测力在近代反而更强；「跌得少了」在月频上成立、在日频上不成立，且单次跌幅更深。
+真正值得讨论的不是「把尺子挪一挪」，而是<strong>未来的长期中枢会不会比 6.65% 更高</strong>——
+而这件事，现有研究给出的方向反而是<em>更低</em>：利率与企业税率都已没有多少继续下行的空间。</p>
+</div>
+
+<div class="src">
+<div class="nt" style="font-family:var(--fm);font-size:10.5px;letter-spacing:.14em;color:var(--ink3);text-transform:uppercase;margin-bottom:10px">相关研究</div>
+<ol>
+<li><strong>同方法、不含股息的版本</strong>：Advisor Perspectives，<em>Regression to Trend: S&amp;P Composite</em>（按月更新，
+1871 年起、实际价格、半对数回归）。2026 年 8 月那期报的是「高于趋势 227%」。
+<a href="https://www.advisorperspectives.com/dshort/updates/2026/09/11/market-valuation-regression-trend-sp500-august-2026">链接</a></li>
+<li><strong>估值中枢是否发生结构性抬升</strong>：关于 CAPE 的长期争论。有研究指出 1983 年前后 CAPE 均值从 14.69 抬到 24.15，
+以及 1995 年前后存在结构性断点，成因包括会计准则变化与无形资产占比上升——这些批评针对的是<strong>以会计盈利为分母</strong>的指标，
+本页用的净值口径不涉及盈利，不受这条影响。
+<a href="https://www.mdpi.com/1911-8074/16/9/410">Why the High Values for the CAPE Ratio in Recent Years Might Be Justified</a> ·
+<a href="https://larryswedroe.substack.com/p/the-cape-that-cried-wolf-has-the">The CAPE That Cried Wolf</a></li>
+<li><strong>均值回归是不是已经失效</strong>：Damodaran 提醒把均值回归当成「万有引力」是危险的，
+因为它默认结构不变。
+<a href="https://aswathdamodaran.blogspot.com/2016/08/mean-reversion-gravitational-super-force.html">Mean Reversion: Gravitational Super Force or Dangerous Delusion?</a></li>
+<li><strong>「制度让大跌变小」这件事</strong>：政策反应速度确实改变了恢复曲线——2020 年那次是史上最快的 30% 级下跌（33 天），
+也是史上最快的收复（5 个月）。但研究同时指出，几次最慢的复原（1929、1937、1973、2000）都对应政策失误或多年期的体制转变。
+<a href="https://economics.td.com/us-history-fed-puts">A History of Fed &lsquo;Puts&rsquo;</a></li>
+<li><strong>未来中枢会更高还是更低</strong>：美联储研究人员的测算认为，利率与有效企业税率已几乎没有继续下行的空间，
+未来的企业利润增速与股票回报「很可能显著低于」过去三十年。
+<a href="https://www.federalreserve.gov/econres/feds/files/2023041pap.pdf">The Coming Long-Run Slowdown in Corporate Profit Growth and Stock Returns</a> ·
+<a href="https://www.newyorkfed.org/medialibrary/media/research/staff_reports/sr714.pdf">The Equity Risk Premium: A Review of Models</a></li>
+</ol>
+</div>
+</section>
+
+<section>
+<div class="shead"><span class="snum">07</span><h2>口径、限制与来源</h2></div>
 <p><strong>净值序列</strong>：1871-01 至 2023-09 用 Robert Shiller 官方数据表的 Real Total Return Price；
 2023-09 之后用标普500 全收益指数（^SP500TR）除以 CPI 接续，接口在 <span class="num">tweaks/build_base.py</span>。
 这一段拼接是本页与原始研究可能出现小幅出入的地方。</p>
@@ -174,7 +302,7 @@
 <div class="foot" id="foot"></div>
 </section>
 </div>
-<script src="data.js?v=202609171102"></script>
+<script src="data.js?v=202609180511"></script>
 <script>
 (function(){
 var D=window.ENTRY_DATA, M=D.meta;
@@ -396,8 +524,105 @@ function renderLive(){
     }).join("");
   })();
 
-  drawC2(); drawC3();
+  drawC2(); drawC3(); drawCalc();
 }
+
+/* ---------- σ ↔ 点位换算器 ---------- */
+function zFromPx(px){ return M.z_now+(Math.log(px/M.spx)-S.drift)/M.sd_now }
+var cbZ=1.0, cbLock=false;
+function drawCalc(){
+  var z=cbZ, p=levelPx(z), gap=p/S.spx-1;
+  var b15=binAt(15,z), b20=binAt(20,z);
+  if(!cbLock){
+    el("sigSlider").value=z.toFixed(2);
+    el("sigIn").value=z.toFixed(2);
+    el("pxIn").value=Math.round(p);
+  }
+  var arrow=gap<0?"还要跌":"要再涨";
+  el("cbOut").innerHTML=
+    '<div class="big">'+px(p)+'</div>'+
+    '<div class="sub2">标普500 跌到这个点位时，就落在 <b style="color:var(--teal)">'+sgn(z)+'σ</b> 上。'+
+    '从现价 '+px(S.spx)+' 算，'+arrow+' <b>'+n1(Math.abs(gap)*100)+'%</b>（'+px(Math.abs(p-S.spx))+' 点）。'+
+    (b15?' 1920 年以来落在这一档的买点共 <b>'+b15.n+'</b> 个月。':'')+'</div>'+
+    '<div class="grid">'+
+      '<div><div class="k">15年 · 中位数</div><div class="v">'+(b15?n2(b15.p50)+"%":"—")+'</div></div>'+
+      '<div><div class="k">15年 · 最坏10%</div><div class="v'+(b15&&b15.p10<0?" neg":"")+'">'+(b15?n2(b15.p10)+"%":"—")+'</div></div>'+
+      '<div><div class="k">20年 · 中位数</div><div class="v">'+(b20?n2(b20.p50)+"%":"—")+'</div></div>'+
+      '<div><div class="k">20年 · 最坏10%</div><div class="v'+(b20&&b20.p10<0?" neg":"")+'">'+(b20?n2(b20.p10)+"%":"—")+'</div></div>'+
+    '</div>';
+  el("cbFuture").innerHTML="这条线在往上走 ——"+
+    [3,6,12,24].map(function(m){return "<span>"+m+" 个月后 <b>"+px(levelPxAfter(z,m))+"</b></span>"}).join("");
+}
+function setZ(v){
+  if(!isFinite(v)) return;
+  cbZ=Math.max(-2.4, Math.min(2.6, v));
+  drawCalc();
+}
+el("sigSlider").addEventListener("input",function(){cbLock=true;setZ(parseFloat(this.value));cbLock=false;drawCalc()});
+el("sigIn").addEventListener("input",function(){cbLock=true;setZ(parseFloat(this.value));cbLock=false;
+  el("sigSlider").value=cbZ.toFixed(2); el("pxIn").value=Math.round(levelPx(cbZ))});
+el("pxIn").addEventListener("input",function(){
+  var v=parseFloat(this.value); if(!isFinite(v)||v<=0) return;
+  cbLock=true; setZ(zFromPx(v)); cbLock=false;
+  el("sigSlider").value=cbZ.toFixed(2); el("sigIn").value=cbZ.toFixed(2)});
+
+/* ---------- 06 节：分年代对比 ---------- */
+(function(){
+  function cell(v,suf){return v==null?"—":n1(v)+(suf||"")}
+  el("tbEra").innerHTML=D.era.map(function(r){
+    var last=r.era.indexOf("2010")===0;
+    return "<tr"+(last?" class='hl'":"")+"><td class='t'>"+r.era+"</td><td>"+r.years+" 年</td>"+
+      "<td>"+r.n_m+" 次"+(r.unrec?"（含 "+r.unrec+" 次未复原）":"")+"</td>"+
+      "<td>"+(r.n_d==null?"—":r.n_d+" 次")+"</td>"+
+      "<td class='neg'>"+cell(r.worst_d,"%")+"</td>"+
+      "<td>"+(r.rec==null?"—":n1(r.rec)+" 个月")+"</td><td>"+n1(r.vol)+"%</td></tr>";
+  }).join("");
+  var e2010=D.era[D.era.length-1];
+  el("pD2010").textContent=e2010.n_d;
+  el("pW2010").textContent=n1(e2010.worst_d)+"%";
+  el("pRec").innerHTML="把「跌幅」和「多久补回来」分开看，图景会反过来。"+
+    "1871–1949 那 79 年里跌超 20% 发生了 "+D.era[0].n_m+" 次，平均 "+n1(D.era[0].rec)+" 个月补回来；"+
+    "1950–1989 是 "+D.era[1].n_m+" 次、"+n1(D.era[1].rec)+" 个月；"+
+    "1990 年以后只有 2 次，可平均要 "+n1(D.era[2].rec)+" 个月。";
+
+  el("tbAlt").innerHTML=D.alt.map(function(r){
+    var flag=(r.start===1980||r.start===2010);
+    return "<tr"+(r.start===1871?" class='hl'":"")+"><td class='t'>"+r.start+" 年起"+
+      (r.start===1871?"（本页采用）":"")+"</td><td>"+r.months+" 个月</td>"+
+      "<td>"+n2(r.slope)+"%/年</td><td>"+n2(r.sd)+"</td>"+
+      "<td style='color:"+(flag?"var(--gold)":"var(--teal)")+"'>"+sgn(r.z)+"σ</td></tr>";
+  }).join("");
+  var zs=D.alt.filter(function(r){return [1871,1900,1926,1950,1990,2000].indexOf(r.start)>=0})
+              .map(function(r){return r.z});
+  el("pAlt").innerHTML="结果是<strong>它降不下来</strong>。1871、1900、1926、1950、1990、2000 这六个起点，"+
+    "算出来的当前位置落在 <span class='num'>"+sgn(Math.min.apply(null,zs))+"σ ~ "+sgn(Math.max.apply(null,zs))+"σ</span> 之间，"+
+    "跟本页用的 "+sgn(M.z_now)+"σ 基本是同一个数。"+
+    "<strong>只有 1980 年起和 2010 年起这两个起点会明显偏低</strong>，而它们恰好都是「从一轮大底之后开始数」。";
+
+  el("tbPred").innerHTML=D.pred.map(function(r){
+    return "<tr"+(r.era.indexOf("1980")===0?" class='hl'":"")+"><td class='t'>"+r.era+"</td><td>"+r.n+" 个月</td>"+
+      "<td>"+r.corr+"</td><td class='neg'>"+n2(r.slope)+" 个百分点</td></tr>";
+  }).join("");
+  var pl=D.pred[D.pred.length-1];
+  el("pPred").innerHTML="没有失效，而且<strong>在最近这一段反而更强</strong>："+
+    pl.era+" 的买点里，σ 与之后 15 年实际年化的相关系数是 <span class='num'>"+pl.corr+"</span>，"+
+    "每高 1σ 对应年化少 <span class='num'>"+n2(Math.abs(pl.slope))+"</span> 个百分点——"+
+    "比 1920–1949 的 "+D.pred[0].corr+" 和 1950–1979 的 "+D.pred[1].corr+" 都更紧。"+
+    "<em>注意这三段的买点都要往后推 15 年才能出结果，所以最后一段只到 2011 年。</em>";
+
+  var C=D.counter, P=D.pxtrend;
+  el("pCounter").innerHTML="把「上提 σ」翻译成人话，就是<strong>相信长期中枢比历史拟合值更高</strong>。"+
+    "具体高多少？要让今天正好落回 0σ，这 155 年的实际年化中枢得从 <span class='num'>"+C.now+"%</span> 改成 "+
+    "<span class='num'>"+C.need+"%</span>——<strong>只差 "+C.gap+" 个百分点</strong>。"+
+    "所以 "+sgn(M.z_now)+"σ 听上去吓人，换算成中枢假设其实并不极端；"+
+    "但反过来说，<em>要主张它，你需要一个能解释这 "+C.gap+" 个百分点的理由</em>，而不只是「最近跌得少」。";
+  el("pPxSlope").textContent=P.slope;
+  el("pPxZ").textContent=sgn(P.z);
+  el("pPxAbove").textContent=P.above;
+  el("tbDy").innerHTML=P.dy.map(function(r){
+    return "<tr><td class='t'>"+r.era+"</td><td>"+n2(r.dy)+"%</td></tr>"}).join("");
+})();
+
 renderLive();
 
 Array.prototype.forEach.call(document.querySelectorAll("#tabH button"),function(btn){
