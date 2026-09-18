@@ -2557,7 +2557,7 @@ window.addEventListener("resize", function () {
  * 在真正接上账号体系之前，先给一条手动搬运的路：导出成一小段 JSON，
  * 在另一台设备上粘回去。顺带也能当备份。
  */
-var CFG_KEYS = ["sv_pf", "sv_val_hidden", "sv_theme", "sv_lang",
+var CFG_KEYS = ["sv_pf", "sv_val_hidden", "sv_theme",
                 "sv_ticker", "sv_range", "sv_sigs", "sv_watch"];
 
 function collectConfig() {

@@ -14,7 +14,12 @@ if (/[?&]reset=1/.test(location.search)) {
     });
   } catch (e) { /* 无痕模式下会抛，忽略 */ }
 }
-var LANG = localStorage.getItem("sv_lang") || "zh";
+/* 站点是中文自用，语言固定中文。顶栏原来那个 EN 按钮已于 2026-09-18 删除（见 D-228）：
+   它的事件绑定和翻译表都在本文件里，而本文件是点进「低点信号」tab 才懒加载的，
+   所以首屏点它毫无反应。下面 T 表里的英文词条保留着，将来真要做双语时能直接用。
+   这里不再读 localStorage 的 sv_lang —— 以前切到英文的浏览器存着 "en"，
+   按钮没了就再也切不回中文。 */
+var LANG = "zh";
 
 /* ============ 文案 ============ */
 var T = {
@@ -1405,15 +1410,8 @@ document.addEventListener("click", function (e) {
   if (!sugg.contains(e.target) && e.target !== search) sugg.hidden = true;
 });
 
-document.getElementById("lang").onclick = function () {
-  LANG = LANG === "zh" ? "en" : "zh";
-  localStorage.setItem("sv_lang", LANG);
-  applyLang();
-  renderRanges(); renderAddSel(); renderAll();
-};
 function applyLang() {
   document.documentElement.lang = LANG;
-  document.getElementById("lang").textContent = LANG === "zh" ? "EN" : "中文";
   document.querySelectorAll("[data-t]").forEach(function (el) {
     var k = el.dataset.t;
     if (k === "statNote") el.innerHTML = t(k) + "<br>" + t("statNote2");
