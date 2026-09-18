@@ -19,8 +19,21 @@ var LANG = localStorage.getItem("sv_lang") || "zh";
 /* ============ 文案 ============ */
 var T = {
   title:       ["股票查看器", "Stock Viewer"],
+  researchBtn: ["研究", "Research"],
+  patternsLink:["日历规律存活名单", "Calendar anomalies: what survived"],
+  patternsSub: ["六方向 550+ 次检验：哪些季节性还活着",
+                "6 directions, 550+ tests: which seasonals are still alive"],
+  midtermLink: ["中期选举年的十月低点", "The midterm-year October low"],
+  midtermSub:  ["选举周期与十月低点的统计检验",
+                "Statistical tests on the election cycle and October lows"],
   entryLink:   ["买点位置", "Entry level"],
+  entrySub:    ["155 年统计下的买入点位分布", "Entry-level distribution over 155 years"],
   compLink:    ["复利", "Compounding"],
+  compSub:     ["收益率、本金、年限与 155 年涨跌全貌",
+                "Return, principal, horizon and 155 years of ups and downs"],
+  markerLink:  ["标注器", "Marker"],
+  markerSub:   ["在走势图上框选标注低点与高点",
+                "Box-select lows and highs on the chart"],
   searchPh:    ["搜索股票代码…", "Search ticker…"],
   mCur:        ["当前价格", "Current price"],
   mChg:        ["总涨跌幅", "Total change"],
@@ -107,6 +120,11 @@ var T = {
                 "The mean mode has no single trigger price (metrics can offset each other). Use “all” mode or a single metric."],
   trigNone:    ["这个指标暂不支持反解", "No closed form for this metric yet"],
   trigHint:    ["把这个价位设成券商的到价提醒即可。", "Set this as a price alert at your broker."],
+  trigPeer:    ["对应 ", "Equivalent "],
+  trigPeerTip: ["这是用该 ETF 自己的数据、同一口径算出来的触发价（它有自己的 252 日最高与 MA50）。" +
+                "按当前比价直接换算的话是 ",
+                "Computed from the ETF's own data under the same rule (it has its own 252-day high and MA50). " +
+                "Converting by today's price ratio instead gives "],
   trigDrift:   ["注意：距MA50 的触发价会随 MA50 上移——横盘也会让它升高。", 
                 "Note: the distance-to-MA50 trigger drifts up as MA50 rises, even in a flat market."],
   envLabel:    ["强点趋势线", "Strong-low trend"],
@@ -492,10 +510,12 @@ function triggerPrice(s, metric, th) {
     return den <= 0 ? null : (1 + xstar) * S49 / den;
   }
   if (metric === "回撤深度") {
+    /* 252 日最高取「收盘价」的最大值，必须与 watch/signals.py: pct_metrics() 里
+       roll_max(c, 252) 的口径一致；用最高价会让触发价偏 0.1%~0.17%。 */
     var mx = [], q;
     for (i = 251; i < n; i++) {
       q = -Infinity;
-      for (var k2 = i - 251; k2 <= i; k2++) if (s.h[k2] > q) q = s.h[k2];
+      for (var k2 = i - 251; k2 <= i; k2++) if (s.c[k2] > q) q = s.c[k2];
       mx.push(q);
       xs.push(s.c[i] / q - 1);
     }
@@ -507,6 +527,14 @@ function triggerPrice(s, metric, th) {
   }
   return null;                     /* 其余指标暂无闭式解 */
 }
+/* 触发价要拿去券商挂预警，ETF 价保留到分；指数点位不需要小数 */
+function fmtPrice(v) {
+  return v >= 1000 ? v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",") : v.toFixed(2);
+}
+
+/* 指数与对应可买 ETF 的配对：看指数信号，下单买的是 ETF，所以两个价格都要给出 */
+var PEER = { "^GSPC": "VOO", "VOO": "^GSPC", "^NDX": "QQQ", "QQQ": "^NDX" };
+
 /* 组合的触发价：全部达标取最严（最低）的，任一达标取最松（最高）的，平均分无解 */
 function comboTrigger(s, p) {
   if (!p.metrics.length) return { v: null, why: "none" };
@@ -1061,10 +1089,26 @@ function renderSigs() {
         var body;
         if (tp.v != null) {
           var gap = tp.v / s.c[s.n - 1] - 1;
-          body = "<div style='font-size:17px;font-weight:700;color:#b45309'>" + fmtNum(tp.v) +
-                 "<span style='font-size:12px;font-weight:500;color:#6b7280'>　" + fmtPct(gap, 2) + "</span></div>" +
-                 "<div style='font-size:11px;color:#6b7280;margin-top:2px'>" + t("trigHint") +
-                 (sg.params.metrics.indexOf("距MA50") >= 0 ? "<br>" + t("trigDrift") : "") + "</div>";
+          body = "<div style='font-size:17px;font-weight:700;color:#b45309'>" + fmtPrice(tp.v) +
+                 "<span style='font-size:12px;font-weight:500;color:#6b7280'>　" + fmtPct(gap, 2) + "</span></div>";
+          /* 对应 ETF（或对应指数）的同口径触发价 */
+          var pk = PEER[state.ticker];
+          if (pk && DATA.series[pk]) {
+            var ps2 = series(pk), pt = comboTrigger(ps2, sg.params);
+            if (pt.v != null) {
+              var pgap = pt.v / ps2.c[ps2.n - 1] - 1;
+              /* 按当前比价直接换算的对照值：两者一般差 0.2% 上下 */
+              var conv = tp.v * (ps2.c[ps2.n - 1] / s.c[s.n - 1]);
+              body += "<div style='font-size:13.5px;font-weight:600;color:#92400e;margin-top:3px;" +
+                      "padding-top:4px;border-top:1px dashed #fde68a' title='" +
+                      t("trigPeerTip") + fmtPrice(conv) + "'>" +
+                      t("trigPeer") + pk + "　" + fmtPrice(pt.v) +
+                      "<span style='font-size:11px;font-weight:500;color:#6b7280'>　" + fmtPct(pgap, 2) +
+                      "</span></div>";
+            }
+          }
+          body += "<div style='font-size:11px;color:#6b7280;margin-top:2px'>" + t("trigHint") +
+                  (sg.params.metrics.indexOf("距MA50") >= 0 ? "<br>" + t("trigDrift") : "") + "</div>";
         } else {
           body = "<div style='font-size:11.5px;color:#6b7280'>" +
                  (tp.why === "mean" ? t("trigNA") : t("trigNone")) + "</div>";

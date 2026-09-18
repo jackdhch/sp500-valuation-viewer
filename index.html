@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh" data-public="1" data-build="202609180622">
+<html lang="zh" data-public="1" data-build="202609180731">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -430,8 +430,11 @@ canvas{display:block;width:100%;touch-action:none}
 .sig .params select,.sig .params input{width:100%;padding:6px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink)}
 .sig .params label span{white-space:nowrap}
 .metricgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px 6px}
-.metricgrid label{display:flex;align-items:center;gap:4px;font-size:11.5px;cursor:pointer;white-space:nowrap}
-.metricgrid input{width:auto;flex:0 0 auto;margin:0}
+.metricgrid label{display:flex;align-items:center;gap:6px;font-size:11.5px;cursor:pointer;white-space:nowrap}
+/* 选择器要比上面的 .sig .params input{width:100%} 更具体，
+   否则复选框会被拉成整行宽，文字被挤到右边，看起来像勾在了左边那个标签上 */
+.sig .params .metricgrid input[type="checkbox"]{width:13px;height:13px;flex:0 0 auto;margin:0}
+.metricgrid label:hover{color:var(--brand-d)}
 .sig .desc{padding:0 10px 10px;font-size:12px;color:var(--ink2)}
 .sig .hit{padding:8px 10px;border-top:1px solid var(--line2);font-size:12px;display:flex;justify-content:space-between;gap:8px}
 .hit.fire{background:#ecfdf5;color:#065f46;font-weight:600}
@@ -459,7 +462,21 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
 .warnbox{margin:0 14px 14px;padding:10px 12px;background:var(--warnbg);border:1px solid var(--warnline);border-radius:9px;
   font-size:12px;color:#78350f;line-height:1.6}
 </style>
-<style>.linkbtn{width:auto;padding:0 10px;text-decoration:none;display:inline-flex;align-items:center;font-size:12.5px}</style>
+<style>
+.linkbtn{width:auto;padding:0 10px;text-decoration:none;display:inline-flex;align-items:center;font-size:12.5px}
+/* 顶栏右侧的「研究」下拉。六个外链平铺已经把顶栏挤满了，收进菜单里，
+   以后再加研究页也不用动布局。 */
+.menu{position:relative}
+.menu > button::after{content:"▾";margin-left:5px;font-size:10px;opacity:.7}
+.menupop{position:absolute;right:0;top:calc(100% + 6px);z-index:60;min-width:216px;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px;
+  box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.menupop a{display:block;padding:8px 10px;border-radius:7px;text-decoration:none;
+  color:var(--ink);font-size:13px;line-height:1.35}
+.menupop a:hover{background:var(--hover)}
+.menupop a .sub{display:block;font-size:11px;color:var(--ink3);margin-top:1px}
+.menupop hr{border:0;border-top:1px solid var(--line2);margin:5px 4px}
+</style>
 </head>
 <body>
 
@@ -476,8 +493,17 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
       <button id="tabSignal">低点信号</button>
     </div>
     <div class="spacer"></div>
-    <a class="langbtn linkbtn" href="entry/" data-t="entryLink" title="标普500 买点位置研究（155 年统计）">买点位置</a>
-    <a class="langbtn linkbtn" href="compound/" data-t="compLink" title="复利：收益率、本金、年限与 155 年的涨跌全貌">复利</a>
+    <div class="menu">
+      <button class="langbtn" id="researchBtn" data-t="researchBtn">研究</button>
+      <div class="menupop" id="researchPop" hidden>
+        <a href="patterns/"><span data-t="patternsLink">日历规律存活名单</span><span class="sub" data-t="patternsSub">六方向 550+ 次检验：哪些季节性还活着</span></a>
+        <a href="midterm/"><span data-t="midtermLink">中期选举年的十月低点</span><span class="sub" data-t="midtermSub">选举周期与十月低点的统计检验</span></a>
+        <a href="entry/"><span data-t="entryLink">买点位置</span><span class="sub" data-t="entrySub">155 年统计下的买入点位分布</span></a>
+        <a href="compound/"><span data-t="compLink">复利</span><span class="sub" data-t="compSub">收益率、本金、年限与 155 年涨跌全貌</span></a>
+        <hr>
+        <a href="marker/"><span data-t="markerLink">标注器</span><span class="sub" data-t="markerSub">在走势图上框选标注低点与高点</span></a>
+      </div>
+    </div>
     <button class="langbtn" id="theme" title="切换亮 / 暗">🌙</button>
     <button class="langbtn" id="lang">EN</button>
   </div>
@@ -805,12 +831,30 @@ footer{max-width:1360px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);fo
 <!-- viewer_data.js（2.8 MB）与 viewer.js 不在这里加载：
      它们是「低点信号」页签才用得上的，点到那个页签时由 valuation.js 动态插入。
      首屏只需要 11 KB 的估值索引，这样页面几乎是秒开的。 -->
-<script src="valuation_index.js?v=202609180622"></script>
-<script src="plot.js?v=202609180622"></script>
+<script src="valuation_index.js?v=202609180731"></script>
+<script src="plot.js?v=202609180731"></script>
 <!-- backtest_ui.js 要排在 valuation.js 前面：后者末尾会按地址栏里的 # 直接布置画面，
      那时如果回测页的入口函数还没定义，打开 #backtest 会是一片空白 -->
-<script src="backtest_ui.js?v=202609180622"></script>
-<script src="valuation.js?v=202609180622"></script>
+<script src="backtest_ui.js?v=202609180731"></script>
+<script src="valuation.js?v=202609180731"></script>
 
+<script>
+/* 「研究」下拉：点按钮开合，点别处或按 Esc 关掉。 */
+(function () {
+  var btn = document.getElementById("researchBtn"),
+      pop = document.getElementById("researchPop");
+  if (!btn || !pop) return;
+  btn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    pop.hidden = !pop.hidden;
+  });
+  document.addEventListener("click", function (e) {
+    if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true;
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") pop.hidden = true;
+  });
+})();
+</script>
 </body>
 </html>
