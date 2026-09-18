@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="../lab.css?v=202609180511">
+<link rel="stylesheet" href="../lab.css?v=202609180622">
 <style>
 /* 本页专用：三档收益语义色 + 各条曲线 */
 .s-good{fill:var(--blue)} .s-mid{fill:var(--gold)} .s-bad{fill:var(--red)}
@@ -18,6 +18,12 @@
 .dotm{fill:var(--teal)}
 .nowline{stroke:var(--gold);stroke-width:1.6;stroke-dasharray:4 3}
 .vl{fill:var(--ink2)}
+/* 净值图的年份段选择 */
+.zoombar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:14px}
+.zcustom{display:flex;align-items:center;gap:7px;font-family:var(--fm);font-size:11.5px;color:var(--ink3)}
+.zcustom input{width:72px;background:#0a1117;border:1px solid var(--line2);color:var(--ink);
+  font-family:var(--fm);font-size:12px;padding:5px 7px;border-radius:2px}
+.zcustom input:focus{outline:none;border-color:var(--teal)}
 /* σ ↔ 点位换算器 */
 .calcbox{background:var(--bg2);border:1px solid var(--line);padding:20px;margin:24px 0}
 .cb-row{display:grid;grid-template-columns:300px 1fr;gap:24px;align-items:start}
@@ -113,6 +119,22 @@
 <figure>
   <div class="figtitle">实际全收益净值与累计样本的标准差带</div>
   <div class="figsub">纵轴是对数刻度的倍数（1871-01 = 1 倍）；紫线是趋势中枢，两层带分别是 ±1σ 与 ±2σ</div>
+  <div class="zoombar">
+    <div class="tabs" id="tabC2">
+      <button data-from="0" aria-pressed="true">全部</button>
+      <button data-from="1950">1950 起</button>
+      <button data-from="1980">1980 起</button>
+      <button data-from="2000">2000 起</button>
+      <button data-from="2010">2010 起</button>
+      <button data-from="2020">2020 起</button>
+    </div>
+    <div class="zcustom">
+      <span>自定义</span>
+      <input id="zFrom" type="number" min="1871" max="2026" step="1" placeholder="1871">
+      <span>–</span>
+      <input id="zTo" type="number" min="1872" max="2026" step="1" placeholder="2026">
+    </div>
+  </div>
   <div class="chartbox"><div id="c2"></div></div>
   <figcaption id="cap2"></figcaption>
 </figure>
@@ -302,7 +324,7 @@
 <div class="foot" id="foot"></div>
 </section>
 </div>
-<script src="data.js?v=202609180511"></script>
+<script src="data.js?v=202609180622"></script>
 <script>
 (function(){
 var D=window.ENTRY_DATA, M=D.meta;
@@ -383,50 +405,126 @@ H.forEach(function(h,i){
 el("c1").innerHTML=svg(W,HT,s);
 })();
 
-/* ---------- 图 2：净值与 σ 带 ---------- */
-function drawC2(){
-var C=D.curve, W=880,HT=400, L=52,R=14,T=16,B=34;
-var n=C.t.length;
-var lg=[0,1,2,3,4,5], lab=["1 倍","10 倍","100 倍","1000 倍","1万倍","10万倍"];
-function X(i){return L+i/(n-1)*(W-L-R)}
-function Y(v){return T+(5.2-v)/(5.2-(-0.35))*(HT-T-B)}
-function lgv(x){return Math.log(x)/Math.LN10}
-var s="";
-lg.forEach(function(g,i){
-  s+='<line class="gl" x1="'+L+'" y1="'+Y(g)+'" x2="'+(W-R)+'" y2="'+Y(g)+'"/>';
-  s+='<text class="ax" x="'+(L-7)+'" y="'+(Y(g)+3.5)+'" text-anchor="end">'+lab[i]+'</text>';
-});
-function bandPath(k){
-  var up="",dn=[],i;
-  for(i=0;i<n;i++){
-    if(C.mid[i]==null||C.sd[i]==null) continue;
-    var m=lgv(C.mid[i]), d=C.sd[i]*k/Math.LN10;
-    up+=(up?"L":"M")+n1(X(i))+" "+n1(Y(m+d));
-    dn.push("L"+n1(X(i))+" "+n1(Y(m-d)));
+/* ---------- 图 2：净值与 σ 带（可选年份段放大） ---------- */
+function lg10(x){return Math.log(x)/Math.LN10}
+var zoomFrom=0, zoomTo=0;      /* 0 表示不限，用整段 */
+
+/* 对数轴刻度：跨度大就按 10 的幂次，跨度小就细分成 1/2/5 */
+function logTicks(lo,hi){
+  var e0=Math.floor(lg10(lo)), e1=Math.ceil(lg10(hi)), out=[], e, m;
+  var span=e1-e0;
+  var mult = span>=5?[1]:(span>=3?[1,3]:[1,2,5]);
+  var stepE = span>=9?2:1;
+  for(e=e0;e<=e1;e+=stepE) for(var j=0;j<mult.length;j++){
+    m=mult[j]*Math.pow(10,e);
+    if(m>=lo&&m<=hi) out.push(m);
   }
-  return up+dn.reverse().join("")+"Z";
+  return out;
 }
-s+='<path class="bd2" d="'+bandPath(2)+'"/>';
-s+='<path class="bd1" d="'+bandPath(1)+'"/>';
-var mp="",np="";
-for(var i=0;i<n;i++){
-  np+=(i?"L":"M")+n1(X(i))+" "+n1(Y(lgv(C.nav[i])));
-  if(C.mid[i]!=null) mp+=(mp?"L":"M")+n1(X(i))+" "+n1(Y(lgv(C.mid[i])));
+function xfmt(v){
+  if(v>=10000) return (v/10000>=10?Math.round(v/10000):(v/10000).toFixed(1).replace(/\.0$/,""))+" 万倍";
+  if(v>=1) return (v>=100?Math.round(v):v.toFixed(v>=10?0:1))+" 倍";
+  return v.toFixed(2)+" 倍";
 }
-s+='<path class="ln-mid" d="'+mp+'"/>';
-s+='<path class="ln-nav" d="'+np+'"/>';
-for(var y=1880;y<=2000;y+=20){
-  var j=(y-1871)*12; if(j<0||j>=n) continue;
-  s+='<text class="axb" x="'+X(j)+'" y="'+(HT-B+20)+'" text-anchor="middle">'+y+'</text>';
+function yearStep(span){
+  return span>120?20:span>60?10:span>30?5:span>12?2:1;
 }
-s+='<text class="axb" x="'+(W-R)+'" y="'+(HT-B+20)+'" text-anchor="end">2026</text>';
-var li=n-1;
-s+='<circle cx="'+X(li)+'" cy="'+Y(lgv(C.nav[li]))+'" r="3.6" fill="var(--mid)"/>';
-s+='<text class="vl" x="'+(X(li)-6)+'" y="'+(Y(lgv(C.nav[li]))-8)+'" text-anchor="end" fill="var(--mid)">'+sgn(S.z)+'σ</text>';
-el("c2").innerHTML=svg(W,HT,s);
-el("cap2").textContent="155 年里净值在这条带子里上下摆动，大部分时间落在 ±1σ 之内。"+
-  "最新读数 "+sgn(S.z)+"σ（"+S.date+"），是 1929 年前后、1960 年代中期、1990 年代末之后的第三段明显高于趋势线的时期。";
+function drawC2(){
+  var C=D.curve, n=C.t.length;
+  var a=0, b=n-1;
+  if(zoomFrom){ var k=(zoomFrom-1871)*12; if(k>0) a=Math.min(k,n-24); }
+  if(zoomTo){ var k2=(zoomTo-1871)*12+11; if(k2<n-1) b=Math.max(k2,a+23); }
+  var W=880,HT=400, L=58,R=16,T=20,B=34;
+  var m=b-a+1;
+  function X(i){return L+(i-a)/Math.max(m-1,1)*(W-L-R)}
+  /* 纵轴范围按可见段自适应，否则放大之后曲线会被压成一条直线 */
+  var lo=Infinity, hi=-Infinity, i;
+  for(i=a;i<=b;i++){
+    var v=C.nav[i]; if(v<lo)lo=v; if(v>hi)hi=v;
+    if(C.mid[i]!=null&&C.sd[i]!=null){
+      var u=C.mid[i]*Math.exp(2*C.sd[i]), d=C.mid[i]*Math.exp(-2*C.sd[i]);
+      if(u>hi)hi=u; if(d<lo)lo=d;
+    }
+  }
+  var pad=(lg10(hi)-lg10(lo))*0.06;
+  var y1=lg10(hi)+pad, y0=lg10(lo)-pad;
+  function Y(x){return T+(y1-lg10(x))/(y1-y0)*(HT-T-B)}
+  var s="";
+  logTicks(Math.pow(10,y0),Math.pow(10,y1)).forEach(function(g){
+    s+='<line class="gl" x1="'+L+'" y1="'+n1(Y(g))+'" x2="'+(W-R)+'" y2="'+n1(Y(g))+'"/>';
+    s+='<text class="ax" x="'+(L-8)+'" y="'+n1(Y(g)+3.5)+'" text-anchor="end">'+xfmt(g)+'</text>';
+  });
+  function bandPath(k){
+    var up="",dn=[],i;
+    for(i=a;i<=b;i++){
+      if(C.mid[i]==null||C.sd[i]==null) continue;
+      var mm=lg10(C.mid[i]), dd=C.sd[i]*k/Math.LN10;
+      up+=(up?"L":"M")+n1(X(i))+" "+n1(Y(Math.pow(10,mm+dd)));
+      dn.push("L"+n1(X(i))+" "+n1(Y(Math.pow(10,mm-dd))));
+    }
+    return up?up+dn.reverse().join("")+"Z":"";
+  }
+  var p2=bandPath(2), p1=bandPath(1);
+  if(p2) s+='<path class="bd2" d="'+p2+'"/>';
+  if(p1) s+='<path class="bd1" d="'+p1+'"/>';
+  var mp="",np="";
+  for(i=a;i<=b;i++){
+    np+=(np?"L":"M")+n1(X(i))+" "+n1(Y(C.nav[i]));
+    if(C.mid[i]!=null) mp+=(mp?"L":"M")+n1(X(i))+" "+n1(Y(C.mid[i]));
+  }
+  if(mp) s+='<path class="ln-mid" d="'+mp+'"/>';
+  s+='<path class="ln-nav" d="'+np+'"/>';
+  /* 横轴年份，步长随跨度变 */
+  var yA=1871+Math.ceil(a/12), yB=1871+Math.floor(b/12), st=yearStep(yB-yA);
+  var first=Math.ceil(yA/st)*st;
+  for(var yy=first;yy<=yB;yy+=st){
+    var j=(yy-1871)*12; if(j<a||j>b) continue;
+    s+='<text class="axb" x="'+n1(X(j))+'" y="'+(HT-B+20)+'" text-anchor="middle">'+yy+'</text>';
+  }
+  s+='<circle cx="'+n1(X(b))+'" cy="'+n1(Y(C.nav[b]))+'" r="3.6" fill="var(--gold)"/>';
+  s+='<text class="vl" x="'+n1(X(b)-6)+'" y="'+n1(Y(C.nav[b])-9)+'" text-anchor="end" fill="var(--gold)">'+
+     sgn(b===n-1?S.z:C.z[b])+'σ</text>';
+  el("c2").innerHTML=svg(W,HT,s);
+
+  /* 图注随区间变化：这段时间 σ 走过什么范围 */
+  var zs=[]; for(i=a;i<=b;i++) if(C.z[i]!=null) zs.push(C.z[i]);
+  var zmin=Math.min.apply(null,zs), zmax=Math.max.apply(null,zs);
+  var full=(a===0&&b===n-1);
+  if(full){
+    el("cap2").innerHTML="155 年里净值在这条带子里上下摆动，大部分时间落在 ±1σ 之内。"+
+      "最新读数 <strong>"+sgn(S.z)+"σ</strong>（"+S.date+"），是 1929 年前后、1960 年代中期、"+
+      "1990 年代末之后的第三段明显高于趋势线的时期。";
+  }else{
+    el("cap2").innerHTML="放大到 <strong>"+C.t[a].slice(0,4)+"–"+C.t[b].slice(0,4)+"</strong>（纵轴已按这一段重新缩放）。"+
+      "这段时间里 σ 位置在 <span class='num'>"+sgn(zmin)+"σ</span> 到 <span class='num'>"+sgn(zmax)+"σ</span> 之间，"+
+      (b===n-1 ? "最新读数 <strong>"+sgn(S.z)+"σ</strong>。"
+               : "区间末（"+C.t[b]+"）是 <strong>"+sgn(C.z[b])+"σ</strong>，今天是 "+sgn(S.z)+"σ。")+
+      "<em>注意带子本身没有重算</em>——它仍然是用 1871 年以来的累计样本拟合出来的，这里只是把视野裁短。";
+  }
+  el("f2range")&&(el("f2range").textContent="");
 }
+function setZoom(from,to){
+  zoomFrom=from||0; zoomTo=to||0;
+  Array.prototype.forEach.call(document.querySelectorAll("#tabC2 button"),function(btn){
+    btn.setAttribute("aria-pressed", (+btn.dataset.from===zoomFrom && !zoomTo)?"true":"false");
+  });
+  drawC2();
+}
+Array.prototype.forEach.call(document.querySelectorAll("#tabC2 button"),function(btn){
+  btn.addEventListener("click",function(){
+    el("zFrom").value=""; el("zTo").value="";
+    setZoom(+btn.dataset.from, 0);
+  });
+});
+function readCustom(){
+  var f=parseInt(el("zFrom").value,10), t=parseInt(el("zTo").value,10);
+  f=isFinite(f)?Math.max(1871,Math.min(2026,f)):0;
+  t=isFinite(t)?Math.max(1872,Math.min(2026,t)):0;
+  if(f&&t&&t<=f) t=0;
+  setZoom(f,t);
+}
+el("zFrom").addEventListener("input",readCustom);
+el("zTo").addEventListener("input",readCustom);
 
 /* ---------- 图 3：σ 与未来年化 ---------- */
 var cur=15;
