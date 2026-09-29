@@ -1,0 +1,554 @@
+<meta charset="utf-8">
+<title>市场宽度</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../lab.css?v=202609282140">
+<style>
+/* 本页专用：三条宽度曲线 + 极值区底纹 */
+.c20{background:var(--blue)} .c50{background:var(--gold)} .c200{background:var(--teal)} .cdd{background:var(--violet)}
+.readout{position:sticky;top:46px;z-index:15;background:var(--bg2);border:1px solid var(--line);
+  border-radius:12px;padding:11px 14px;margin:18px 0 8px}
+.readout .rdate{font-family:var(--fm);font-size:12px;color:var(--ink3);letter-spacing:.06em}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:9px 14px;margin-top:7px}
+.rcell .k{font-size:11px;color:var(--ink3);display:flex;align-items:center;gap:5px}
+.rcell .k i{width:8px;height:8px;border-radius:2px;flex:none}
+.rcell .v{font-family:var(--fm);font-size:16px;font-weight:500;letter-spacing:-.01em}
+.rcell .v.dim{color:var(--ink3)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--ink2);font-family:var(--fm);font-size:12px;
+  padding:5px 12px;cursor:pointer;border-right:1px solid var(--line2)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--line);color:var(--ink)}
+.chart{background:var(--bg2);border:1px solid var(--line);border-radius:12px;margin:14px 0 0;overflow:hidden}
+.chead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 16px;padding:12px 15px 8px}
+.ctitle{font-weight:600;font-size:15px}
+.clg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--ink2);margin-left:auto}
+.clg span{display:inline-flex;align-items:center;gap:5px}
+.clg i{width:11px;height:2.5px;border-radius:2px}
+.plot{position:relative;padding:0 6px}
+.plot canvas{position:absolute;inset:0;width:100%;height:100%}
+.plot{height:230px}
+.cfoot{font-size:12px;color:var(--ink3);line-height:1.65;padding:6px 15px 13px}
+.rule{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px;margin:10px 0 0}
+.rule b{font-family:var(--fm);font-size:12.5px;color:var(--ink);white-space:nowrap}
+@media (max-width:620px){ .rule{grid-template-columns:1fr;gap:1px 0} .rule b{margin-top:8px} }
+/* 图要尽量宽（4000 多个交易日挤在 1000px 里看不清），正文仍收窄到易读宽度 */
+.wrap{max-width:1240px}
+.narrow{max-width:940px}
+.hint{font-size:11.5px;color:var(--ink3);margin-left:10px}
+.ctrls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:14px 0 2px}
+.thbox{display:inline-flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);
+  border-radius:9px;padding:5px 10px}
+.thbox label{font-size:12px;color:var(--ink2)}
+.thbox input[type=range]{width:120px;accent-color:var(--teal)}
+.thbox input[type=number]{width:54px;background:var(--bg);color:var(--ink);border:1px solid var(--line2);
+  border-radius:6px;padding:3px 6px;font-family:var(--fm);font-size:12.5px}
+.thnote{font-family:var(--fm);font-size:11.5px;color:var(--ink3)}
+.thnote b{color:var(--ink)}
+.thbox button{background:transparent;border:1px solid var(--line2);border-radius:6px;color:var(--ink3);
+  font-size:11.5px;padding:3px 8px;cursor:pointer}
+.thbox button:hover{color:var(--ink)}
+/* 极值事件清单 */
+.evt{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+.evt th{font-family:var(--fm);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink3);font-weight:500;text-align:right;padding:6px 10px;border-bottom:1px solid var(--line2)}
+.evt th:first-child,.evt td:first-child{text-align:left}
+.evt td{padding:7px 10px;border-bottom:1px solid var(--line);font-family:var(--fm);font-size:12.5px;text-align:right}
+.evt tbody tr{cursor:pointer}
+.evt tbody tr:hover{background:var(--shade)}
+.evt .win{color:var(--teal)} .evt .lose{color:var(--red)}
+.evt .go{font-family:var(--fs);font-size:11.5px;color:var(--ink3)}
+.evt tbody tr:hover .go{color:var(--ink2)}
+</style>
+
+<div class="topnav"><div class="in">
+  <span class="lab">S&amp;P 500 LAB</span>
+  <a href="./" aria-current="page">市场宽度</a>
+  <a href="../entry/">买点位置</a>
+  <a href="../compound/">复利</a>
+  <span class="sp"></span>
+  <a class="home" href="../">← 估值面板</a>
+</div></div>
+
+<div class="wrap">
+<header class="narrow">
+  <div class="eyebrow">标普500 与纳斯达克100 · 2010 年至今 · 日频 · 等权</div>
+  <h1>市场宽度</h1>
+  <p class="sub">指数在涨，是所有股票一起涨，还是几只权重股扛着涨？
+  这一页把两个指数的成分股逐只算一遍：<strong>有多少比例的股票，收盘价站在自己的 20 日、50 日、200 日均线之上。</strong>
+  指数创新高而这几条线往下走，说明赚钱效应在收缩；反过来，三条线一起趴在地板上、
+  同时价格已经跌得够深，往往就是市场最恐慌的那几天。</p>
+  <div class="meta">
+    <span id="mRange"></span><span id="mN"></span><span>口径与限制见页末</span>
+  </div>
+</header>
+
+<div class="readout">
+  <span class="rdate" id="rDate">—</span>
+  <span style="font-size:11.5px;color:var(--ink3);margin-left:8px">鼠标移到任意一张图上读取当天数值</span>
+  <div class="rgrid" id="rGrid"></div>
+</div>
+
+<div class="ctrls">
+  <span class="seg" id="segRange" role="group" aria-label="显示区间"></span>
+  <span class="hint">图上滚轮缩放 · 按住左右拖动平移 · 双击还原</span>
+  <span class="thbox">
+    <label for="thIn">极值阈值</label>
+    <input id="thRange" type="range" min="5" max="45" step="1" value="15" aria-label="极值阈值滑块">
+    <input id="thIn" type="number" min="5" max="45" step="1" value="15" aria-label="极值阈值">
+    <span class="thnote">极冷 ≤<b id="thLo">15</b>%　过热 ≥<b id="thHi">85</b>%</span>
+    <button id="thReset" class="xbtn" type="button">还原 15</button>
+  </span>
+</div>
+
+<div class="chart">
+  <div class="chead">
+    <span class="ctitle">标普500</span>
+    <span class="clg">
+      <span><i class="c20"></i>20日宽度</span>
+      <span><i class="c50"></i>50日宽度</span>
+      <span><i class="c200"></i>200日宽度</span>
+    </span>
+  </div>
+  <div class="plot" id="pSpx" tabindex="0" role="img" aria-label="标普500 市场宽度走势图"></div>
+  <div class="cfoot">红色区 <b class="thH">85</b>% 以上＝过热，绿色区 <b class="thL">15</b>% 以下＝极冷，中间虚线是 200 日宽度的牛熊分界。
+    图上竖着的窄带是三条宽度<b>同时</b>进极值区的那几天：
+    <span style="color:var(--ink)">贴着底边的白条</span>＝三条同时 ≤<b class="thL">15</b>%，
+    <span style="color:var(--red)">贴着顶边的红条</span>＝三条同时 ≥<b class="thH">85</b>%。</div>
+  <div style="padding:0 15px 14px">
+    <div style="font-size:12.5px;color:var(--ink2);margin-bottom:2px">
+      三条同时 ≤<b id="thLbl1">15</b>% 的极冷段（点任意一行放大到那段时间）</div>
+    <table class="evt"><thead><tr>
+      <th>时间</th><th>持续</th><th>期间最深回撤</th><th>之后3个月</th><th>之后6个月</th><th>之后12个月</th><th></th>
+    </tr></thead><tbody id="evtSpx"></tbody></table>
+  </div>
+</div>
+
+<div class="chart">
+  <div class="chead">
+    <span class="ctitle">纳斯达克100</span>
+    <span class="clg">
+      <span><i class="c20"></i>20日宽度</span>
+      <span><i class="c50"></i>50日宽度</span>
+      <span><i class="c200"></i>200日宽度</span>
+    </span>
+  </div>
+  <div class="plot" id="pNdx" tabindex="0" role="img" aria-label="纳斯达克100 市场宽度走势图"></div>
+  <div class="cfoot">和上图对比：同一天纳指的宽度高于标普，说明走弱的是科技以外的板块，反之亦然。</div>
+  <div style="padding:0 15px 14px">
+    <div style="font-size:12.5px;color:var(--ink2);margin-bottom:2px">
+      纳指三条同时 ≤<b id="thLbl2">15</b>% 的极冷段（事后表现一列仍用标普500 计算，便于和上表直接比较）</div>
+    <table class="evt"><thead><tr>
+      <th>时间</th><th>持续</th><th>期间最深回撤</th><th>之后3个月</th><th>之后6个月</th><th>之后12个月</th><th></th>
+    </tr></thead><tbody id="evtNdx"></tbody></table>
+  </div>
+</div>
+
+<div class="chart">
+  <div class="chead">
+    <span class="ctitle">标普500 自历史最高收盘价的回撤</span>
+    <span class="clg"><span><i class="cdd"></i>Drawdown %</span></span>
+  </div>
+  <div class="plot" id="pDd" style="height:150px" tabindex="0" role="img" aria-label="标普500 回撤走势图"></div>
+  <div class="cfoot">宽度低只说明内部在走弱，还要看价格实际跌了多少——两者同时到位，底部才算数。</div>
+</div>
+
+<div class="narrow">
+<h2 style="margin:38px 0 0;font-size:21px">怎么读</h2>
+<div class="rule">
+  <b>20日 + 50日 ≥ 85%</b><span>两条同时进入上方极值区，通常对应短期的、阶段性的顶部。</span>
+  <b>20日 + 50日 ≤ 15%</b><span>两条同时进入下方极值区，通常对应短期的、阶段性的底部。</span>
+  <b>50日 + 200日 同时到极值</b><span>周期拉长一级：指向的是中长期的顶部或底部。</span>
+  <b>三条同时到极值</b><span>最强的信号。这种机会一年未必有一次。</span>
+  <b>200日宽度 50%</b><span>牛熊分界。在其上视为牛市，跌破视为熊市。</span>
+  <b>底部要配回撤</b><span>宽度到了下方极值区，但价格几乎没跌，说明恐慌还没真正发生，确定性要打折扣。</span>
+</div>
+<p class="note" style="margin-top:14px">这套读法来自 TheMarketMemo 的市场宽度指标。极值区用的是 <b>85% / 15% 这样的绝对阈值</b>，
+不是「近三年百分位」这类相对排名——相对排名会随窗口漂移，同一个百分位在不同年份代表的市场状态并不一样，
+绝对阈值才能跨年份直接比较。</p>
+
+<h2 style="margin:34px 0 0;font-size:21px">口径与限制</h2>
+<ul class="note" style="padding-left:20px">
+  <li><b>怎么算的</b>：对指数的每一只成分股，比较当日收盘价与它自己的 20/50/200 日简单移动平均线，
+    数出站上均线的只数除以总数。等权——每只股票一票，不按市值加权。</li>
+  <li><b>分母</b>：只统计当日「数据足够算出该均线」的股票。上市不足 200 天的新股，
+    在 200 日宽度里不计入分母，也不计入分子。标普不足 100 只、纳指不足 60 只可算时，当天不出数。</li>
+  <li><b>幸存者偏差</b>：用的是<b>当前</b>成分股名单，历史上被剔除出指数的公司不在内。
+    这会让早年的宽度数值系统性偏高——因为留到今天的都是活下来的。这个偏差用免费数据无法修正，
+    读 2015 年以前的绝对数值时要打折扣，看形状和相对变化更可靠。</li>
+  <li><b>回撤</b>：当日收盘 ÷ 截至当日的历史最高收盘 − 1。用的是全历史最高点，不含未来信息。</li>
+  <li><b>数据源</b>：价格 Yahoo Finance；标普500 名单 <span class="num">datasets/s-and-p-500-companies</span>；
+    纳指100 名单 Nasdaq 官方接口。<span id="mGen"></span></li>
+</ul>
+
+</div>
+<div class="foot narrow">
+  <div class="srcline">这一页只做描述，不构成投资建议。宽度到了极值区，不代表市场会立刻反转。</div>
+</div>
+</div>
+
+<script src="data.js?v=202609282140"></script>
+<script>
+"use strict";
+const B = window.BREADTH_DATA, D = B.dates, N = D.length;
+const $ = s => document.querySelector(s);
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const state = { r0: 0, r1: N - 1, cur: N - 1, range: 3, th: 15 };
+
+/* ---------- 画图 ---------- */
+class Plot {
+  constructor(el, o) {
+    this.el = el; this.o = o;
+    this.base = document.createElement("canvas");
+    this.over = document.createElement("canvas");
+    el.append(this.base, this.over);
+    this.pad = { l: 44, r: 10, t: 8, b: 20 };
+  }
+  size() {
+    const r = this.el.getBoundingClientRect();
+    this.w = Math.max(120, r.width); this.h = Math.max(70, r.height);
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    for (const c of [this.base, this.over]) {
+      c.width = Math.round(this.w * dpr); c.height = Math.round(this.h * dpr);
+      c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+  }
+  xOf(i) { const { l, r } = this.pad, s = Math.max(1, state.r1 - state.r0);
+    return l + (this.w - l - r) * (i - state.r0) / s; }
+  iOf(px) { const { l, r } = this.pad, s = Math.max(1, state.r1 - state.r0);
+    const t = (px - l) / Math.max(1, this.w - l - r);
+    return Math.max(state.r0, Math.min(state.r1, Math.round(state.r0 + t * s))); }
+  yOf(v) { const { t, b } = this.pad;
+    return t + (this.h - t - b) * (1 - (v - this.lo) / Math.max(1e-9, this.hi - this.lo)); }
+  domain() {
+    if (this.o.fixed) { [this.lo, this.hi] = this.o.fixed; return; }
+    let lo = Infinity, hi = -Infinity;
+    for (const s of this.o.series) for (let i = state.r0; i <= state.r1; i++) {
+      const v = s.data[i]; if (v == null) continue;
+      if (v < lo) lo = v; if (v > hi) hi = v;
+    }
+    if (!isFinite(lo)) { lo = -1; hi = 0; }
+    const p = (hi - lo) * .10 || 1; this.lo = lo - p; this.hi = hi + p;
+  }
+  ticks() {
+    const target = Math.max(2, Math.floor((this.h - this.pad.t - this.pad.b) / 42));
+    const raw = (this.hi - this.lo) / target, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || 10 * mag;
+    const out = [];
+    for (let v = Math.ceil(this.lo / step) * step; v <= this.hi; v += step) out.push(v);
+    return out;
+  }
+  // min/max 降采样：每个像素列只保留极值，几千个点也不会画崩
+  path(g, data) {
+    const { l, r } = this.pad, cols = Math.max(1, Math.round(this.w - l - r));
+    const span = state.r1 - state.r0 + 1, per = span / cols;
+    g.beginPath(); let started = false;
+    const put = (x, y) => { started ? g.lineTo(x, y) : (g.moveTo(x, y), started = true); };
+    if (per <= 1.5) {
+      for (let i = state.r0; i <= state.r1; i++) {
+        const v = data[i]; if (v == null) { started = false; continue; }
+        put(this.xOf(i), this.yOf(v));
+      }
+    } else {
+      for (let c = 0; c < cols; c++) {
+        const a = state.r0 + Math.floor(c * per), b = Math.min(state.r1, state.r0 + Math.floor((c + 1) * per) - 1);
+        let mn = Infinity, mx = -Infinity, ok = false;
+        for (let i = a; i <= b; i++) { const v = data[i]; if (v == null) continue; ok = true;
+          if (v < mn) mn = v; if (v > mx) mx = v; }
+        if (!ok) { started = false; continue; }
+        const x = l + c;
+        put(x, this.yOf(mx)); g.lineTo(x, this.yOf(mn));
+      }
+    }
+  }
+  render() {
+    this.size(); this.domain();
+    const g = this.base.getContext("2d"), { l, r, t, b } = this.pad;
+    g.clearRect(0, 0, this.w, this.h);
+    // 极值区底纹
+    for (const bd of (this.o.bands || [])) {
+      g.fillStyle = bd.color; g.globalAlpha = bd.alpha;
+      const y1 = this.yOf(bd.hi), y2 = this.yOf(bd.lo);
+      g.fillRect(l, Math.min(y1, y2), this.w - l - r, Math.abs(y2 - y1));
+      g.globalAlpha = 1;
+    }
+    // 三条宽度同时进极值区的那几天：画成竖向窄带
+    for (const sp of (this.o.spans || [])) {
+      if (sp.b < state.r0 || sp.a > state.r1) continue;
+      const x1 = this.xOf(Math.max(sp.a, state.r0)), x2 = this.xOf(Math.min(sp.b, state.r1));
+      const w = Math.max(2.4, x2 - x1);
+      g.fillStyle = sp.color;
+      g.globalAlpha = .16;                      // 全高淡带：定位用
+      g.fillRect(x1 - 1, t, w, this.h - t - b);
+      g.globalAlpha = 1;                        // 边缘一条实心：极冷贴底、过热贴顶，一眼能数清几次
+      const hh = 5;
+      g.fillRect(x1 - 1, sp.top ? t : this.h - b - hh, w, hh);
+    }
+    // 横向刻度
+    g.font = '11px "JetBrains Mono",monospace'; g.textAlign = "right"; g.textBaseline = "middle";
+    for (const v of this.ticks()) {
+      const y = this.yOf(v);
+      g.strokeStyle = cssv("--line"); g.lineWidth = 1;
+      g.beginPath(); g.moveTo(l, y + .5); g.lineTo(this.w - r, y + .5); g.stroke();
+      g.fillStyle = cssv("--ink3"); g.fillText(this.o.yfmt(v), l - 7, y);
+    }
+    // 参考线
+    for (const rl of (this.o.rules || [])) {
+      const y = this.yOf(rl.v);
+      g.save(); g.strokeStyle = rl.color; g.setLineDash([4, 3]); g.lineWidth = 1;
+      g.beginPath(); g.moveTo(l, y + .5); g.lineTo(this.w - r, y + .5); g.stroke(); g.restore();
+      if (rl.label) { g.save(); g.textAlign = "left"; g.fillStyle = rl.color; g.globalAlpha = .85;
+        g.fillText(rl.label, l + 5, y - 8); g.restore(); }
+    }
+    // 年份
+    g.textAlign = "center"; g.textBaseline = "alphabetic"; g.fillStyle = cssv("--ink3");
+    const span = state.r1 - state.r0, stepY = span > 2400 ? 2 : 1;
+    let lastY = null;
+    for (let i = state.r0; i <= state.r1; i++) {
+      const y = D[i].slice(0, 4);
+      if (y !== lastY) { lastY = y;
+        if (+y % stepY === 0) g.fillText(y, this.xOf(i), this.h - 6); }
+    }
+    // 数据线
+    g.lineJoin = "round"; g.lineCap = "round";
+    for (const s of this.o.series) {
+      if (s.fill) {
+        g.save(); g.globalAlpha = .32; g.fillStyle = s.color;
+        this.path(g, s.data);
+        const base = this.yOf(0);
+        g.lineTo(this.xOf(state.r1), base); g.lineTo(this.xOf(state.r0), base);
+        g.closePath(); g.fill(); g.restore();
+      }
+      g.strokeStyle = s.color; g.lineWidth = s.width || 1.4;
+      this.path(g, s.data); g.stroke();
+    }
+    this.cursor();
+  }
+  cursor() {
+    const g = this.over.getContext("2d");
+    g.clearRect(0, 0, this.w, this.h);
+    const i = state.cur; if (i < state.r0 || i > state.r1) return;
+    const x = Math.round(this.xOf(i)) + .5;
+    g.strokeStyle = cssv("--line2"); g.lineWidth = 1; g.setLineDash([3, 3]);
+    g.beginPath(); g.moveTo(x, this.pad.t); g.lineTo(x, this.h - this.pad.b); g.stroke();
+    g.setLineDash([]);
+    for (const s of this.o.series) {
+      const v = s.data[i]; if (v == null) continue;
+      g.fillStyle = s.color; g.beginPath(); g.arc(x, this.yOf(v), 2.6, 0, 7); g.fill();
+    }
+  }
+}
+
+const plots = [];
+function mk(sel, o) { const p = new Plot($(sel), o); plots.push(p); return p; }
+function breadthOpts(S) {
+  return {
+    fixed: [0, 100], spans: [], bands: [], rules: [],
+    series: [
+      { data: S.b20,  color: cssv("--blue"), width: 1.2 },
+      { data: S.b50,  color: cssv("--gold"), width: 1.2 },
+      { data: S.b200, color: cssv("--teal"), width: 1.7 }
+    ],
+    yfmt: v => v.toFixed(0) + "%"
+  };
+}
+const plotSpx = mk("#pSpx", breadthOpts(B.spx_b));
+const plotNdx = mk("#pNdx", breadthOpts(B.ndx_b));
+mk("#pDd", { series: [{ data: B.dd, color: cssv("--violet"), width: 1, fill: true }],
+             yfmt: v => v.toFixed(0) + "%" });
+
+/* ---------- 读数条 ---------- */
+const pc = v => v == null ? "—" : v.toFixed(1) + "%";
+const CELLS = [
+  ["标普 20日", "--blue", i => pc(B.spx_b.b20[i])],
+  ["标普 50日", "--gold", i => pc(B.spx_b.b50[i])],
+  ["标普 200日", "--teal", i => pc(B.spx_b.b200[i])],
+  ["回撤", "--violet", i => pc(B.dd[i])],
+  ["纳指 20日", "--blue", i => pc(B.ndx_b.b20[i])],
+  ["纳指 50日", "--gold", i => pc(B.ndx_b.b50[i])],
+  ["纳指 200日", "--teal", i => pc(B.ndx_b.b200[i])],
+  ["标普收盘", "--ink3", i => B.spx[i] == null ? "—" : Math.round(B.spx[i]).toLocaleString("en-US")]
+];
+function buildReadout() {
+  const host = $("#rGrid"); host.textContent = "";
+  for (const [name, col] of CELLS) {
+    const c = document.createElement("div"); c.className = "rcell";
+    const k = document.createElement("div"); k.className = "k";
+    const ic = document.createElement("i"); ic.style.background = `var(${col})`;
+    k.append(ic, document.createTextNode(name));
+    const v = document.createElement("div"); v.className = "v"; v.textContent = "—";
+    c.append(k, v); host.append(c);
+  }
+}
+function paintReadout() {
+  $("#rDate").textContent = D[state.cur];
+  const cells = $("#rGrid").children;
+  CELLS.forEach(([, , f], k) => {
+    const t = f(state.cur), el = cells[k].querySelector(".v");
+    el.textContent = t; el.classList.toggle("dim", t === "—");
+  });
+}
+
+/* ---------- 区间 ---------- */
+const RANGES = [["近1年", 1], ["3年", 3], ["5年", 5], ["全部", 0]];
+function applyRange() {
+  const y = state.range;
+  if (y < 0) return;        // 自定义区间（滚轮缩放 / 点事件行进来的），不要覆盖
+  state.r0 = y === 0 ? 0 : Math.max(0, N - 1 - Math.round(y * 252));
+  state.r1 = N - 1;
+  if (state.cur < state.r0 || state.cur > state.r1) state.cur = state.r1;
+}
+// 缩放与平移都只改 r0/r1，越界夹回去；窗口最少留 30 个交易日，否则会缩成一条线
+function setWindow(a, b) {
+  const MIN = 30;
+  a = Math.round(a); b = Math.round(b);
+  if (b - a < MIN) { const c = (a + b) / 2; a = Math.round(c - MIN / 2); b = a + MIN; }
+  if (a < 0) { b -= a; a = 0; }
+  if (b > N - 1) { a -= b - (N - 1); b = N - 1; }
+  state.r0 = Math.max(0, a); state.r1 = Math.min(N - 1, b);
+  state.range = -1;
+  if (state.cur < state.r0 || state.cur > state.r1) state.cur = state.r1;
+  redraw();
+}
+function buildSeg() {
+  const host = $("#segRange"); host.textContent = "";
+  for (const [label, y] of RANGES) {
+    const b = document.createElement("button");
+    b.textContent = label; b.setAttribute("aria-pressed", String(state.range === y));
+    b.onclick = () => { state.range = y; applyRange(); redraw(); };
+    host.append(b);
+  }
+}
+
+/* ---------- 极值事件：按当前阈值实时算 ---------- */
+// 三条宽度同时进极值区才算数。连续的日子合成一段；中间断开不超过 5 个交易日仍算
+// 同一段——同一轮恐慌里常有一两天反弹把某条线拉回阈值之上，拆成两段反而看不清。
+const GAP = 5;
+function computeEvents(S, th, cold) {
+  const hit = cold ? (v => v <= th) : (v => v >= 100 - th);
+  const idx = [];
+  for (let i = 0; i < N; i++)
+    if (S.b20[i] != null && S.b50[i] != null && S.b200[i] != null
+        && hit(S.b20[i]) && hit(S.b50[i]) && hit(S.b200[i])) idx.push(i);
+  const segs = [];
+  for (const i of idx) {
+    const last = segs[segs.length - 1];
+    if (last && i - last[1] <= GAP) last[1] = i; else segs.push([i, i]);
+  }
+  return segs.map(([a, b]) => {
+    let worst = 0;
+    for (let i = a; i <= b; i++) if (B.dd[i] != null && B.dd[i] < worst) worst = B.dd[i];
+    const fwd = {};
+    for (const [k, n] of [["m3", 63], ["m6", 126], ["m12", 252]]) {
+      const j = b + n;
+      fwd[k] = (j < N && B.spx[j] != null && B.spx[b]) ? (B.spx[j] / B.spx[b] - 1) * 100 : null;
+    }
+    return { a, b, days: b - a + 1, dd: worst, fwd };
+  });
+}
+const fwdCell = v => v == null
+  ? '<td class="dim">—</td>'
+  : `<td class="${v >= 0 ? "win" : "lose"}">${v >= 0 ? "+" : ""}${v.toFixed(1)}%</td>`;
+function buildEvents(tbodyId, list) {
+  const tb = document.querySelector(tbodyId); tb.textContent = "";
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="7" class="dim">按这个阈值，这段历史里一次都没出现过</td></tr>'; return; }
+  for (const e of list.slice().reverse()) {
+    const tr = document.createElement("tr");
+    const span = D[e.a] === D[e.b] ? D[e.a] : D[e.a] + " → " + D[e.b];
+    tr.innerHTML = `<td>${span}</td><td>${e.days} 天</td><td>${e.dd.toFixed(1)}%</td>`
+      + fwdCell(e.fwd.m3) + fwdCell(e.fwd.m6) + fwdCell(e.fwd.m12)
+      + '<td class="go">放大 →</td>';
+    tr.onclick = () => { setWindow(e.a - 42, e.b + 42); state.cur = e.b;
+      for (const pl of plots) pl.cursor(); paintReadout();
+      document.querySelector("#pSpx").scrollIntoView({ behavior: "smooth", block: "center" }); };
+    tb.append(tr);
+  }
+}
+// 阈值一变，底纹、参考线、竖带、两张清单全部跟着重算
+function applyThreshold() {
+  const lo = state.th, hi = 100 - lo;
+  for (const [pl, S, tb] of [[plotSpx, B.spx_b, "#evtSpx"], [plotNdx, B.ndx_b, "#evtNdx"]]) {
+    const cold = computeEvents(S, lo, true), hot = computeEvents(S, lo, false);
+    pl.o.bands = [{ lo: hi, hi: 100, color: cssv("--red"), alpha: .13 },
+                  { lo: 0, hi: lo, color: cssv("--teal"), alpha: .13 }];
+    pl.o.rules = [{ v: hi, color: cssv("--red"), label: hi + "%  过热" },
+                  { v: 50, color: cssv("--ink3"), label: "" },
+                  { v: lo, color: cssv("--teal"), label: lo + "%  极冷" }];
+    pl.o.spans = cold.map(e => ({ a: e.a, b: e.b, color: cssv("--ink") }))
+      .concat(hot.map(e => ({ a: e.a, b: e.b, color: cssv("--red"), top: true })));
+    buildEvents(tb, cold);
+  }
+  for (const id of ["#thLo", "#thLbl1", "#thLbl2"]) document.querySelector(id).textContent = lo;
+  for (const el of document.querySelectorAll(".thL")) el.textContent = lo;
+  for (const el of document.querySelectorAll(".thH")) el.textContent = hi;
+  document.querySelector("#thHi").textContent = hi;
+  document.querySelector("#thIn").value = lo;
+  document.querySelector("#thRange").value = lo;
+}
+function setThreshold(v) {
+  v = Math.max(5, Math.min(45, Math.round(+v || 15)));
+  if (v === state.th) return;
+  state.th = v; applyThreshold(); redraw();
+}
+document.querySelector("#thRange").addEventListener("input", e => setThreshold(e.target.value));
+document.querySelector("#thIn").addEventListener("change", e => setThreshold(e.target.value));
+document.querySelector("#thReset").addEventListener("click", () => setThreshold(15));
+
+function redraw() {
+  buildSeg(); applyRange();
+  for (const p of plots) p.render();
+  paintReadout();
+}
+function setCur(i) {
+  state.cur = Math.max(state.r0, Math.min(state.r1, i));
+  for (const p of plots) p.cursor();
+  paintReadout();
+}
+for (const p of plots) {
+  const el = p.el;
+  const move = e => {
+    const pt = e.touches ? e.touches[0] : e;
+    setCur(p.iOf(pt.clientX - el.getBoundingClientRect().left));
+  };
+  el.addEventListener("pointermove", e => { if (!drag) move(e); });
+  // 按住拖动 = 平移；不按 = 读数游标
+  let drag = null;
+  el.addEventListener("pointerdown", e => {
+    drag = { x: e.clientX, r0: state.r0, r1: state.r1 };
+    el.setPointerCapture(e.pointerId); el.style.cursor = "grabbing";
+  });
+  el.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const w = el.getBoundingClientRect().width - p.pad.l - p.pad.r;
+    const per = (drag.r1 - drag.r0) / Math.max(1, w);
+    const d = Math.round((drag.x - e.clientX) * per);
+    if (d) setWindow(drag.r0 + d, drag.r1 + d);
+  });
+  const endDrag = e => { if (!drag) return; drag = null; el.style.cursor = ""; 
+    try { el.releasePointerCapture(e.pointerId); } catch (_) {} };
+  el.addEventListener("pointerup", endDrag);
+  el.addEventListener("pointercancel", endDrag);
+  // 滚轮以光标所在那一天为锚点缩放
+  el.addEventListener("wheel", e => {
+    e.preventDefault();
+    const i = p.iOf(e.clientX - el.getBoundingClientRect().left);
+    const k = e.deltaY > 0 ? 1.25 : 1 / 1.25;
+    setWindow(i - (i - state.r0) * k, i + (state.r1 - i) * k);
+  }, { passive: false });
+  el.addEventListener("dblclick", () => { state.range = 3; redraw(); });
+  el.addEventListener("touchmove", e => { move(e); e.preventDefault(); }, { passive: false });
+  el.addEventListener("keydown", e => {
+    const step = e.shiftKey ? 20 : 1;
+    if (e.key === "ArrowLeft") { setCur(state.cur - step); e.preventDefault(); }
+    if (e.key === "ArrowRight") { setCur(state.cur + step); e.preventDefault(); }
+  });
+}
+addEventListener("resize", () => { for (const p of plots) p.render(); });
+
+$("#mRange").textContent = D[0] + " → " + D[N - 1];
+$("#mN").textContent = N.toLocaleString("en-US") + " 个交易日";
+$("#mGen").textContent = "数据生成于 " + B.generated_at.replace("T", " ");
+buildReadout(); applyThreshold(); applyRange(); state.cur = state.r1; redraw();
+</script>

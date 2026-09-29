@@ -1,0 +1,788 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>中期选举年的十月低点</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap">
+<style>
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --surface-2:#eff1f4; --sunken:#e9ecf0;
+  --ink:#131820; --ink-2:#5b636e; --ink-3:#8a929d; --line:#e0e4ea; --line-2:#cdd3db;
+  --pos:#2a78d6; --neg:#d43f3e; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --accent:#2a78d6; --accent-soft:#e8f0fb; --warn:#b26a00;
+  --fs:"IBM Plex Sans","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --fm:"IBM Plex Mono","SFMono-Regular",Menlo,monospace;
+  --fd:"Newsreader","Songti SC",Georgia,serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10141a; --surface:#181d25; --surface-2:#1f252e; --sunken:#141922;
+  --ink:#eaeef3; --ink-2:#9ba4b0; --ink-3:#6c7681; --line:#28303a; --line-2:#39434f;
+  --pos:#3987e5; --neg:#e66767; --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --accent:#3987e5; --accent-soft:#14263c; --warn:#d69331;
+}}
+:root[data-theme="dark"]{
+  --bg:#10141a; --surface:#181d25; --surface-2:#1f252e; --sunken:#141922;
+  --ink:#eaeef3; --ink-2:#9ba4b0; --ink-3:#6c7681; --line:#28303a; --line-2:#39434f;
+  --pos:#3987e5; --neg:#e66767; --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --accent:#3987e5; --accent-soft:#14263c; --warn:#d69331;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--fs);line-height:1.7;margin:0;
+  -webkit-font-smoothing:antialiased;font-size:15px}
+.wrap{max-width:1060px;margin:0 auto;padding-inline:20px;padding-block:0 72px}
+h1,h2,h3{text-wrap:balance;margin:0}
+.eyebrow{font-family:var(--fm);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:500}
+/* ---- header ---- */
+header{padding-block:48px 28px;border-bottom:1px solid var(--line)}
+h1{font-size:clamp(28px,5.2vw,46px);line-height:1.15;font-weight:700;letter-spacing:-.02em;margin-block:14px 12px}
+.sub{color:var(--ink-2);max-width:62ch;font-size:16px}
+.meta{font-family:var(--fm);font-size:11.5px;color:var(--ink-3);margin-top:20px;display:flex;flex-wrap:wrap;gap:6px 18px}
+/* ---- stat strip ---- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);margin-block:28px 0}
+.stat{background:var(--surface);padding:16px 18px}
+.stat .k{font-family:var(--fm);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.stat .v{font-family:var(--fd);font-size:34px;font-weight:600;line-height:1.1;margin-top:6px;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums}
+.stat .d{font-size:12.5px;color:var(--ink-2);margin-top:4px;line-height:1.45}
+.stat .v.pos{color:var(--pos)} .stat .v.neg{color:var(--neg)}
+/* ---- sections ---- */
+section{padding-block:52px 0}
+.shead{display:flex;gap:14px;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:24px}
+.snum{font-family:var(--fm);font-size:12px;font-weight:600;color:var(--accent);letter-spacing:.06em}
+.shead h2{font-size:clamp(20px,3.2vw,27px);font-weight:600;letter-spacing:-.01em}
+p{margin:0 0 15px;max-width:68ch}
+.lead{font-size:16.5px;color:var(--ink)}
+strong{font-weight:600}
+em{font-style:normal;background:var(--accent-soft);padding:1px 5px;border-radius:2px;font-weight:500}
+.num{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:.94em}
+/* ---- figure ---- */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);padding:18px 18px 14px}
+figcaption{font-size:12.5px;color:var(--ink-2);margin-top:12px;padding-top:11px;border-top:1px solid var(--line);line-height:1.6}
+.figtitle{font-size:15px;font-weight:600;margin-bottom:2px}
+.figsub{font-size:12.5px;color:var(--ink-2);margin-bottom:14px}
+.chartbox{position:relative;width:100%}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.tt{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-family:var(--fm);font-size:11.5px;
+  padding:7px 9px;line-height:1.55;border-radius:3px;white-space:nowrap;z-index:9;opacity:0;transition:opacity .09s;
+  box-shadow:0 4px 14px rgba(0,0,0,.22)}
+.tt b{font-weight:600}
+/* ---- legend / toggles ---- */
+.legend{display:flex;flex-wrap:wrap;gap:7px 18px;font-size:12.5px;color:var(--ink-2);margin-bottom:12px;align-items:center}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.sw{width:11px;height:11px;border-radius:2px;flex:none}
+.tabs{display:flex;gap:0;margin-bottom:14px;border:1px solid var(--line-2);width:fit-content;max-width:100%;flex-wrap:wrap}
+.tabs button{font-family:var(--fm);font-size:11.5px;padding:6px 12px;background:transparent;border:0;
+  border-right:1px solid var(--line-2);color:var(--ink-2);cursor:pointer;letter-spacing:.02em}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:500}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* ---- table ---- */
+.tablewrap{overflow-x:auto;margin:22px 0;border:1px solid var(--line);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:640px}
+th,td{padding:7px 11px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--fm);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:500;text-align:right;background:var(--surface-2);position:sticky;top:0}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--fm);font-variant-numeric:tabular-nums}
+td.t{font-family:var(--fs)}
+tbody tr:hover{background:var(--surface-2)}
+tr.hl td{background:var(--accent-soft)}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+/* ---- callout ---- */
+.note{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:22px 0}
+.note.warn{border-left-color:var(--warn)}
+.note .nt{font-family:var(--fm);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.note p:last-child{margin-bottom:0}
+/* ---- verdict cards ---- */
+.plan{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:24px 0}
+.card{background:var(--surface);border:1px solid var(--line);padding:16px 17px}
+.card .ct{font-family:var(--fm);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.card .cv{font-family:var(--fd);font-size:25px;font-weight:600;letter-spacing:-.01em;line-height:1.2;margin-bottom:6px}
+.card p{font-size:13px;color:var(--ink-2);margin:0;line-height:1.6}
+/* ---- source list ---- */
+.src{font-size:13px;color:var(--ink-2);border-top:1px solid var(--line);padding-top:16px;margin-top:8px}
+.src ol{padding-left:20px;margin:0}
+.src li{margin-bottom:7px}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+.foot{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3);line-height:1.7}
+@media (max-width:600px){
+  body{font-size:14.5px}
+  .stat .v{font-size:28px}
+  figure{padding:14px 12px 12px}
+  .wrap{padding-inline:16px}
+}
+</style>
+<div class="wrap">
+<header>
+  <div class="eyebrow">标普500 · 1928–2026 · 价格指数</div>
+  <h1>中期选举年的十月低点</h1>
+  <p class="sub">九月是标普500唯一一个长期平均收益为负的月份；中期选举年是总统四年周期里最差的一年。
+  这两件事在每年十月上旬交汇——历史上那正是买点。本页把这两条统计、它们背后的资金机制、
+  以及一套可执行的买入规则，用同一批原始数据从头算了一遍。</p>
+  <div class="meta">
+    <span>数据：Yahoo Finance ^GSPC 日收盘</span><span>24 791 个交易日</span>
+    <span>1927-12-30 → 2026-09-11</span><span>全部统计为本页自算</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="k">九月 · 1928年起</div><div class="v neg">−1.11%</div>
+    <div class="d">月均收益，12个月中唯一为负</div></div>
+  <div class="stat"><div class="k">中期年最大回撤</div><div class="v neg">−17.5%</div>
+    <div class="d">1950年起19次的年内平均跌幅</div></div>
+  <div class="stat"><div class="k">选举日买入 · 12个月</div><div class="v pos">+15.3%</div>
+    <div class="d">19战19胜，最差的一次也涨1.1%</div></div>
+  <div class="stat"><div class="k">十月10日买入 · 12个月</div><div class="v pos">+20.3%</div>
+    <div class="d">19次里19次盈利中的18次，最差 −0.8%</div></div>
+</div>
+
+<section>
+<div class="shead"><span class="snum">01</span><h2>先看现象：九月是唯一一个平均亏钱的月份</h2></div>
+<p class="lead">把标普500 从1928年起的每个月单独拉出来算平均收益，九月是唯一一个为负的月份，
+而且不管把起点放在1928年、1950年还是1996年，它都稳稳排在12个月的最后一名。</p>
+<p>这不是"某几年被拖累"的错觉。九月上涨的概率只有 <span class="num">44%</span>（1928年起，1950年起同样是44%），
+而其他11个月的平均上涨概率在 <span class="num">52%–72%</span> 之间。把1950年以后的77个九月和其余847个月份做双样本检验，
+九月均值 <span class="num">−0.62%</span>、其他月份 <span class="num">+0.88%</span>，
+<em>Welch t = −2.91，p = 0.0046</em>。</p>
+<p>但这个 p 值必须打折看，因为我们是<strong>从12个月里挑出最差的那一个</strong>来做检验的。
+做了多重比较校正之后：1928年起的长样本 Bonferroni 校正 p = <span class="num">0.019</span>，
+仍然显著，而且是<strong>12个月里唯一存活的</strong>；
+但1950年起的样本校正后 p = <span class="num">0.055</span>，<em>严格说已不再显著</em>。
+更严格的做法是把月度收益随机重排3000次，看纯靠运气在12个月里能挑出多大的效应——
+结果是随机噪声的 |t| 有95%分位 2.87、99%分位 3.29，而真实的九月是 3.24。
+<strong>九月效应靠1928年以来的长样本才站得稳；任何只看近几十年的版本都属于边缘证据。</strong></p>
+<figure>
+  <div class="figtitle">标普500 各月平均收益</div>
+  <div class="figsub">月度价格收益，不含股息。切换样本起点看这个模式是否稳定。</div>
+  <div class="tabs" id="tabMonth">
+    <button data-k="since1928" aria-pressed="true">1928年起</button>
+    <button data-k="since1950" aria-pressed="false">1950年起</button>
+    <button data-k="since1996" aria-pressed="false">1996年起</button>
+  </div>
+  <div class="legend">
+    <span class="lg"><span class="sw" style="background:var(--pos)"></span>月均为正</span>
+    <span class="lg"><span class="sw" style="background:var(--neg)"></span>月均为负</span>
+    <span style="color:var(--ink-3)">鼠标悬停看胜率与样本数</span>
+  </div>
+  <div class="chartbox" id="cMonth"></div>
+  <figcaption>三个样本起点下，九月都是12个月里的最后一名。1996年起的九月胜率回升到52%，
+  但平均收益仍是 −0.66%——说明近30年九月"跌起来更狠"，而不是"跌得更频繁"。</figcaption>
+</figure>
+</section>
+
+<section>
+<div class="shead"><span class="snum">02</span><h2>机制：六个流行解释，没有一个站得住</h2></div>
+<p class="lead">九月弱势这件事本身是可靠的。但"为什么"——这一节最初写的答案后来被本项目自己的后续检验推翻了，
+现已整节重写。原来的版本认为弱势集中在下半月、并与企业回购静默期吻合；<strong>这两点都不成立。</strong></p>
+<figure>
+  <div class="figtitle">月内上下半月拆分</div>
+  <div class="figsub">1950年起，标普500 每月 1–15日 与 16日至月末 的平均收益</div>
+  <div class="legend">
+    <span class="lg"><span class="sw" style="background:var(--s1)"></span>上半月（1–15日）</span>
+    <span class="lg"><span class="sw" style="background:var(--s2)"></span>下半月（16日–月末）</span>
+  </div>
+  <div class="chartbox" id="cHalf"></div>
+  <figcaption><strong>这张图会骗人，原因见下。</strong>九月下半月 −0.78% 看起来是全年24个半月里最低的一格，
+  但请注意几乎所有月份的下半月都弱于上半月——这是一个全月份共有的形状，不是九月特有的。</figcaption>
+</figure>
+<div class="note warn">
+<div class="nt">对本页早前结论的修正</div>
+<p>本页最初据上图写下"九月魔咒其实是九月下旬魔咒"。后续做了一个更严格的检验：
+用日频回归<strong>控制住"月内第几天"这个所有月份共有的一般形状</strong>之后（HC1 稳健标准误，1928–2026），
+九月整体仍然显著（−8.45 基点/天，t=−1.97，p=0.049），
+但<em>"九月下半月额外更弱"这一项只剩 −1.45 基点/天，t=−0.24，p=0.811</em>。</p>
+<p><strong>结论：九月是整月偏弱，下半月并没有额外更弱。</strong>早前看到的上下半月落差，
+主要来自所有月份共有的月内形状，而不是九月独有的现象。</p>
+</div>
+<p>这一修正直接动摇了回购静默期解释。先把事实层面说清楚——<strong>美国并没有"禁止回购"的法律</strong>：
+静默期是公司自愿的内部合规惯例，按 SEC 的 10b5-1 与内幕交易规则，公司在掌握未公布业绩的窗口期买自家股票有法律风险，
+所以法务通常要求在财报发布前约 4–5 周暂停回购，财报公布后 48–72 小时恢复。标普500 公司的三季报集中在
+10月中旬至11月初，倒推 4–5 周，静默期确实从九月中旬开始铺开。这些都是对的。</p>
+<p>问题在于，这个假说有明确的可检验预测，而三条预测全部落空：</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>假说的预测</th><th>实际检验结果</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td class="t">断点应出现在九月中旬（约15日）</td>
+  <td>把九月内每一天都试作分界：15日的 t 只有 −0.98（p=0.328），在22个候选分界日里排不上号，<strong>且无一达到显著</strong></td>
+  <td style="color:var(--neg)">✕ 落空</td></tr>
+<tr><td class="t">弱势应集中在16日之后</td>
+  <td>最弱的两段是 <strong>6–10日</strong>（−17.03基点/天，p=0.013）与<strong>月末26–31日</strong>（−16.35，p=0.024）；
+  静默期刚开启的16–20日几乎没有弱势（−1.34，p=0.851）</td>
+  <td style="color:var(--neg)">✕ 落空</td></tr>
+<tr><td class="t">效应应随回购规模上升而增强</td>
+  <td>劣势从 −6.61 扩大到 −17.02 基点/天，但按年自助重抽样5000次后，
+  90%置信区间为 [−23.63, +2.62]，<strong>跨越0</strong></td>
+  <td style="color:var(--neg)">✕ 不显著</td></tr>
+</tbody>
+</table>
+</div>
+<p>九月6–10日这一段尤其致命：那时多数公司的二季报早已发布、回购窗口还开着，
+这段弱势无论如何都不能归给静默期。</p>
+<div class="note">
+<div class="nt">还有一项反方证据，当初就应该给它更大权重</div>
+<p>道富环球（State Street Global Advisors）2019年9月的白皮书 <em>Buyback Blackout Periods Do Not Negatively Impact Performance</em>
+用1994-03至2018-10 的136个月做检验：静默期前一个月有 <span class="num">51.4%</span> 的月份录得正超额，
+静默期当月 <span class="num">50.7%</span>，财报后一个月 <span class="num">56.6%</span>——基本五五开；
+Fama-French 五因子回归的 alpha 为正但不显著（p=0.078）。</p>
+<p>该研究测的是"高回购公司相对全市场的超额收益"，严格说不能直接否证"静默期里大盘更容易跌"。
+但本页上面那三条检验是直接冲着大盘去的，结论与它一致。</p>
+</div>
+<p>其余几个流行解释，也都在本项目的后续检验中倒下了：</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>解释</th><th>关键检验</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td class="t">共同基金10月31日财年末造成抛压</td>
+  <td>SEC Form N-CEN 原始备案（11 796只基金、32.46万亿美元）显示10月财年末占 <strong>20.0%</strong>，
+  12月才是最大的一档（28.4%）；更重要的是，10月末买入年内输家、持有2个月<strong>跑输 −2.39pp</strong>（p=0.00036），方向相反</td>
+  <td style="color:var(--neg)">✕ 不成立</td></tr>
+<tr><td class="t">四重巫日（9月第三个周五）后的对冲流</td>
+  <td>期权时代之前（1928–1982）同一窗口更弱（−106.3 vs −89.3基点）；安慰剂锚点"第三个周三"比真到期日还显著</td>
+  <td style="color:var(--neg)">✕ 不成立</td></tr>
+<tr><td class="t">季节性情绪失调（SAD）／日照缩短</td>
+  <td>按当地季节对齐时南北半球<strong>反相</strong>：北半球美国 +0.41pp，南半球6个市场全部为负；
+  澳大利亚9月（当地早春、日照正在变长）是全年最差月</td>
+  <td style="color:var(--neg)">✕ 已证伪</td></tr>
+<tr><td class="t">夏季流动性低</td>
+  <td>7–8月成交量确实低 9.44%，但同期收益反而更高（+1.19% vs +0.55%），方向相反</td>
+  <td style="color:var(--neg)">✕ 不成立</td></tr>
+<tr><td class="t">货币紧缩周期</td>
+  <td>紧缩期9月 −0.93% vs 宽松期 −0.70%，p=0.845</td>
+  <td style="color:var(--neg)">✕ 不成立</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>所以诚实的表述是：九月确实弱，而且是统计上最硬的一条月度规律；
+但目前没有任何一个流行机制经得起检验。</strong>唯一还站着的旁证在风险溢价层面——
+VIX 从7月低点 17.74 爬到10月高点 21.64（+22%）——但这条本身也未通过数据挖掘门槛，
+只能算相关，不能算解释。</p>
+<p>这些检验的完整过程、以及另外二十多条日历规律的验收结果，见
+<a href="https://claude.ai/artifact/Vy3bsjtt9dEjCi7VGo7Q4h">《日历规律存活名单》</a>。</p>
+<div class="note warn">
+<div class="nt">与本节结论无关，但同样需要更正</div>
+<p>本页其他部分曾引用"高盛估算2026年美国公司回购约1.4万亿美元"。需要标注其性质：
+<strong>此类名义金额 CBOE、OCC 等官方机构并不发布，全部来自卖方自行估算、经媒体转述，方法不公开。</strong>
+引用时应当作量级参考，不能当作统计事实。</p>
+</div>
+</section>
+<section>
+<div class="shead"><span class="snum">03</span><h2>中期选举年：四年里最差的一年，但它的十月是全年最好的月份</h2></div>
+<p class="lead">把1950年以来的每一年按总统四年周期归位，中期选举年（总统任期第二年）是四年里最差的：
+平均 <span class="num">+4.63%</span>、中位数只有 <span class="num">+1.06%</span>、上涨概率 <span class="num">58%</span>。
+紧随其后的任期第三年则是最好的：平均 <span class="num">+17.18%</span>、上涨概率 <span class="num">89%</span>。</p>
+<figure>
+  <div class="figtitle">总统四年周期的年度收益</div>
+  <div class="figsub">标普500 年度价格收益，1950–2025，每格19年</div>
+  <div class="chartbox" id="cCycle"></div>
+  <figcaption>常见解释是：新总统上任头两年推行代价较高的政策（加税、紧缩、改革），
+  到第三年为了迎接下届大选转向刺激。这个说法无法严格证伪，但四年周期的形状在70多年里相当稳定。</figcaption>
+</figure>
+<p>更有意思的是中期年<strong>内部</strong>的形状。把中期年的各月和非中期年的同月并排比较：
+中期年的六月平均 <span class="num neg">−2.05%</span>（上涨概率仅35%），是全年最差；
+而<em>十月 +3.00%、十一月 +2.75%</em> 是中期年全年最好的两个月，且分别有74%和79%的上涨概率。
+非中期年的十月只有 <span class="num">+0.20%</span>。</p>
+<figure>
+  <div class="figtitle">中期选举年 vs 其他年份的月度节奏</div>
+  <div class="figsub">1950–2025，标普500 月均价格收益（中期年19个样本 / 其他年57个样本）</div>
+  <div class="legend">
+    <span class="lg"><span class="sw" style="background:var(--s1)"></span>中期选举年</span>
+    <span class="lg"><span class="sw" style="background:var(--s3)"></span>其他年份</span>
+  </div>
+  <div class="chartbox" id="cMidMonth"></div>
+  <figcaption>关键发现：<strong>九月在中期年（−0.80%）和非中期年（−0.56%）几乎一样弱</strong>——
+  九月效应是全局现象，不是中期年独有的。真正的分化发生在十月和十一月。</figcaption>
+</figure>
+<p>中期年的年内波动也明显更大。1950年以来19个中期年，从年内高点到随后低点的平均最大回撤是 <span class="num neg">−17.5%</span>，
+中位数 <span class="num neg">−16.6%</span>。这个数字与嘉信旗下 Carson Group 首席市场策略师 Ryan Detrick 公开引用的 17.5% 完全一致
+——本页是用原始日线独立算出来的，两者对上，说明口径可靠。作为对比，四年周期里另外三年的平均回撤在 11%–13% 区间。</p>
+<figure>
+  <div class="figtitle">每个中期选举年的谷底出现在什么时候</div>
+  <div class="figsub">1930–2026 共25个中期年。横轴为月份，竖线为当年选举日，点的大小与深浅代表年内最大回撤幅度</div>
+  <div class="chartbox" id="cTrough"></div>
+  <figcaption>1950年以来的19个中期年里，有7年的谷底落在9月29日至10月15日这半个月内
+  （1966、1974、1986、1990、2002、2014、2022），再加上1978年11月14日和2018年12月24日两次更晚的谷底。
+  另有1982年8月12日、1954与1998年的8月31日紧贴在前。真正在上半年就见底的，基本都是那种"全年一路涨、根本没跌过"的年份。</figcaption>
+</figure>
+<div class="tablewrap">
+<table>
+<thead><tr><th>年份</th><th>年内最大回撤</th><th>谷底日期</th><th>谷底距选举日</th><th>全年涨跌</th><th>谷底后12个月</th><th>选举日后12个月</th></tr></thead>
+<tbody id="tbDetail"></tbody>
+</table>
+</div>
+<p style="font-size:13px;color:var(--ink-2)">"谷底"指当年从阶段性高点算起回撤最深的那一天（收盘价口径）。
+"距选举日"为负数表示谷底出现在选举日之后。2026年一行为截至 2026-09-11 的进行时状态。</p>
+</section>
+
+<section>
+<div class="shead"><span class="snum">04</span><h2>关键检验：这是不是只是"最佳六个月"效应换个说法？</h2></div>
+<p class="lead">十一月到次年四月本来就是美股季节性最强的半年（所谓"Best Six Months"）。
+中期选举年的十月低点买入，会不会只是搭上了这个顺风车，跟选举根本没关系？
+这必须用对照组来分清楚，否则就是把一个效应算了两遍。</p>
+<p>做法很简单：对1950–2025年的每一年都执行同一条规则——在11月1日（或当年的选举日）买入、持有12个月——
+然后把中期年和其他年份的结果分开统计。如果两组差不多，那就是"最佳六个月"；如果中期年明显更好，
+那就是中期选举本身额外贡献了收益。</p>
+<figure>
+  <div class="figtitle">同一条买入规则，中期年 vs 其他年份</div>
+  <div class="figsub">1950–2025，标普500 价格收益。右侧标注为该组的上涨概率与最差一次</div>
+  <div class="chartbox" id="cControl"></div>
+  <figcaption>每一行都是同一条规则在两组年份上的结果。中期年在每一项上都明显更好，
+  而且"最差的一次"差距尤其悬殊——这不是平均值被几次大涨拉起来的。</figcaption>
+</figure>
+<p>结果很干净：</p>
+<p>「11月至次年4月」这半年，中期年平均 <span class="num pos">+14.79%</span>，<strong>19次全对，最差的一次也涨了3.3%</strong>；
+其他年份平均只有 <span class="num pos">+4.34%</span>，胜率68%，最差的一次跌 16.6%。</p>
+<p>「选举日买入持有12个月」，中期年平均 <span class="num pos">+15.28%</span>，<strong>19战19胜</strong>，最差 +1.1%（1986年买入，扛过了1987年10月的崩盘仍然是正的）；
+其他年份平均 <span class="num pos">+7.14%</span>，胜率70%，最差 −40.5%。</p>
+<p>两组均值相差 <em>8.14 个百分点</em>，Welch t 检验 p = 0.0091，Mann-Whitney 单尾检验 p = 0.0362。
+<strong>所以答案是：中期年在"最佳六个月"的基础上，额外多贡献了约8个百分点，而且把胜率从70%抬到100%。</strong>
+这不是同一个效应的两种说法。</p>
+<div class="note">
+<div class="nt">同时要说清楚的事</div>
+<p>19个样本就是19个样本。p 值能排除"纯属随机"，但排除不了"这19次恰好都碰上了有利的宏观环境"。
+100%的胜率在19次里出现，并不等于第20次也一定赢——它只说明历史上从未失手，
+而1930–1946年间（样本外的更早期）中期年就出现过选举日买入后12个月亏38.7%的案例（1930年，大萧条）。
+本页所有"100%胜率"的表述都限定在1950年以后。</p>
+</div>
+</section>
+<section>
+<div class="shead"><span class="snum">05</span><h2>回测：到底哪一天买</h2></div>
+<p class="lead">把1950–2022年的19个中期选举年拿来，逐条规则跑一遍：同样的钱，在不同的日子一次性买入标普500，持有固定期限。
+除了收益率，同样重要的是<strong>持有期间最难受的时候有多难受</strong>——所以每条规则都算了买入后12个月内相对成本价的最大浮亏。</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>买入规则</th><th>3个月</th><th>6个月</th><th>12个月</th><th>12月胜率</th><th>12月最差</th><th>持有期平均浮亏</th><th>最惨浮亏</th><th>24个月</th></tr></thead>
+<tbody id="tbBt"></tbody>
+</table>
+</div>
+<p>几个结论直接跳出来：</p>
+<p><strong>一、十月上旬是收益最高的窗口，选举日是确定性最高的窗口。</strong>
+10月10日前后买入，12个月平均 <span class="num pos">+20.3%</span>、19次里18次盈利、最差仅 −0.8%；
+等到选举日收盘再买，平均降到 <span class="num pos">+15.3%</span>，但19次全部盈利、最差 +1.1%。
+<em>多等这一个月，用5个百分点的收益换掉了那一次小亏的可能。</em></p>
+<p><strong>二、"等回撤"并没有优势，而且更难受。</strong>设"7月后从年内高点回撤达到X%就买入，全年没触发就在选举日买"，
+无论阈值取5%、10%、15%还是20%，12个月收益都落在 <span class="num">16.4%–21.1%</span>，并不比简单的十月定日买入更好；
+但持有期的平均浮亏从 −3.5% 扩大到 −5.4%～−7.4%，最惨的一次浮亏从 −15.6% 扩大到 −27.6%。
+原因很直白：回撤触发意味着你在下跌途中接刀，而下跌往往还没结束。</p>
+<p><strong>三、精确择时的上限只值4个百分点。</strong>假设开了上帝视角，每次都精确买在十月的最低点，
+12个月收益是 <span class="num pos">+24.4%</span>；而机械地在10月10日买入是 <span class="num pos">+20.3%</span>。
+<em>完美择时相对呆板执行的全部溢价只有约4个百分点</em>，却要承担彻底踏空的风险。这条数据本身就是反对过度择时的论据。</p>
+<p><strong>四、和基准比。</strong>1928年以来任意一个交易日买入标普500 持有12个月，平均收益 <span class="num">+8.2%</span>、胜率 <span class="num">70%</span>。
+中期年十月上旬买入的 <span class="num">+20.3%</span> / <span class="num">95%</span>，是它的两倍多。</p>
+<figure>
+  <div class="figtitle">十月内逐日买入的效果</div>
+  <div class="figsub">中期年（1950–2022），在10月的某一日买入并持有，左：12个月平均收益；右：12个月上涨概率</div>
+  <div class="chartbox" id="cOct"></div>
+  <figcaption>收益在10月7日前后见顶（+21.2%），随后随着"抄底折扣"被市场自己吃掉而缓慢下滑；
+  上涨概率则在10月17日之后达到100%并保持。两条曲线的交叉区间——<strong>10月上旬到中旬</strong>——是风险收益的平衡点。</figcaption>
+</figure>
+</section>
+
+<section>
+<div class="shead"><span class="snum">06</span><h2>2026年：今年属于哪一类，该怎么执行</h2></div>
+<p class="lead">历史平均值不能直接套到今年，因为今年的剧本明显不是"中期年大跌"。
+截至 2026-09-11，标普500 收于 <span class="num">7 656.98</span>，年内涨 <span class="num pos">+11.9%</span>，
+年内最高是8月13日的 <span class="num">7 798.99</span>，目前距高点只有 <span class="num neg">−1.8%</span>；
+今年迄今的最大回撤发生在3月30日，也只有 <span class="num neg">−9.1%</span>。</p>
+<p>所以有必要把19个中期年拆成两类：截至9月底"年内还在涨、且最大回撤没超过15%"的<strong>平稳型</strong>年份，
+和其余的<strong>动荡型</strong>年份。2026年目前属于平稳型。</p>
+<div class="plan">
+  <div class="card"><div class="ct">平稳型 · 8个样本</div><div class="cv">+14.9%</div>
+  <p>1950、1954、1958、1978、1986、2006、2014、2018。十月10日买入持有12个月，8次全部盈利，最差 +0.8%。
+  但持有期平均浮亏 −4.8%，最惨的一次 −15.6%（1986年买入后遇上1987年10月崩盘）。</p></div>
+  <div class="card"><div class="ct">动荡型 · 11个样本</div><div class="cv">+24.2%</div>
+  <p>1962、1966、1970、1974、1982、1990、1994、1998、2002、2010、2022。同样规则平均赚 24.2%，
+  11次里10次盈利，持有期平均浮亏只有 −2.5%。跌得越惨，十月买入的赔率越好。</p></div>
+  <div class="card"><div class="ct">今年的含义</div><div class="cv">收益打折<br>浮亏更大</div>
+  <p>今年缺少那种"先跌透再买"的折扣，所以预期收益应该向 +14.9% 而不是 +20.3% 靠；
+  同时因为买在相对高位，中途的浮亏反而可能比动荡年更大。这两件事要同时接受。</p></div>
+</div>
+<div class="note">
+<div class="nt">回撤会不会来：先看概率</div>
+<p>1950年以来的19个中期年里，7月之后从年内高点出现过 5% 以上回撤的有 <strong>17次（89%）</strong>，
+10% 以上 <strong>13次（68%）</strong>，15% 以上 <strong>11次（58%）</strong>，20% 以上 <strong>6次（32%）</strong>。
+换算到今年年内高点 7 798.99 点，对应的位置分别是：
+−5% → <span class="num">7 409</span>点，−8% → <span class="num">7 175</span>点，
+−10% → <span class="num">7 019</span>点，−15% → <span class="num">6 629</span>点。
+但请注意上一节的结论：<strong>等回撤买入在历史上并没有提高12个月收益，只是让持有过程更难受。</strong>
+所以回撤应当被当作"加码的机会"，而不是"建仓的前提条件"。</p>
+</div>
+<h3 style="font-size:18px;margin:32px 0 6px">一套可执行的规则</h3>
+<p style="color:var(--ink-2);font-size:13.5px">以下是从上面的回测直接推出的机械规则，不含任何对今年行情的主观预测。
+"仓位"指你计划投入这笔资金的总额。</p>
+<div class="plan">
+  <div class="card"><div class="ct">第一步 · 10月1–10日</div><div class="cv">投入 40%</div>
+  <p>不看点位，机械买入。依据：十月上旬是19个中期年里12个月收益最高的窗口（+20.3%，95%胜率）。
+  <strong>注意这是一条纯统计依据——本页第02节已表明，回购静默期与基金财年末都不能解释这个季节性形状。</strong></p></div>
+  <div class="card"><div class="ct">第二步 · 触发式加码</div><div class="cv">再投 30%</div>
+  <p>在选举日（11月3日）之前，若标普500 自年内高点回撤达到 8%（约 7 175 点）则一次性加码。
+  历史概率显示这种幅度的回撤在中期年下半年出现过 68%–89%，但它只是奖励，不是前提。</p></div>
+  <div class="card"><div class="ct">第三步 · 11月3日收盘</div><div class="cv">补满 100%</div>
+  <p>无论前面是否触发，选举日收盘前把剩余仓位买满。依据：这是19战19胜、最差 +1.1% 的那个时点，
+  且紧接着是中期年最强的"11月至次年4月"（平均 +14.8%，19次全胜）。</p></div>
+</div>
+<p><strong>不该做的事：</strong>不要因为"还没跌够"而把仓位拖到选举日之后。
+历史上中期年十月与十一月是全年最好的两个月（+3.00% 与 +2.75%），空仓等待的机会成本恰好落在这里。
+也不要因为前两步已经赚钱就放弃第三步——本页所有高胜率结论都建立在"持有12个月"之上，
+中期年真正的收益释放期是次年，也就是总统任期第三年（1950年以来平均 +17.2%、胜率89%）。</p>
+</section>
+<section>
+<div class="shead"><span class="snum">07</span><h2>机构与学界怎么说</h2></div>
+<p class="lead">以下是公开可查的原始表述与数字。凡是与本页自算结果能对上的，都标注了对照——
+口径一致是判断一份统计是否可信的最直接方法。</p>
+
+<p><strong>《股票交易者年鉴》（Stock Trader's Almanac，Jeffrey Hirsch / Christopher Mistal）</strong>——
+九月效应最主要的出处。他们的口径是：1950年以来，九月在道指、标普500、罗素1000上都排名第12（最后一名），
+纳斯达克自1971年起、罗素2000自1979年起同样如此；标普500 的75个九月里只有34次上涨，
+道指平均跌0.8%、标普500 平均跌0.7%。
+<span style="color:var(--ink-2)">（本页自算1950年起九月均值 −0.62%、胜率44%，与之一致；
+差异来自年份截止与月末口径。）</span>
+他们给出的原因是"劳动节后归位的基金经理倾向于打扫房间"，即季末的组合清理与橱窗粉饰。</p>
+
+<p><strong>Ned Davis Research（NDR）</strong>——四年周期研究的主要来源之一。
+其公开引用的数字是：中期年是总统周期里最差的一年，平均 +4.6%、中位 +1.1%；但中期年的四季度是该年最好的季度，平均 +6.63%；
+<strong>十月（+3.0%）与十一月（+2.7%）是中期年全年最好的两个月</strong>。
+<span style="color:var(--ink-2)">（本页自算1950–2025：中期年均值 +4.63%、中位 +1.06%；十月 +3.00%、十一月 +2.75%——四个数字全部吻合到小数点后一位。
+这说明本页与 NDR 用的是同一口径，可以互相验证。）</span>
+NDR 同时把"中期后反弹"称为美股最稳定的季节性异象：6个月平均 +13.4%、12个月 +14.8%，两者胜率均为100%。
+<span style="color:var(--ink-2)">（本页自算：选举日买入6个月 +14.2%、12个月 +15.3%，均19战19胜。）</span></p>
+
+<p><strong>Carson Group，Ryan Detrick</strong>——中期年回撤幅度的常见引用源。
+其公开数据为：1950年以来中期年的平均峰谷跌幅 <strong>17.5%</strong>，明显高于周期中另外三年的 11.2%–12.9%；
+中期年通常要到年内较晚才见底（平均8月18日、中位9月29日）；
+而自1950年以来，从中期年低点起算的一年后市场<strong>从未下跌</strong>，平均涨幅超过31%。
+<span style="color:var(--ink-2)">（本页自算：中期年平均最大回撤 −17.5%、中位 −16.6%；从年内低点起算12个月平均 +31.8%、19次全胜。三项均一致。）</span></p>
+
+<p><strong>高盛（Goldman Sachs）</strong>——回购规模的量级来源。其对2026年美国公司回购的估算约为 1.4万亿美元，
+对应约7000亿美元的股票发行，净买入为正；其交易台按财报进度跟踪"开放回购窗口的标普500成分股比例"，
+这个比例在季度末前后降至低位、在财报季推进中逐周回升。<strong>但这类名义金额 CBOE、OCC 等官方机构并不发布，
+全部来自卖方自行估算、经媒体转述，方法不公开</strong>，只能当量级参考。
+而且本页第02节的检验表明，静默期的时间表并不能解释九月的弱势。</p>
+
+<p><strong>美国银行（BofA）</strong>——税损抛售的量化证据。其统计显示，1986年1月至2025年1月间，
+年内截至10月跌幅超过10%的"税损候选股"，在11月至次年1月平均跑赢大盘 <strong>1.6%</strong>；
+自1990年以来，罗素3000中1–10月表现最差的五分之一成分股，在11月平均反弹 <strong>2.7%</strong>。
+<strong>但本页第02节用 Fama-French 动量十分位（覆盖全 CRSP 股票池、无幸存偏差）做的直接检验给出了相反结果</strong>：
+10月末买入年内输家、持有2个月跑输 −2.39pp（p=0.00036），真正的拐点在12月末而非10月末。
+两者差异可能来自样本口径（美银用的是自定义的"跌超10%"筛选），此处并列呈现，以本页自算结果为准。</p>
+
+<p><strong>道富环球（State Street Global Advisors）</strong>——最重要的反方。
+2019年9月白皮书用1994–2018年136个月的数据得出"回购静默期不损害表现"的结论（细节见第02节）。
+任何把静默期当成交易依据的人都应该先读这一篇。</p>
+
+<p><strong>学术界</strong>——Kamstra、Kramer 与 Levi（2003）的季节性情绪失调（SAD）假说曾被广泛引用来解释秋季弱势，
+但后续研究指出抑郁流行率的季节分布与模型的时间序列预测对不上，该假说争议很大。
+另一方面，Fisher Investments 等机构长期提醒：九月效应作为一个已经被写进每本年鉴的公开模式，
+如果真的稳定可套利，早该被交易掉；把它当作择时依据的证据强度，远低于把它当作"知道会有这么一段难受期"的心理准备。</p>
+</section>
+
+<section>
+<div class="shead"><span class="snum">08</span><h2>口径、局限与免责</h2></div>
+<p><strong>数据口径。</strong>全部使用 Yahoo Finance 的 ^GSPC 日收盘价，1927-12-30 至 2026-09-11，共24 791个交易日。
+这是<strong>价格指数，不含股息</strong>——含股息的总回报大约每年再高2个百分点左右，所以本页所有收益率都是偏保守的。
+1957年之前的数据实为标普综合指数（90只成分股），与之后的500只口径不完全可比，因此凡是关键结论都同时给出了1950年起的版本。
+"持有N个月"按日历月计算，用目标日当天或之前最近的交易日收盘价结算。</p>
+<p><strong>样本量。</strong>中期选举年1950年以来只有19个，1930年以来也只有24个。
+19个样本上的"100%胜率"是真实的历史记录，但它对未来的预测力有限：
+置信区间很宽，而且这19次共享了同一段美国战后经济史。1930年的中期年（大萧条）选举日买入后12个月亏损38.7%，
+就是这个模式在样本外失效的例子。</p>
+<p><strong>挖掘惩罚。</strong>本页早前报告"中期年 vs 其他年"的差异时用的是 Welch 检验 p=0.0091，
+那个数字没有计入"我们是从四年周期的4个位置里挑出最好的那个"这一代价。
+把1950–2024每年的收益在年份之间随机打乱5000次、每次从4个位置里挑最极端者，
+真实数据的 |t|=2.69 对应的 p 值是 <span class="num">0.045</span>——<strong>结论守住了，但只是勉强守住</strong>。
+（四年周期只有4个候选，惩罚远小于12个月的情形，所以未被推翻。）
+另一个独立角度更有说服力：该规则在1950–2024任意一年为正的比例是77.3%，
+而从这75年里不放回随机抽19年、全部为正的概率只有 <span class="num">0.32%</span>（20 000次模拟）。</p>
+<p><strong>因果的边界。</strong>本页第02节已整节重写：早前认为九月弱势集中在下半月、并与回购静默期吻合，
+这两点都被后续检验推翻（控制月内一般形状后，下半月额外项 p=0.811；静默期假说的三条预测全部落空）。
+包括基金财年末、四重巫日对冲流、日照假说、夏季流动性在内的六个流行机制，目前没有一个经得起检验。
+<strong>诚实的表述是：九月弱势这个统计事实是可靠的，但它的成因目前是未解的。</strong></p>
+<p><strong>不构成投资建议。</strong>本页是对公开历史数据的统计描述，不预测未来，不针对任何个人的财务状况。
+季节性模式一旦被广泛交易就可能自我消解；美国税制、回购规则、资金结构的变化都会改变上述机制的有效性。</p>
+<div class="src">
+<div class="eyebrow" style="margin-bottom:10px">外部资料</div>
+<ol>
+<li>Stock Trader's Almanac，<a href="https://www.stocktradersalmanac.com/Alert/20180823_1.aspx">September Almanac: Worst Month of the Year since 1950</a></li>
+<li>Ned Davis Research，<a href="https://info.ndr.com/ndr-signals/cycles-gain-momentum">Presidential cycles often start weak and gain momentum</a></li>
+<li>Carson Group / Ryan Detrick，<a href="https://www.carsongroup.com/insights/blog/thinking-about-2026/">Thinking About 2026</a>；
+  <a href="https://www.benzinga.com/analyst-stock-ratings/analyst-color/26/08/61488925/sp-500-outlook-september-is-the-worst-month-of-the-year-but-ryan-detrick-says-2026-could-defy-the-odds">Benzinga 引述的中期年回撤数据</a></li>
+<li>State Street Global Advisors（2019），<a href="https://www.ssga.com/library-content/pdfs/etf/us/b27-buyback-blackout-periods-do-not-negatively-impact-performance.pdf">Buyback Blackout Periods Do Not Negatively Impact Performance</a></li>
+<li>Goldman Sachs 回购估算，经 <a href="https://www.investing.com/news/stock-market-news/goldman-sachs-sees-share-buybacks-outweighing-equity-supply-in-2026-4848002">Investing.com</a> 报道</li>
+<li>回购静默期定义，<a href="https://convextrade.com/glossary/equity-buyback-blackout-period">Convex — Equity Buyback Blackout Period</a></li>
+<li>税损抛售与基金财年末，<a href="https://www.luxalgo.com/library/concept/tax-loss-selling-season/">LuxAlgo — Tax-loss Selling Season</a>（含 BofA 统计引述）。
+  <strong>注意：本页第02节已用 SEC Form N-CEN 原始备案数据推翻该说法的价格含义</strong></li>
+<li>Kamstra, Kramer &amp; Levi (2003) SAD 假说及其批评，见 <a href="https://www.sciencedirect.com/science/article/abs/pii/S0378426609003240">Sentiment and stock returns: The SAD anomaly revisited</a></li>
+<li>反方观点，<a href="https://www.fisherinvestments.com/en-us/insights/market-commentary/september-is-coming-so-are-false-seasonality-fears">Fisher Investments — September Is Coming. So Are False Seasonality Fears</a></li>
+</ol>
+</div>
+<p class="foot">全部统计由本页作者用 ^GSPC 原始日线独立计算，计算脚本见项目 <span class="num">analysis/midterm/</span>。
+生成于 2026-09-17，数据截至 2026-09-11 收盘。</p>
+</section>
+</div>
+<style>
+svg text{font-family:var(--fm);font-variant-numeric:tabular-nums}
+.ax{fill:var(--ink-3);font-size:10.5px}
+.axb{fill:var(--ink-2);font-size:11px}
+.vl{fill:var(--ink-2);font-size:10px}
+.gl{stroke:var(--line);stroke-width:1}
+.zl{stroke:var(--line-2);stroke-width:1.5}
+.hit{fill:transparent;cursor:crosshair}
+.mk{transition:opacity .1s}
+</style>
+<script>
+(function(){
+var D={"month":{"since1928":[{"m":1,"mean":1.21,"win":62.6,"n":99,"rank":9},{"m":2,"mean":-0.11,"win":51.5,"n":99,"rank":2},{"m":3,"mean":0.42,"win":60.6,"n":99,"rank":4},{"m":4,"mean":1.36,"win":65.7,"n":99,"rank":11},{"m":5,"mean":0.13,"win":60.6,"n":99,"rank":3},{"m":6,"mean":0.79,"win":56.6,"n":99,"rank":7},{"m":7,"mean":1.67,"win":60.6,"n":99,"rank":12},{"m":8,"mean":0.7,"win":58.6,"n":99,"rank":6},{"m":9,"mean":-1.11,"win":44.4,"n":99,"rank":1},{"m":10,"mean":0.55,"win":59.2,"n":98,"rank":5},{"m":11,"mean":1.01,"win":62.2,"n":98,"rank":8},{"m":12,"mean":1.27,"win":72.4,"n":98,"rank":10}],"since1950":[{"m":1,"mean":1.08,"win":61.0,"n":77,"rank":8},{"m":2,"mean":-0.04,"win":53.2,"n":77,"rank":2},{"m":3,"mean":0.96,"win":63.6,"n":77,"rank":7},{"m":4,"mean":1.54,"win":70.1,"n":77,"rank":11},{"m":5,"mean":0.44,"win":62.3,"n":77,"rank":5},{"m":6,"mean":0.19,"win":54.5,"n":77,"rank":4},{"m":7,"mean":1.29,"win":59.7,"n":77,"rank":9},{"m":8,"mean":0.07,"win":55.8,"n":77,"rank":3},{"m":9,"mean":-0.62,"win":44.2,"n":77,"rank":1},{"m":10,"mean":0.9,"win":59.2,"n":76,"rank":6},{"m":11,"mean":1.86,"win":69.7,"n":76,"rank":12},{"m":12,"mean":1.41,"win":72.4,"n":76,"rank":10}],"since1996":[{"m":1,"mean":0.45,"win":58.1,"n":31,"rank":5},{"m":2,"mean":-0.28,"win":51.6,"n":31,"rank":3},{"m":3,"mean":0.9,"win":61.3,"n":31,"rank":8},{"m":4,"mean":2.03,"win":74.2,"n":31,"rank":11},{"m":5,"mean":0.84,"win":71.0,"n":31,"rank":6},{"m":6,"mean":0.38,"win":64.5,"n":31,"rank":4},{"m":7,"mean":1.25,"win":61.3,"n":31,"rank":9},{"m":8,"mean":-0.4,"win":58.1,"n":31,"rank":2},{"m":9,"mean":-0.66,"win":51.6,"n":31,"rank":1},{"m":10,"mean":1.61,"win":63.3,"n":30,"rank":10},{"m":11,"mean":2.49,"win":80.0,"n":30,"rank":12},{"m":12,"mean":0.87,"win":66.7,"n":30,"rank":7}]},"half":[{"m":1,"a":0.53,"b":0.54,"aw":62.0,"bw":58.0},{"m":2,"a":0.5,"b":-0.52,"aw":61.0,"bw":45.0},{"m":3,"a":0.52,"b":0.44,"aw":64.0,"bw":62.0},{"m":4,"a":0.94,"b":0.59,"aw":66.0,"bw":60.0},{"m":5,"a":0.27,"b":0.16,"aw":51.0,"bw":56.0},{"m":6,"a":0.39,"b":-0.2,"aw":57.0,"bw":45.0},{"m":7,"a":1.08,"b":0.21,"aw":69.0,"bw":56.0},{"m":8,"a":0.02,"b":0.06,"aw":55.0,"bw":58.0},{"m":9,"a":0.14,"b":-0.78,"aw":51.0,"bw":45.0},{"m":10,"a":0.7,"b":0.21,"aw":64.0,"bw":61.0},{"m":11,"a":1.12,"b":0.73,"aw":64.0,"bw":67.0},{"m":12,"a":0.08,"b":1.33,"aw":58.0,"bw":78.0}],"half28":[{"m":1,"a":0.76,"b":0.46},{"m":2,"a":0.41,"b":-0.51},{"m":3,"a":0.5,"b":-0.05},{"m":4,"a":1.0,"b":0.32},{"m":5,"a":0.22,"b":-0.13},{"m":6,"a":0.71,"b":0.08},{"m":7,"a":1.53,"b":0.13},{"m":8,"a":0.36,"b":0.31},{"m":9,"a":-0.24,"b":-0.9},{"m":10,"a":0.65,"b":-0.08},{"m":11,"a":0.8,"b":0.2},{"m":12,"a":0.02,"b":1.25}],"era":[{"era":"1928-1981 回购前时代","n_sep":54,"sep_first":-0.6,"sep_second":-0.81,"sep_second_win":48.15,"other_first":0.72,"other_second":-0.09,"sep_total":-1.37,"gap_second":-0.73},{"era":"1982-1999 10b-18之后","n_sep":18,"sep_first":0.32,"sep_second":-0.38,"sep_second_win":44.44,"other_first":0.67,"other_second":0.69,"sep_total":-0.08,"gap_second":-1.07},{"era":"2000-2025 回购主导","n_sep":26,"sep_first":0.11,"sep_second":-1.46,"sep_second_win":38.46,"other_first":0.4,"other_second":0.38,"sep_total":-1.31,"gap_second":-1.83}],"cycle":[{"name":"任期第1年","mean":8.35,"med":9.06,"win":63.0,"n":19},{"name":"中期选举年","mean":4.63,"med":1.06,"win":58.0,"n":19},{"name":"任期第3年","mean":17.18,"med":18.89,"win":89.0,"n":19},{"name":"大选年","mean":8.11,"med":11.78,"win":84.0,"n":19}],"monthMid":[{"m":1,"mid":-0.79,"non":1.74,"win":50.0},{"m":2,"mid":0.23,"non":-0.13,"win":50.0},{"m":3,"mid":0.92,"non":0.97,"win":65.0},{"m":4,"mid":0.22,"non":2.01,"win":65.0},{"m":5,"mid":-0.34,"non":0.71,"win":55.0},{"m":6,"mid":-2.05,"non":0.97,"win":35.0},{"m":7,"mid":1.23,"non":1.31,"win":55.0},{"m":8,"mid":-0.28,"non":0.2,"win":65.0},{"m":9,"mid":-0.8,"non":-0.56,"win":45.0},{"m":10,"mid":3.0,"non":0.2,"win":74.0},{"m":11,"mid":2.75,"non":1.57,"win":79.0},{"m":12,"mid":0.82,"non":1.61,"win":63.0}],"detail":[{"y":1930,"dd":-44.3,"trough":"1930-12-16","low":"1930-12-16","yr":-27.6,"e12":-38.7,"l12":-45.1,"d2e":-42,"ed":"1930-11-04"},{"y":1934,"dd":-29.3,"trough":"1934-07-26","low":"1934-07-26","yr":-6.0,"e12":39.9,"l12":29.1,"d2e":103,"ed":"1934-11-06"},{"y":1938,"dd":-28.9,"trough":"1938-03-31","low":"1938-03-31","yr":24.9,"e12":-4.5,"l12":29.2,"d2e":222,"ed":"1938-11-08"},{"y":1942,"dd":-17.8,"trough":"1942-04-28","low":"1942-04-28","yr":9.9,"e12":25.7,"l12":53.7,"d2e":189,"ed":"1942-11-03"},{"y":1946,"dd":-26.6,"trough":"1946-10-09","low":"1946-10-09","yr":-11.3,"e12":0.8,"l12":8.1,"d2e":27,"ed":"1946-11-05"},{"y":1950,"dd":-14.0,"trough":"1950-07-17","low":"1950-01-03","yr":22.6,"e12":17.9,"l12":24.2,"d2e":308,"ed":"1950-11-07"},{"y":1954,"dd":-4.4,"trough":"1954-08-31","low":"1954-01-11","yr":44.2,"e12":33.0,"l12":43.9,"d2e":295,"ed":"1954-11-02"},{"y":1958,"dd":-4.4,"trough":"1958-02-25","low":"1958-01-02","yr":36.9,"e12":11.3,"l12":37.5,"d2e":306,"ed":"1958-11-04"},{"y":1962,"dd":-26.4,"trough":"1962-06-26","low":"1962-06-26","yr":-11.1,"e12":25.9,"l12":32.7,"d2e":133,"ed":"1962-11-06"},{"y":1966,"dd":-22.2,"trough":"1966-10-07","low":"1966-10-07","yr":-12.9,"e12":13.3,"l12":32.9,"d2e":32,"ed":"1966-11-08"},{"y":1970,"dd":-25.9,"trough":"1970-05-26","low":"1970-05-26","yr":-0.9,"e12":12.7,"l12":43.7,"d2e":161,"ed":"1970-11-03"},{"y":1974,"dd":-37.6,"trough":"1974-10-03","low":"1974-10-03","yr":-29.8,"e12":18.7,"l12":38.0,"d2e":33,"ed":"1974-11-05"},{"y":1978,"dd":-13.6,"trough":"1978-11-14","low":"1978-03-06","yr":2.4,"e12":6.4,"l12":12.6,"d2e":246,"ed":"1978-11-07"},{"y":1982,"dd":-16.6,"trough":"1982-08-12","low":"1982-08-12","yr":14.6,"e12":19.9,"l12":58.3,"d2e":82,"ed":"1982-11-02"},{"y":1986,"dd":-9.4,"trough":"1986-09-29","low":"1986-01-22","yr":15.5,"e12":1.1,"l12":34.6,"d2e":286,"ed":"1986-11-04"},{"y":1990,"dd":-19.9,"trough":"1990-10-11","low":"1990-10-11","yr":-8.2,"e12":25.1,"l12":29.1,"d2e":26,"ed":"1990-11-06"},{"y":1994,"dd":-8.9,"trough":"1994-04-04","low":"1994-04-04","yr":-1.3,"e12":27.1,"l12":15.1,"d2e":218,"ed":"1994-11-08"},{"y":1998,"dd":-19.3,"trough":"1998-08-31","low":"1998-01-09","yr":26.1,"e12":22.0,"l12":37.4,"d2e":298,"ed":"1998-11-03"},{"y":2002,"dd":-33.8,"trough":"2002-10-09","low":"2002-10-09","yr":-23.8,"e12":14.9,"l12":33.7,"d2e":27,"ed":"2002-11-05"},{"y":2006,"dd":-7.7,"trough":"2006-06-13","low":"2006-06-13","yr":11.8,"e12":6.7,"l12":23.9,"d2e":147,"ed":"2006-11-07"},{"y":2010,"dd":-16.0,"trough":"2010-07-02","low":"2010-07-02","yr":11.0,"e12":3.7,"l12":31.0,"d2e":123,"ed":"2010-11-02"},{"y":2014,"dd":-7.4,"trough":"2014-10-15","low":"2014-02-03","yr":12.4,"e12":4.5,"l12":17.7,"d2e":274,"ed":"2014-11-04"},{"y":2018,"dd":-19.8,"trough":"2018-12-24","low":"2018-12-24","yr":-7.0,"e12":11.7,"l12":37.1,"d2e":-48,"ed":"2018-11-06"},{"y":2022,"dd":-25.4,"trough":"2022-10-12","low":"2022-10-12","yr":-20.0,"e12":14.5,"l12":21.6,"d2e":27,"ed":"2022-11-08"},{"y":2026,"dd":-9.1,"trough":"2026-03-30","low":"2026-03-30","yr":null,"e12":null,"l12":null,"d2e":218,"ed":"2026-11-03"}],"control":{"sep":{"mid":{"n":19,"mean":-0.82,"median":-0.7,"win":47.37,"min":-11.93},"non":{"n":57,"mean":-0.56,"median":-0.25,"win":43.86,"min":-9.08}},"sep_oct":{"mid":{"n":19,"mean":2.0,"median":2.12,"win":57.89,"min":-9.82},"non":{"n":57,"mean":-0.36,"median":0.81,"win":56.14,"min":-24.48}},"nov_apr":{"mid":{"n":19,"mean":14.79,"median":15.24,"win":100.0,"min":3.34},"non":{"n":57,"mean":4.34,"median":4.46,"win":68.42,"min":-16.6}},"elec6":{"mid":{"n":19,"mean":14.2,"median":16.98,"win":100.0,"min":1.22},"non":{"n":57,"mean":4.14,"median":4.86,"win":66.67,"min":-18.35}},"elec12":{"mid":{"n":19,"mean":15.28,"median":14.49,"win":100.0,"min":1.12},"non":{"n":56,"mean":7.14,"median":8.45,"win":69.64,"min":-40.48}},"nov1_12":{"mid":{"n":19,"mean":15.62,"median":14.73,"win":100.0,"min":2.04},"non":{"n":56,"mean":7.03,"median":8.23,"win":69.64,"min":-35.78}}},"bt":[{"label":"9月最后一个交易日","kind":"sep30","thr":null,"m3":6.5,"m6":14.5,"m12":20.4,"m24":31.0,"md12":22.2,"w12":89.0,"min12":-2.6,"dd":-3.8,"ddw":-19.3,"n":19,"rows":[{"y":1950,"e":"1950-09-29","r12":19.6,"dd":-2.3},{"y":1954,"e":"1954-09-30","r12":35.2,"dd":-1.9},{"y":1958,"e":"1958-09-30","r12":13.6,"dd":-0.2},{"y":1962,"e":"1962-09-28","r12":28.2,"dd":-4.9},{"y":1966,"e":"1966-09-30","r12":26.3,"dd":-4.4},{"y":1970,"e":"1970-09-30","r12":16.7,"dd":-1.8},{"y":1974,"e":"1974-09-30","r12":32.0,"dd":-2.0},{"y":1978,"e":"1978-09-29","r12":6.6,"dd":-9.8},{"y":1982,"e":"1982-09-30","r12":37.9,"dd":0.0},{"y":1986,"e":"1986-09-30","r12":39.1,"dd":0.0},{"y":1990,"e":"1990-09-28","r12":26.1,"dd":-3.5},{"y":1994,"e":"1994-09-30","r12":26.3,"dd":-3.7},{"y":1998,"e":"1998-09-30","r12":26.1,"dd":-5.7},{"y":2002,"e":"2002-09-30","r12":22.2,"dd":-4.7},{"y":2006,"e":"2006-09-29","r12":14.3,"dd":-0.3},{"y":2010,"e":"2010-09-30","r12":-0.9,"dd":-1.9},{"y":2014,"e":"2014-09-30","r12":-2.6,"dd":-5.6},{"y":2018,"e":"2018-09-28","r12":1.6,"dd":-19.3},{"y":2022,"e":"2022-09-30","r12":19.6,"dd":-0.2}]},{"label":"10月第一个交易日","kind":"oct1","thr":null,"m3":6.5,"m6":14.2,"m12":20.4,"m24":30.7,"md12":20.1,"w12":89.0,"min12":-1.3,"dd":-4.0,"ddw":-19.6,"n":19,"rows":[{"y":1950,"e":"1950-10-02","r12":20.1,"dd":-3.5},{"y":1954,"e":"1954-10-01","r12":35.2,"dd":-1.9},{"y":1958,"e":"1958-10-01","r12":13.9,"dd":0.0},{"y":1962,"e":"1962-10-01","r12":30.1,"dd":-3.6},{"y":1966,"e":"1966-10-03","r12":29.0,"dd":-2.3},{"y":1970,"e":"1970-10-01","r12":17.3,"dd":-1.8},{"y":1974,"e":"1974-10-01","r12":30.8,"dd":-1.8},{"y":1978,"e":"1978-10-02","r12":6.4,"dd":-10.2},{"y":1982,"e":"1982-10-01","r12":36.2,"dd":-0.4},{"y":1986,"e":"1986-10-01","r12":40.1,"dd":0.0},{"y":1990,"e":"1990-10-01","r12":23.6,"dd":-6.2},{"y":1994,"e":"1994-10-03","r12":26.1,"dd":-3.5},{"y":1998,"e":"1998-10-01","r12":30.1,"dd":-2.7},{"y":2002,"e":"2002-10-01","r12":20.1,"dd":-8.4},{"y":2006,"e":"2006-10-02","r12":16.2,"dd":0.0},{"y":2010,"e":"2010-10-01","r12":-1.3,"dd":-2.3},{"y":2014,"e":"2014-10-01","r12":-1.1,"dd":-4.3},{"y":2018,"e":"2018-10-01","r12":0.5,"dd":-19.6},{"y":2022,"e":"2022-10-03","r12":15.0,"dd":-2.8}]},{"label":"10月10日前后","kind":"oct10","thr":null,"m3":7.7,"m6":14.7,"m12":20.3,"m24":29.4,"md12":25.8,"w12":95.0,"min12":-0.8,"dd":-3.5,"ddw":-15.6,"n":19,"rows":[{"y":1950,"e":"1950-10-10","r12":19.4,"dd":-3.9},{"y":1954,"e":"1954-10-08","r12":29.7,"dd":-3.0},{"y":1958,"e":"1958-10-10","r12":10.9,"dd":-1.9},{"y":1962,"e":"1962-10-10","r12":26.1,"dd":-6.6},{"y":1966,"e":"1966-10-10","r12":29.9,"dd":0.0},{"y":1970,"e":"1970-10-09","r12":16.8,"dd":-2.7},{"y":1974,"e":"1974-10-10","r12":26.4,"dd":-6.8},{"y":1978,"e":"1978-10-10","r12":0.8,"dd":-11.5},{"y":1982,"e":"1982-10-08","r12":30.3,"dd":0.0},{"y":1986,"e":"1986-10-10","r12":32.1,"dd":-0.0},{"y":1990,"e":"1990-10-10","r12":26.7,"dd":-1.6},{"y":1994,"e":"1994-10-10","r12":25.8,"dd":-3.0},{"y":1998,"e":"1998-10-09","r12":35.7,"dd":0.0},{"y":2002,"e":"2002-10-10","r12":29.1,"dd":-0.4},{"y":2006,"e":"2006-10-10","r12":15.4,"dd":-0.3},{"y":2010,"e":"2010-10-08","r12":-0.8,"dd":-5.7},{"y":2014,"e":"2014-10-10","r12":5.7,"dd":-2.3},{"y":2018,"e":"2018-10-10","r12":5.5,"dd":-15.6},{"y":2022,"e":"2022-10-10","r12":20.6,"dd":-1.0}]},{"label":"选举日收盘","kind":"elec","thr":null,"m3":7.7,"m6":14.2,"m12":15.3,"m24":27.1,"md12":14.5,"w12":100.0,"min12":1.1,"dd":-4.4,"ddw":-14.7,"n":19,"rows":[{"y":1950,"e":"1950-11-06","r12":17.9,"dd":-1.9},{"y":1954,"e":"1954-11-01","r12":33.0,"dd":0.0},{"y":1958,"e":"1958-11-03","r12":11.3,"dd":-1.0},{"y":1962,"e":"1962-11-05","r12":25.9,"dd":-0.1},{"y":1966,"e":"1966-11-07","r12":13.3,"dd":-1.3},{"y":1970,"e":"1970-11-03","r12":12.7,"dd":-1.7},{"y":1974,"e":"1974-11-05","r12":18.7,"dd":-13.4},{"y":1978,"e":"1978-11-07","r12":6.4,"dd":-1.4},{"y":1982,"e":"1982-11-02","r12":19.9,"dd":-3.3},{"y":1986,"e":"1986-11-04","r12":1.1,"dd":-8.7},{"y":1990,"e":"1990-11-06","r12":25.1,"dd":-1.8},{"y":1994,"e":"1994-11-08","r12":27.1,"dd":-4.3},{"y":1998,"e":"1998-11-03","r12":22.0,"dd":0.0},{"y":2002,"e":"2002-11-05","r12":14.9,"dd":-12.5},{"y":2006,"e":"2006-11-07","r12":6.7,"dd":-0.6},{"y":2010,"e":"2010-11-02","r12":3.7,"dd":-7.9},{"y":2014,"e":"2014-11-04","r12":4.5,"dd":-7.2},{"y":2018,"e":"2018-11-06","r12":11.7,"dd":-14.7},{"y":2022,"e":"2022-11-08","r12":14.5,"dd":-2.1}]},{"label":"当年12月31日","kind":"dec31","thr":null,"m3":7.3,"m6":12.7,"m12":17.2,"m24":27.1,"md12":18.9,"w12":89.0,"min12":-0.7,"dd":-3.3,"ddw":-12.6,"n":19,"rows":[{"y":1950,"e":"1950-12-29","r12":16.0,"dd":0.0},{"y":1954,"e":"1954-12-31","r12":26.4,"dd":-3.9},{"y":1958,"e":"1958-12-31","r12":8.5,"dd":-3.0},{"y":1962,"e":"1962-12-31","r12":18.9,"dd":-0.6},{"y":1966,"e":"1966-12-30","r12":20.1,"dd":0.0},{"y":1970,"e":"1970-12-31","r12":10.8,"dd":-2.2},{"y":1974,"e":"1974-12-31","r12":31.5,"dd":0.0},{"y":1978,"e":"1978-12-29","r12":12.2,"dd":0.0},{"y":1982,"e":"1982-12-31","r12":17.3,"dd":-1.6},{"y":1986,"e":"1986-12-31","r12":2.0,"dd":-7.5},{"y":1990,"e":"1990-12-31","r12":26.3,"dd":-5.7},{"y":1994,"e":"1994-12-30","r12":34.1,"dd":-0.0},{"y":1998,"e":"1998-12-31","r12":19.5,"dd":-1.4},{"y":2002,"e":"2002-12-31","r12":26.4,"dd":-9.0},{"y":2006,"e":"2006-12-29","r12":4.2,"dd":-3.1},{"y":2010,"e":"2010-12-31","r12":-0.0,"dd":-12.6},{"y":2014,"e":"2014-12-31","r12":-0.7,"dd":-9.3},{"y":2018,"e":"2018-12-31","r12":28.9,"dd":-2.4},{"y":2022,"e":"2022-12-30","r12":24.2,"dd":-0.8}]},{"label":"10月最低点(事后·上限)","kind":"oct_low","thr":null,"m3":11.7,"m6":19.5,"m12":24.4,"m24":35.0,"md12":28.8,"w12":95.0,"min12":-1.2,"dd":-1.0,"ddw":-11.0,"n":19,"rows":[{"y":1950,"e":"1950-10-31","r12":17.5,"dd":-2.7},{"y":1954,"e":"1954-10-29","r12":33.7,"dd":0.0},{"y":1958,"e":"1958-10-01","r12":13.9,"dd":0.0},{"y":1962,"e":"1962-10-23","r12":36.5,"dd":0.0},{"y":1966,"e":"1966-10-07","r12":32.9,"dd":0.0},{"y":1970,"e":"1970-10-27","r12":12.8,"dd":-0.4},{"y":1974,"e":"1974-10-03","r12":38.0,"dd":0.0},{"y":1978,"e":"1978-10-31","r12":9.3,"dd":-0.7},{"y":1982,"e":"1982-10-04","r12":36.8,"dd":0.0},{"y":1986,"e":"1986-10-01","r12":40.1,"dd":0.0},{"y":1990,"e":"1990-10-11","r12":29.1,"dd":0.0},{"y":1994,"e":"1994-10-06","r12":28.8,"dd":-1.5},{"y":1998,"e":"1998-10-08","r12":39.2,"dd":0.0},{"y":2002,"e":"2002-10-09","r12":33.7,"dd":0.0},{"y":2006,"e":"2006-10-02","r12":16.2,"dd":0.0},{"y":2010,"e":"2010-10-04","r12":-1.2,"dd":-3.3},{"y":2014,"e":"2014-10-15","r12":8.7,"dd":0.0},{"y":2018,"e":"2018-10-29","r12":15.0,"dd":-11.0},{"y":2022,"e":"2022-10-12","r12":21.6,"dd":0.0}]},{"label":"7月后回撤5%触发,否则选举日","kind":"dd","thr":5,"m3":2.0,"m6":7.8,"m12":19.7,"m24":27.5,"md12":19.2,"w12":100.0,"min12":1.4,"dd":-7.4,"ddw":-27.6,"n":19,"rows":[{"y":1950,"e":"1950-07-03","r12":20.4,"dd":-5.4},{"y":1954,"e":"1954-11-01","r12":33.0,"dd":0.0},{"y":1958,"e":"1958-11-03","r12":11.3,"dd":-1.0},{"y":1962,"e":"1962-07-02","r12":24.3,"dd":-4.2},{"y":1966,"e":"1966-07-01","r12":5.9,"dd":-14.5},{"y":1970,"e":"1970-07-01","r12":36.8,"dd":-2.3},{"y":1974,"e":"1974-07-01","r12":10.3,"dd":-27.6},{"y":1978,"e":"1978-07-03","r12":7.4,"dd":-2.7},{"y":1982,"e":"1982-07-01","r12":55.1,"dd":-5.8},{"y":1986,"e":"1986-07-14","r12":30.5,"dd":-3.4},{"y":1990,"e":"1990-08-03","r12":12.3,"dd":-14.3},{"y":1994,"e":"1994-07-01","r12":22.1,"dd":-0.2},{"y":1998,"e":"1998-07-29","r12":19.2,"dd":-14.9},{"y":2002,"e":"2002-07-01","r12":1.4,"dd":-19.8},{"y":2006,"e":"2006-07-12","r12":23.0,"dd":-1.9},{"y":2010,"e":"2010-07-01","r12":30.4,"dd":-0.5},{"y":2014,"e":"2014-10-10","r12":5.7,"dd":-2.3},{"y":2018,"e":"2018-07-02","r12":9.0,"dd":-13.8},{"y":2022,"e":"2022-07-01","r12":16.3,"dd":-6.5}]},{"label":"回撤10%触发,否则选举日","kind":"dd","thr":10,"m3":3.4,"m6":10.7,"m12":19.0,"m24":28.5,"md12":17.6,"w12":100.0,"min12":1.1,"dd":-7.3,"ddw":-27.6,"n":19,"rows":[{"y":1950,"e":"1950-07-11","r12":25.2,"dd":-3.7},{"y":1954,"e":"1954-11-01","r12":33.0,"dd":0.0},{"y":1958,"e":"1958-11-03","r12":11.3,"dd":-1.0},{"y":1962,"e":"1962-07-02","r12":24.3,"dd":-4.2},{"y":1966,"e":"1966-07-25","r12":11.2,"dd":-12.7},{"y":1970,"e":"1970-07-01","r12":36.8,"dd":-2.3},{"y":1974,"e":"1974-07-01","r12":10.3,"dd":-27.6},{"y":1978,"e":"1978-10-26","r12":4.7,"dd":-3.7},{"y":1982,"e":"1982-07-01","r12":55.1,"dd":-5.8},{"y":1986,"e":"1986-11-04","r12":1.1,"dd":-8.7},{"y":1990,"e":"1990-08-17","r12":17.6,"dd":-9.9},{"y":1994,"e":"1994-11-08","r12":27.1,"dd":-4.3},{"y":1998,"e":"1998-08-14","r12":24.9,"dd":-9.9},{"y":2002,"e":"2002-07-01","r12":1.4,"dd":-19.8},{"y":2006,"e":"2006-11-07","r12":6.7,"dd":-0.6},{"y":2010,"e":"2010-07-01","r12":30.4,"dd":-0.5},{"y":2014,"e":"2014-11-04","r12":4.5,"dd":-7.2},{"y":2018,"e":"2018-11-23","r12":18.1,"dd":-10.7},{"y":2022,"e":"2022-07-01","r12":16.3,"dd":-6.5}]},{"label":"回撤15%触发,否则选举日","kind":"dd","thr":15,"m3":6.6,"m6":13.3,"m12":21.1,"m24":31.2,"md12":19.0,"w12":100.0,"min12":1.1,"dd":-5.4,"ddw":-26.1,"n":19,"rows":[{"y":1950,"e":"1950-11-06","r12":17.9,"dd":-1.9},{"y":1954,"e":"1954-11-01","r12":33.0,"dd":0.0},{"y":1958,"e":"1958-11-03","r12":11.3,"dd":-1.0},{"y":1962,"e":"1962-07-02","r12":24.3,"dd":-4.2},{"y":1966,"e":"1966-08-19","r12":19.0,"dd":-8.1},{"y":1970,"e":"1970-07-01","r12":36.8,"dd":-2.3},{"y":1974,"e":"1974-07-02","r12":11.7,"dd":-26.1},{"y":1978,"e":"1978-11-07","r12":6.4,"dd":-1.4},{"y":1982,"e":"1982-08-06","r12":56.0,"dd":-1.2},{"y":1986,"e":"1986-11-04","r12":1.1,"dd":-8.7},{"y":1990,"e":"1990-08-23","r12":28.4,"dd":-3.8},{"y":1994,"e":"1994-11-08","r12":27.1,"dd":-4.3},{"y":1998,"e":"1998-08-31","r12":37.9,"dd":0.0},{"y":2002,"e":"2002-07-01","r12":1.4,"dd":-19.8},{"y":2006,"e":"2006-11-07","r12":6.7,"dd":-0.6},{"y":2010,"e":"2010-07-01","r12":30.4,"dd":-0.5},{"y":2014,"e":"2014-11-04","r12":4.5,"dd":-7.2},{"y":2018,"e":"2018-12-20","r12":30.6,"dd":-4.7},{"y":2022,"e":"2022-07-01","r12":16.3,"dd":-6.5}]},{"label":"回撤20%触发,否则选举日","kind":"dd","thr":20,"m3":5.5,"m6":12.3,"m12":16.4,"m24":26.8,"md12":16.3,"w12":100.0,"min12":1.1,"dd":-5.5,"ddw":-21.5,"n":19,"rows":[{"y":1950,"e":"1950-11-06","r12":17.9,"dd":-1.9},{"y":1954,"e":"1954-11-01","r12":33.0,"dd":0.0},{"y":1958,"e":"1958-11-03","r12":11.3,"dd":-1.0},{"y":1962,"e":"1962-07-02","r12":24.3,"dd":-4.2},{"y":1966,"e":"1966-08-29","r12":24.6,"dd":-1.8},{"y":1970,"e":"1970-07-01","r12":36.8,"dd":-2.3},{"y":1974,"e":"1974-07-31","r12":11.9,"dd":-21.5},{"y":1978,"e":"1978-11-07","r12":6.4,"dd":-1.4},{"y":1982,"e":"1982-11-02","r12":19.9,"dd":-3.3},{"y":1986,"e":"1986-11-04","r12":1.1,"dd":-8.7},{"y":1990,"e":"1990-11-06","r12":25.1,"dd":-1.8},{"y":1994,"e":"1994-11-08","r12":27.1,"dd":-4.3},{"y":1998,"e":"1998-11-03","r12":22.0,"dd":0.0},{"y":2002,"e":"2002-07-10","r12":7.4,"dd":-15.6},{"y":2006,"e":"2006-11-07","r12":6.7,"dd":-0.6},{"y":2010,"e":"2010-11-02","r12":3.7,"dd":-7.9},{"y":2014,"e":"2014-11-04","r12":4.5,"dd":-7.2},{"y":2018,"e":"2018-11-06","r12":11.7,"dd":-14.7},{"y":2022,"e":"2022-07-01","r12":16.3,"dd":-6.5}]}],"octDay":[{"d":2,"m12":19.9,"w12":88.0,"min12":-1.3,"m6":14.6,"n":16},{"d":3,"m12":20.9,"w12":84.0,"min12":-1.3,"m6":14.9,"n":19},{"d":4,"m12":20.6,"w12":89.0,"min12":-1.2,"m6":14.8,"n":19},{"d":5,"m12":21.0,"w12":89.0,"min12":-1.4,"m6":14.9,"n":19},{"d":6,"m12":21.0,"w12":100.0,"min12":0.4,"m6":14.8,"n":19},{"d":7,"m12":21.2,"w12":95.0,"min12":-0.2,"m6":14.9,"n":19},{"d":8,"m12":20.8,"w12":95.0,"min12":-0.8,"m6":14.8,"n":19},{"d":9,"m12":20.5,"w12":95.0,"min12":-0.8,"m6":14.7,"n":19},{"d":10,"m12":20.3,"w12":95.0,"min12":-0.8,"m6":14.7,"n":19},{"d":11,"m12":19.9,"w12":95.0,"min12":-0.3,"m6":14.5,"n":19},{"d":12,"m12":19.5,"w12":95.0,"min12":-0.4,"m6":14.4,"n":19},{"d":13,"m12":19.1,"w12":95.0,"min12":-0.2,"m6":14.3,"n":19},{"d":14,"m12":19.1,"w12":95.0,"min12":-0.2,"m6":14.6,"n":19},{"d":15,"m12":18.6,"w12":95.0,"min12":-0.2,"m6":14.5,"n":19},{"d":16,"m12":18.6,"w12":100.0,"min12":0.6,"m6":14.9,"n":19},{"d":17,"m12":18.1,"w12":100.0,"min12":2.1,"m6":14.6,"n":19},{"d":18,"m12":17.5,"w12":100.0,"min12":3.1,"m6":14.1,"n":19},{"d":19,"m12":17.3,"w12":100.0,"min12":2.3,"m6":14.1,"n":19},{"d":20,"m12":16.2,"w12":100.0,"min12":0.4,"m6":14.4,"n":19},{"d":21,"m12":16.4,"w12":100.0,"min12":3.7,"m6":14.3,"n":19},{"d":22,"m12":16.3,"w12":100.0,"min12":3.7,"m6":14.5,"n":19},{"d":23,"m12":16.6,"w12":100.0,"min12":2.1,"m6":14.8,"n":19},{"d":24,"m12":16.6,"w12":100.0,"min12":3.0,"m6":14.9,"n":19},{"d":25,"m12":16.5,"w12":100.0,"min12":2.8,"m6":14.8,"n":19},{"d":26,"m12":16.6,"w12":100.0,"min12":4.2,"m6":15.4,"n":19},{"d":27,"m12":16.7,"w12":95.0,"min12":-2.3,"m6":15.7,"n":19},{"d":28,"m12":16.8,"w12":95.0,"min12":-2.5,"m6":15.6,"n":19},{"d":29,"m12":16.9,"w12":100.0,"min12":1.6,"m6":15.2,"n":19},{"d":30,"m12":16.5,"w12":100.0,"min12":3.3,"m6":14.7,"n":19},{"d":31,"m12":16.7,"w12":100.0,"min12":3.0,"m6":14.8,"n":19}],"sub":{"calm":[1950,1954,1958,1978,1986,2006,2014,2018],"rough":[1962,1966,1970,1974,1982,1990,1994,1998,2002,2010,2022],"calmAgg":{"oct10_f12":{"n":8,"mean":14.9,"med":13.2,"win":100.0,"min":0.8},"elec_f12":{"n":8,"mean":11.6,"med":9.0,"win":100.0,"min":1.1},"q4":{"n":8,"mean":2.7,"med":4.9,"win":75.0,"min":-14.0},"oct10_dd12":{"n":8,"mean":-4.8,"med":-2.7,"win":0.0,"min":-15.6}},"roughAgg":{"oct10_f12":{"n":11,"mean":24.2,"med":26.4,"win":90.9,"min":-0.8},"elec_f12":{"n":11,"mean":18.0,"med":18.7,"win":100.0,"min":3.7},"q4":{"n":11,"mean":9.5,"med":7.9,"win":90.9,"min":-0.7},"oct10_dd12":{"n":11,"mean":-2.5,"med":-1.6,"win":0.0,"min":-6.8}}},"base":{"m3":{"mean":1.99,"median":2.57,"winrate":63.98,"n":24728},"m6":{"mean":3.97,"median":4.93,"winrate":67.19,"n":24664},"m12":{"mean":8.2,"median":9.58,"winrate":69.85,"n":24540},"m24":{"mean":16.38,"median":16.71,"winrate":76.88,"n":24290}},"sig":{"midterm_n":19,"other_n":56,"midterm_mean":15.2828,"other_mean":7.1423,"diff":8.1405,"t":2.6941,"p_two":0.0091,"mannwhitney_p":0.0362},"sigSep":{"sep_n":77,"sep_mean":-0.6222,"other_mean":0.8804,"t":-2.9066,"p":0.0046},"ddHit":{"5":{"hits":17,"total":19,"pct":89.47368421052632},"10":{"hits":13,"total":19,"pct":68.42105263157895},"15":{"hits":11,"total":19,"pct":57.89473684210527},"20":{"hits":6,"total":19,"pct":31.57894736842105}},"y2026":{"last_date":"2026-09-11","last_close":7656.98,"ytd_pct":11.85,"peak_close":7798.99,"peak_date":"2026-08-13","cur_dd_pct":-1.82,"max_dd_pct":-9.1,"max_dd_date":"2026-03-30","election_day":"2026-11-03"}};
+var MN=["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+function cv(n){return getComputedStyle(document.body).getPropertyValue(n).trim()}
+function el(t,a,c){var e=document.createElementNS("http://www.w3.org/2000/svg",t);
+  for(var k in a)e.setAttribute(k,a[k]); if(c!=null)e.textContent=c; return e}
+function fmt(v,d){d=d==null?1:d;return (v>0?"+":"")+v.toFixed(d)}
+
+/* 统一渲染器：按容器实际宽度 1:1 重绘，字号在任何屏幕上都正确 */
+function mount(id,draw){
+  var box=document.getElementById(id); if(!box)return;
+  var tip=document.createElement("div"); tip.className="tt"; box.appendChild(tip);
+  function show(x,y,html){tip.innerHTML=html;tip.style.opacity=1;
+    var w=tip.offsetWidth,bw=box.clientWidth,L=Math.max(4,Math.min(x-w/2,bw-w-4));
+    tip.style.left=L+"px";tip.style.top=Math.max(2,y-tip.offsetHeight-10)+"px"}
+  function hide(){tip.style.opacity=0}
+  function go(){
+    var W=box.clientWidth||600; if(W<10)return;
+    var old=box.querySelector("svg"); if(old)old.remove();
+    var s=draw(W,show,hide); box.insertBefore(s,tip);
+  }
+  go();
+  if(window.ResizeObserver){var t;new ResizeObserver(function(){clearTimeout(t);t=setTimeout(go,80)}).observe(box)}
+  box.__redraw=go; return go;
+}
+function svg(W,H){var s=el("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H,role:"img"});
+  s.style.width="100%";s.style.height="auto";return s}
+/* 纵轴刻度 */
+function ticks(lo,hi,n){var st=(hi-lo)/n,p=Math.pow(10,Math.floor(Math.log10(Math.abs(st)||1))),
+  c=[1,2,2.5,5,10],s=p;for(var i=0;i<c.length;i++){if(p*c[i]>=st){s=p*c[i];break}}
+  var a=[],v=Math.ceil(lo/s)*s;while(v<=hi+1e-9){a.push(+v.toFixed(6));v+=s}return a}
+
+/* ============ 图1：月度季节性 ============ */
+var monthKey="since1928";
+function drawMonth(W,show,hide){
+  var H=W<520?250:290, m={t:14,r:12,b:34,l:40}, d=D.month[monthKey];
+  var iw=W-m.l-m.r, ih=H-m.t-m.b;
+  var vs=d.map(function(x){return x.mean}), lo=Math.min(0,Math.min.apply(null,vs))*1.18, hi=Math.max.apply(null,vs)*1.18;
+  var y=function(v){return m.t+ih-(v-lo)/(hi-lo)*ih};
+  var s=svg(W,H), bw=iw/12, bar=Math.min(bw*0.62,42);
+  ticks(lo,hi,4).forEach(function(t){
+    s.appendChild(el("line",{x1:m.l,x2:W-m.r,y1:y(t),y2:y(t),class:t===0?"zl":"gl"}));
+    s.appendChild(el("text",{x:m.l-7,y:y(t)+3.5,class:"ax","text-anchor":"end"},t+"%"));});
+  d.forEach(function(x,i){
+    var cx=m.l+bw*i+bw/2, pos=x.mean>=0, col=pos?cv("--pos"):cv("--neg");
+    var h=Math.abs(y(x.mean)-y(0)), yy=pos?y(x.mean):y(0);
+    var g=el("g",{});
+    g.appendChild(el("rect",{x:cx-bar/2,y:yy,width:bar,height:Math.max(h,1.5),fill:col,rx:3,class:"mk"}));
+    s.appendChild(g);
+    s.appendChild(el("text",{x:cx,y:H-m.b+15,class:i===8?"axb":"ax","text-anchor":"middle",
+      "font-weight":i===8?"600":"400"},W<520?(i+1):MN[i]));
+    var lb=el("text",{x:cx,y:pos?y(x.mean)-6:y(x.mean)+13,class:"vl","text-anchor":"middle"},x.mean.toFixed(2));
+    if(i===8||i===3||i===10)lb.setAttribute("fill",cv("--ink"));
+    s.appendChild(lb);
+    var hit=el("rect",{x:m.l+bw*i,y:m.t,width:bw,height:ih,class:"hit"});
+    hit.addEventListener("mouseenter",function(){show(cx,Math.min(y(x.mean),y(0)),
+      "<b>"+MN[i]+"</b>　第"+x.rank+"差<br>平均 "+fmt(x.mean,2)+"%<br>上涨概率 "+x.win+"%<br>样本 "+x.n+" 个月")});
+    hit.addEventListener("mouseleave",hide);
+    s.appendChild(hit);});
+  return s;
+}
+/* ============ 通用：分组柱状 ============ */
+function grouped(id,cfg){
+  return mount(id,function(W,show,hide){
+    var nar=W<520, H=cfg.h||(nar?280:300), m={t:14,r:12,b:cfg.b||38,l:42};
+    var cats=cfg.cats, ser=cfg.series, iw=W-m.l-m.r, ih=H-m.t-m.b;
+    var all=[];ser.forEach(function(S){S.v.forEach(function(v){all.push(v)})});
+    var lo=Math.min(0,Math.min.apply(null,all))*1.2, hi=Math.max(0,Math.max.apply(null,all))*1.22;
+    var y=function(v){return m.t+ih-(v-lo)/(hi-lo)*ih};
+    var s=svg(W,H), gw=iw/cats.length, n=ser.length, bar=Math.min((gw*0.72)/n,30);
+    ticks(lo,hi,4).forEach(function(t){
+      s.appendChild(el("line",{x1:m.l,x2:W-m.r,y1:y(t),y2:y(t),class:t===0?"zl":"gl"}));
+      s.appendChild(el("text",{x:m.l-7,y:y(t)+3.5,class:"ax","text-anchor":"end"},t+"%"));});
+    cats.forEach(function(c,i){
+      var g0=m.l+gw*i+gw/2-(n*bar+(n-1)*2)/2;
+      ser.forEach(function(S,j){
+        var v=S.v[i], x0=g0+j*(bar+2), pos=v>=0;
+        s.appendChild(el("rect",{x:x0,y:pos?y(v):y(0),width:bar,height:Math.max(Math.abs(y(v)-y(0)),1.5),
+          fill:cv(S.c),rx:3}));});
+      var lab=el("text",{x:m.l+gw*i+gw/2,y:H-m.b+15,class:cfg.hl===i?"axb":"ax","text-anchor":"middle",
+        "font-weight":cfg.hl===i?"600":"400"},c);
+      s.appendChild(lab);
+      if(cfg.sub&&cfg.sub[i])s.appendChild(el("text",{x:m.l+gw*i+gw/2,y:H-m.b+28,class:"ax",
+        "text-anchor":"middle","font-size":"9.5px"},cfg.sub[i]));
+      var hit=el("rect",{x:m.l+gw*i,y:m.t,width:gw,height:ih,class:"hit"});
+      hit.addEventListener("mouseenter",function(){
+        var h="<b>"+(cfg.full?cfg.full[i]:c)+"</b>";
+        ser.forEach(function(S){h+="<br>"+S.n+" "+fmt(S.v[i],2)+"%"});
+        if(cfg.extra)h+=cfg.extra(i);
+        show(m.l+gw*i+gw/2,m.t+8,h)});
+      hit.addEventListener("mouseleave",hide);
+      s.appendChild(hit);});
+    return s;});
+}
+/* ============ 图：中期年谷底日期时间轴 ============ */
+function doy(ds){var p=ds.split("-"),d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2]));
+  return (d-Date.UTC(+p[0],0,1))/86400000}
+function drawTrough(W,show,hide){
+  var nar=W<560, rows=D.detail, rh=nar?15:17, m={t:26,r:nar?10:54,b:30,l:nar?34:44};
+  var H=m.t+rows.length*rh+m.b, iw=W-m.l-m.r;
+  var x=function(v){return m.l+v/366*iw};
+  var s=svg(W,H);
+  [0,31,59,90,120,151,181,212,243,273,304,334].forEach(function(v,i){
+    s.appendChild(el("line",{x1:x(v),x2:x(v),y1:m.t-6,y2:H-m.b+2,class:"gl"}));
+    if(!nar||i%2===0)s.appendChild(el("text",{x:x(v)+3,y:m.t-11,class:"ax"},(i+1)+"月"));});
+  /* 选举日区间带：11月2-8日 */
+  s.appendChild(el("rect",{x:x(305),y:m.t-6,width:x(312)-x(305),height:H-m.b+8-(m.t-6),
+    fill:cv("--accent"),opacity:"0.13"}));
+  s.appendChild(el("text",{x:x(308),y:H-m.b+16,class:"ax","text-anchor":"middle",fill:cv("--accent")},"选举日"));
+  var mx=0;rows.forEach(function(r){mx=Math.max(mx,Math.abs(r.dd))});
+  rows.forEach(function(r,i){
+    var yy=m.t+i*rh+rh/2, dd=Math.abs(r.dd), rad=3+ (dd/mx)*(nar?4.5:6.5);
+    s.appendChild(el("line",{x1:m.l,x2:W-m.r,y1:yy,y2:yy,stroke:cv("--line"),"stroke-width":1}));
+    s.appendChild(el("text",{x:m.l-7,y:yy+3.5,class:r.y===2026?"axb":"ax","text-anchor":"end",
+      "font-weight":r.y===2026?"600":"400"},r.y));
+    var c=el("circle",{cx:x(doy(r.trough)),cy:yy,r:rad,fill:cv("--neg"),
+      opacity:String(0.35+0.55*dd/mx),stroke:cv("--surface"),"stroke-width":1.5});
+    s.appendChild(c);
+    if(!nar&&r.e12!=null)s.appendChild(el("text",{x:W-m.r+7,y:yy+3.5,class:"vl",
+      fill:r.e12>0?cv("--pos"):cv("--neg")},fmt(r.e12,0)+"%"));
+    var hit=el("rect",{x:m.l,y:m.t+i*rh,width:iw,height:rh,class:"hit"});
+    hit.addEventListener("mouseenter",function(){
+      show(x(doy(r.trough)),m.t+i*rh,"<b>"+r.y+" 年</b><br>谷底 "+r.trough+"<br>年内最大回撤 "+r.dd+"%<br>"+
+        (r.yr!=null?"全年 "+fmt(r.yr,1)+"%<br>":"")+
+        (r.e12!=null?"选举日后12个月 "+fmt(r.e12,1)+"%":"进行中"))});
+    hit.addEventListener("mouseleave",hide);
+    s.appendChild(hit);});
+  if(!nar)s.appendChild(el("text",{x:W-m.r+7,y:m.t-11,class:"ax"},"选举日后12月"));
+  return s;
+}
+/* ============ 图：对照组横条 ============ */
+function drawControl(W,show,hide){
+  var nar=W<560, K=["sep","sep_oct","nov_apr","elec6","elec12"],
+    L={sep:"9月（8/31→9/30）",sep_oct:"9–10月（8/31→10/31）",nov_apr:"11月→次年4月",
+       elec6:"选举日起 6个月",elec12:"选举日起 12个月"};
+  var m={t:10,r:nar?8:120,b:26,l:nar?8:150}, rh=nar?70:46, H=m.t+K.length*rh+m.b;
+  var iw=W-m.l-m.r;
+  var all=[];K.forEach(function(k){all.push(D.control[k].mid.mean,D.control[k].non.mean)});
+  var lo=Math.min(0,Math.min.apply(null,all))*1.1, hi=Math.max.apply(null,all)*1.32;
+  var x=function(v){return m.l+(v-lo)/(hi-lo)*iw};
+  var s=svg(W,H);
+  ticks(lo,hi,4).forEach(function(t){
+    s.appendChild(el("line",{x1:x(t),x2:x(t),y1:m.t,y2:H-m.b+2,class:t===0?"zl":"gl"}));
+    s.appendChild(el("text",{x:x(t),y:H-m.b+16,class:"ax","text-anchor":"middle"},t+"%"));});
+  K.forEach(function(k,i){
+    var top=m.t+i*rh, a=D.control[k].mid, b=D.control[k].non, bh=nar?11:13;
+    if(nar)s.appendChild(el("text",{x:m.l,y:top+11,class:"axb"},L[k]));
+    else s.appendChild(el("text",{x:m.l-9,y:top+rh/2+3,class:"axb","text-anchor":"end"},L[k]));
+    var y0=nar?top+18:top+5;
+    [[a,"--s1","中期年"],[b,"--s3","其他年"]].forEach(function(p,j){
+      var v=p[0], yy=y0+j*(bh+3);
+      s.appendChild(el("rect",{x:Math.min(x(0),x(v.mean)),y:yy,width:Math.max(Math.abs(x(v.mean)-x(0)),2),
+        height:bh,fill:cv(p[1]),rx:3}));
+      s.appendChild(el("text",{x:x(v.mean)+6,y:yy+bh-2.5,class:"vl",fill:cv("--ink")},
+        fmt(v.mean,1)+"%  胜率"+v.win.toFixed(0)+"%"));
+      var hit=el("rect",{x:m.l,y:yy-2,width:iw,height:bh+4,class:"hit"});
+      hit.addEventListener("mouseenter",function(){show(x(v.mean),yy,
+        "<b>"+p[2]+" · "+L[k]+"</b><br>平均 "+fmt(v.mean,2)+"%<br>中位 "+fmt(v.median,2)+
+        "%<br>上涨概率 "+v.win.toFixed(0)+"%<br>最差一次 "+fmt(v.min,1)+"%<br>样本 "+v.n+" 年")});
+      hit.addEventListener("mouseleave",hide); s.appendChild(hit);});});
+  return s;
+}
+/* ============ 图：10月逐日（两个小图） ============ */
+function drawOct(W,show,hide){
+  var nar=W<560, pw=nar?W:(W-18)/2, H=nar?440:220;
+  var s=svg(W,H);
+  function panel(ox,oy,pw,ph,key,title,fmtv,col){
+    var m={t:24,r:12,b:26,l:38}, iw=pw-m.l-m.r, ih=ph-m.t-m.b, d=D.octDay;
+    var vs=d.map(function(r){return r[key]});
+    var lo=Math.min.apply(null,vs), hi=Math.max.apply(null,vs), pad=(hi-lo)*0.18;
+    lo-=pad; hi+=pad;
+    var X=function(v){return ox+m.l+(v-1)/30*iw}, Y=function(v){return oy+m.t+ih-(v-lo)/(hi-lo)*ih};
+    s.appendChild(el("text",{x:ox+m.l,y:oy+12,class:"axb",fill:cv("--ink")},title));
+    ticks(lo,hi,3).forEach(function(t){
+      s.appendChild(el("line",{x1:ox+m.l,x2:ox+pw-m.r,y1:Y(t),y2:Y(t),class:"gl"}));
+      s.appendChild(el("text",{x:ox+m.l-6,y:Y(t)+3.5,class:"ax","text-anchor":"end"},fmtv(t)));});
+    [1,10,20,31].forEach(function(dd){
+      s.appendChild(el("text",{x:X(dd),y:oy+ph-m.b+16,class:"ax","text-anchor":"middle"},dd+"日"))});
+    var pts=d.map(function(r){return X(r.d)+","+Y(r[key])}).join(" ");
+    s.appendChild(el("polyline",{points:pts,fill:"none",stroke:cv(col),"stroke-width":2,
+      "stroke-linejoin":"round","stroke-linecap":"round"}));
+    d.forEach(function(r){
+      s.appendChild(el("circle",{cx:X(r.d),cy:Y(r[key]),r:2.6,fill:cv(col),
+        stroke:cv("--surface"),"stroke-width":1.4}));
+      var hit=el("circle",{cx:X(r.d),cy:Y(r[key]),r:9,class:"hit"});
+      hit.addEventListener("mouseenter",function(){show(X(r.d),Y(r[key]),
+        "<b>10月"+r.d+"日买入</b><br>12个月平均 "+fmt(r.m12,1)+"%<br>上涨概率 "+r.w12+
+        "%<br>最差一次 "+fmt(r.min12,1)+"%<br>样本 "+r.n+" 年")});
+      hit.addEventListener("mouseleave",hide); s.appendChild(hit);});
+  }
+  panel(0,0,pw,nar?210:H,"m12","12个月平均收益",function(v){return v.toFixed(0)+"%"},"--s1");
+  panel(nar?0:pw+18,nar?220:0,pw,nar?210:H,"w12","12个月上涨概率",function(v){return v.toFixed(0)+"%"},"--s2");
+  return s;
+}
+/* ============ 表格 ============ */
+function cls(v){return v==null?"":(v>0?"pos":"neg")}
+function td(v,d,suf){return "<td class='"+cls(v)+"'>"+(v==null?"—":fmt(v,d==null?1:d)+(suf||"%"))+"</td>"}
+function fillDetail(){
+  var b=document.getElementById("tbDetail"); if(!b)return;
+  b.innerHTML=D.detail.map(function(r){
+    return "<tr"+(r.y===2026?" class='hl'":"")+"><td class='t'>"+r.y+(r.y===2026?" ·进行中":"")+"</td>"+
+      "<td class='neg'>"+r.dd.toFixed(1)+"%</td><td>"+r.trough.slice(5)+"</td>"+
+      "<td>"+(r.d2e>=0?r.d2e+" 天前":"晚 "+(-r.d2e)+" 天")+"</td>"+
+      td(r.yr)+td(r.l12)+td(r.e12)+"</tr>"}).join("");
+}
+function fillBt(){
+  var b=document.getElementById("tbBt"); if(!b)return;
+  b.innerHTML=D.bt.map(function(r){
+    var hl=(r.kind==="oct10"||r.kind==="elec")?" class='hl'":"";
+    return "<tr"+hl+"><td class='t'>"+r.label+"</td>"+td(r.m3)+td(r.m6)+td(r.m12)+
+      "<td>"+r.w12.toFixed(0)+"%</td>"+td(r.min12)+
+      "<td class='neg'>"+r.dd.toFixed(1)+"%</td><td class='neg'>"+r.ddw.toFixed(1)+"%</td>"+td(r.m24)+"</tr>"}).join("");
+}
+/* ============ 初始化 ============ */
+var reMonth=mount("cMonth",drawMonth);
+document.querySelectorAll("#tabMonth button").forEach(function(btn){
+  btn.addEventListener("click",function(){
+    document.querySelectorAll("#tabMonth button").forEach(function(b){b.setAttribute("aria-pressed","false")});
+    btn.setAttribute("aria-pressed","true"); monthKey=btn.dataset.k; reMonth();});});
+
+grouped("cHalf",{cats:MN.map(function(x){return x.replace("月","")}),hl:8,full:MN,
+  series:[{n:"上半月",c:"--s1",v:D.half.map(function(r){return r.a})},
+          {n:"下半月",c:"--s2",v:D.half.map(function(r){return r.b})}],
+  extra:function(i){return "<br>下半月上涨概率 "+D.half[i].bw+"%"}});
+
+grouped("cEra",{cats:["1928–1981","1982–1999","2000–2025"],b:44,h:280,
+  sub:["回购前时代","10b-18 之后","回购主导"],
+  series:[{n:"9月下半月",c:"--s1",v:D.era.map(function(r){return r.sep_second})},
+          {n:"其他月下半月",c:"--s2",v:D.era.map(function(r){return r.other_second})},
+          {n:"两者之差",c:"--neg",v:D.era.map(function(r){return r.gap_second})}],
+  extra:function(i){return "<br>9月整月 "+fmt(D.era[i].sep_total,2)+"%"}});
+
+grouped("cCycle",{cats:D.cycle.map(function(r){return r.name}),h:250,b:34,
+  series:[{n:"年均收益",c:"--s1",v:D.cycle.map(function(r){return r.mean})},
+          {n:"中位数",c:"--s3",v:D.cycle.map(function(r){return r.med})}],
+  extra:function(i){return "<br>上涨概率 "+D.cycle[i].win+"%<br>样本 "+D.cycle[i].n+" 年"}});
+
+grouped("cMidMonth",{cats:MN.map(function(x){return x.replace("月","")}),hl:9,full:MN,h:290,
+  series:[{n:"中期年",c:"--s1",v:D.monthMid.map(function(r){return r.mid})},
+          {n:"其他年",c:"--s3",v:D.monthMid.map(function(r){return r.non})}],
+  extra:function(i){return "<br>中期年上涨概率 "+D.monthMid[i].win+"%"}});
+
+mount("cTrough",drawTrough);
+mount("cControl",drawControl);
+mount("cOct",drawOct);
+fillDetail(); fillBt();
+
+/* 主题切换时重画（颜色来自 CSS 变量，需重绘） */
+if(window.matchMedia){var mq=window.matchMedia("(prefers-color-scheme: dark)");
+  var re=function(){document.querySelectorAll(".chartbox").forEach(function(b){if(b.__redraw)b.__redraw()})};
+  if(mq.addEventListener)mq.addEventListener("change",re);}
+new MutationObserver(function(){document.querySelectorAll(".chartbox").forEach(function(b){if(b.__redraw)b.__redraw()})})
+  .observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+})();
+</script>

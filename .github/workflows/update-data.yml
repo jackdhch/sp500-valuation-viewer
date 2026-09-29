@@ -1,0 +1,207 @@
+name: 更新估值数据
+
+# 每天更新的其实只有「价格」这一半：
+# 市盈率 = 当日收盘价 ÷ 每股收益，分子天天变，分母要等下一份季报才变。
+# 所以这个定时任务只重抓价格再重算，季度锚点（data/valuation/*.csv）仍由本地
+# 跑 tools/fetch_valuation.py 后推送——那一步要爬 macrotrends，在 CI 里容易被限流。
+# 2026-09-28 起顺带重算「低点信号」页的 viewer_data.js，并把两边数据同步到微信小程序的云存储。
+on:
+  schedule:
+    # 美东收盘后。UTC 21:30 ≈ 美东 17:30（夏令时）/ 16:30（冬令时）
+    - cron: '30 21 * * 1-5'
+    # 备用：GitHub 的定时常被推迟甚至跳过（9 月 16 日到 28 日一次都没自动跑），多挂两个点，有一个跑成就行。
+    # 重复跑没坏处：数据没变会「不提交」直接结束；分钟数避开整点、半点，那时最挤
+    - cron: '17 23 * * 1-5'     # 美东 19:17（冬令时 18:17）
+    - cron: '43 1 * * 2-6'      # UTC 周二到周六 01:43 = 美东周一到周五 21:43（冬令时 20:43）
+  workflow_dispatch:        # 也可以在 Actions 页面手动点一下
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 装依赖
+        run: pip install --quiet yfinance
+
+      - name: 抓四条价格（标普500、纳指100、VOO、QQQ）
+        env:
+          SP500_DATA: ${{ github.workspace }}/data
+        run: python tools/fetch_prices.py
+
+      - name: 更新 multpl 滚动市盈率（每天，估算月份会改）
+        # 2026-09-28 加：multpl 那张表最上面是当天的估算值、最近两三个月标「估算」还会被改，所以每天重抓。
+        # 定下来的月份必须和已有的一样，对不上（网站改了历史或改了版式）就整张不更新、推 Bark；同一个原因只推一次
+        timeout-minutes: 5
+        env:
+          SP500_ROOT: ${{ github.workspace }}
+          BARK_URL: ${{ secrets.BARK_URL }}
+        run: python tools/update_multpl.py || echo "multpl 这次没更新，沿用已有数据"
+
+      - name: 每周追加 FactSet 前瞻市盈率（周报 PDF）
+        # 2026-09-28 加：只找数据表最后一期之后的周五（前后各一天），读法同本机的 extract_factset.py。
+        # 读出来的数不对劲（超出 8~40、比上一期变动超过 20%、均值变动超过 1）就不采用，推 Bark 告诉操作者，
+        # 并记进 data/factset_skip.json 以后不再抓。这一步失败不影响别的，前瞻市盈率就沿用上一期
+        timeout-minutes: 10
+        env:
+          SP500_ROOT: ${{ github.workspace }}
+          BARK_URL: ${{ secrets.BARK_URL }}
+        run: |
+          sudo apt-get install -y -qq poppler-utils > /dev/null || echo "装不上 pdftotext"
+          python tools/update_factset.py || echo "FactSet 这次没更新，沿用上一期"
+
+      - name: 重算旧版单页的数据（抄底分、触发价、市场宽度、前瞻市盈率）
+        # 2026-09-28 加：原样重跑本机那几个脚本，和本机算的逐日一致（本机试跑核对过：10321 个共同交易日零差异）。
+        # 完整的 data.json 写到临时目录，给小程序旧版单页（tools/mp/build_val.py 读 FULL_DATA_JSON）；
+        # 仓库根目录的精简 data.json 和 breadth/data.js（网站市场宽度页）也换成新算的，下面一起提交
+        timeout-minutes: 15
+        env:
+          SP500_ROOT: ${{ github.workspace }}
+          SP500_DATA: ${{ github.workspace }}/data
+          SP500_SITE: ${{ runner.temp }}/full
+        run: |
+          mkdir -p "$SP500_SITE"
+          python tools/build_signal.py
+          python tools/build_triggers.py
+          # 市场宽度要抓 500 多只成分股（约 3 分钟）；失败就沿用 data/breadth*.csv 里上次的，别的照常
+          python tools/fetch_breadth.py || echo "市场宽度这次没算出来，沿用上次的"
+          python tools/build_dataset.py
+          python tools/build_breadth_page.py
+          cp "$SP500_SITE/breadth/data.js" breadth/data.js
+          python - <<'EOF'
+          # 估值面板（QQQ / VOO）用的精简 data.json，跟 scripts/deploy.sh 里那段一样
+          import json, os
+          full = json.load(open(os.path.join(os.environ["SP500_SITE"], "data.json")))
+          keep = ["dates", "qqq", "voo", "ndx_pe", "ndx_fpe", "spx_pe", "spx_fpe"]
+          out = {k: full[k] for k in keep if k in full}
+          out["_note"] = "从 site/data.json 精简而来，只保留估值面板用得到的列。"
+          json.dump(out, open("data.json", "w"), separators=(",", ":"))
+          print("data.json 到", full["dates"][-1])
+          EOF
+
+      - name: 重算估值序列
+        env:
+          SP500_ROOT: ${{ github.workspace }}
+          SP500_DATA: ${{ github.workspace }}/data
+          SP500_SITE: ${{ github.workspace }}
+          SP500_PRICE_MAX_AGE: '0'      # runner 上没有价格缓存，每次都现抓
+        run: python tools/build_valuation.py
+
+      - name: 重算低点信号数据
+        env:
+          SP500_ROOT: ${{ github.workspace }}
+          SP500_DATA: ${{ github.workspace }}/data
+          SP500_SITE: ${{ github.workspace }}
+        # AAPL 的价格用上一步估值重算时刚抓的缓存（data/viewer/AAPL.csv，只有收盘价，跟本地一直以来的口径一样）
+        run: python tools/build_viewer.py AAPL
+
+      - name: 检查估值提醒，有新触发就发邮件
+        env:
+          SP500_ROOT: ${{ github.workspace }}
+          SP500_SITE: ${{ github.workspace }}
+          # 密钥与收件地址只从 Secrets 来，不写在仓库里（本仓库是公开的）。
+          # 两个 Secret 没配的话脚本会自己跳过发信，不会让整个任务失败。
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+          ALERT_FROM: ${{ secrets.ALERT_FROM }}
+        run: python tools/check_alerts.py --send
+
+      - name: 有变化才提交
+        run: |
+          # 现在产物是「索引 + 每只标的一个分片」，不再是单个 valuation_data.js
+          if git diff --quiet -- valuation_index.js v/ poster_px.js alerts_state.json viewer_data.js data.json breadth/data.js data/sp500_forward_pe_factset.csv data/sp500_pe_ttm_monthly.csv && [ -z "$(git status --porcelain data/factset_skip.json data/multpl_alert.json)" ]; then
+            echo "数据没有变化，不提交"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 每天的数据更新也要让开着页面的人知道，所以顺手把 version.json 的数据日期改掉
+          python - <<'EOF'
+          import json, os
+          p = "version.json"
+          v = {}
+          if os.path.exists(p):
+              try:
+                  v = json.load(open(p))
+              except Exception:
+                  v = {}
+          s = open("valuation_index.js").read()
+          v["data"] = json.loads(s[s.index("=") + 1:].rstrip().rstrip(";"))["built"]
+          json.dump(v, open(p, "w"), ensure_ascii=False, indent=1)
+          EOF
+          git add valuation_index.js v/ poster_px.js alerts_state.json version.json viewer_data.js data.json breadth/data.js data/breadth.csv data/breadth_ndx.csv data/sp500_forward_pe_factset.csv
+          git add data/sp500_pe_ttm_monthly.csv
+          [ -f data/factset_skip.json ] && git add data/factset_skip.json
+          git add -A data/multpl_alert.json 2>/dev/null || true
+          # 分片加起来十几兆，价格天天变就等于天天全量改一遍。
+          # 要是每天都留一个提交，一年下来仓库会涨到几个 G，所以把连续的数据提交
+          # 折叠成一个：上一个提交如果也是自动更新，就 amend 掉再强推。
+          # 只有这个任务会碰这几个文件，--force-with-lease 保证不会盖掉别人的提交。
+          if git log -1 --pretty=%s | grep -q '^自动更新估值数据'; then
+            git commit --amend -m "自动更新估值数据 $(date -u '+%Y-%m-%d')"
+            git push --force-with-lease
+          else
+            git commit -m "自动更新估值数据 $(date -u '+%Y-%m-%d')"
+            git push
+          fi
+
+      - name: 算 Dexter 支撑位（小程序用）
+        env:
+          # 支撑位是从别人小红书视频封面人工读出来的个人研究，不公开：只放在加密机密 DEXTER_SUPPORTS 里，
+          # 写到临时目录用完即丢，不进仓库。没配就跳过；这一步出错也不影响别的
+          DEXTER_SUPPORTS: ${{ secrets.DEXTER_SUPPORTS }}
+        run: |
+          if [ -z "$DEXTER_SUPPORTS" ]; then echo "没配 DEXTER_SUPPORTS，跳过"; exit 0; fi
+          mkdir -p "$RUNNER_TEMP/dexter"
+          printf '%s' "$DEXTER_SUPPORTS" > "$RUNNER_TEMP/dexter/supports.json"
+          DEXTER_DIR="$RUNNER_TEMP/dexter" python tools/build_dexter_support.py || echo "Dexter 支撑位没算出来，小程序那页保持上一次的数据"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 同步到微信小程序云存储
+        # 2026-09-28 遇到过微信那边拿上传凭证卡住半个多小时；限 15 分钟，免得挡住第二天的任务（同组任务是排队不取消的）
+        timeout-minutes: 15
+        env:
+          # 小程序上传密钥只从加密机密来（本仓库是公开的，不能写进文件）。没配就跳过，不影响上面的网站更新
+          MP_UPLOAD_KEY: ${{ secrets.MP_UPLOAD_KEY }}
+        run: |
+          if [ -z "$MP_UPLOAD_KEY" ]; then echo "没配 MP_UPLOAD_KEY，跳过小程序同步"; exit 0; fi
+          npm install --silent --no-audit --no-fund --prefix "$RUNNER_TEMP/mpci" miniprogram-ci@2.1.31
+          printf '%s\n' "$MP_UPLOAD_KEY" > "$RUNNER_TEMP/mp.key"
+          trap 'rm -f "$RUNNER_TEMP/mp.key"' EXIT
+          MPCI="$RUNNER_TEMP/mpci/node_modules/miniprogram-ci" MP_KEY_FILE="$RUNNER_TEMP/mp.key" \
+          MP_ENV=cloud1-d7g80thiyf6d32dac MP_DATA_OUT="$RUNNER_TEMP/cloud_data" DEPLOY_REPO="$GITHUB_WORKSPACE" \
+          DEXTER_JSON="$RUNNER_TEMP/dexter/support.json" FULL_DATA_JSON="$RUNNER_TEMP/full/data.json" \
+            node tools/mp/upload_data.js
+
+      - name: 有步骤失败就推 Bark
+        # 2026-09-28 加：那天下午每日任务在「重算低点信号数据」崩了两次，网站和小程序都停在盘中价上，没人知道
+        if: failure()
+        env:
+          BARK_URL: ${{ secrets.BARK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$BARK_URL" ]; then echo "没配 BARK_URL"; exit 0; fi
+          python - <<'EOF'
+          import os, urllib.parse, urllib.request
+          q = lambda s: urllib.parse.quote(s, safe="")
+          title = "水位尺：每日任务失败了"
+          body = "网站和小程序今天的数据可能没更新。看运行记录：" + os.environ["RUN_URL"]
+          try:
+              urllib.request.urlopen(os.environ["BARK_URL"].rstrip("/") + "/" + q(title) + "/" + q(body) + "?group=" + q("水位尺"), timeout=15).read()
+          except Exception as e:
+              print("推送失败：", type(e).__name__)
+          EOF

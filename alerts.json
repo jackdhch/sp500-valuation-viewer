@@ -1,0 +1,64 @@
+{
+  "_说明": [
+    "估值提醒规则。GitHub Actions 每天更新完数据后检查一遍，只有「上次没触发、这次触发了」才发邮件。",
+    "字段：ticker 标的代码 / metric 指标(pe|fwd_pe|pb) / op 方向(below|above) / threshold 分位阈值(0-100) / note 备注（会出现在邮件里）。",
+    "分位口径是固定十年窗口；上市不足十年的按实际年限算，页面上会写明。",
+    "收件邮箱与 API 密钥都放在 GitHub Secrets 里，不写在这个文件里——本仓库是公开的。",
+    "kind=\"sigma\" 的规则不看估值分位，看的是标普500 相对 155 年累计样本趋势线的标准差偏离（见 site/entry/page.html）。threshold 是 σ 值，脚本每天把它反解成当日的指数点位再比较——趋势线一直在上移，所以这条线不是固定点位。"
+  ],
+  "rules": [
+    {
+      "ticker": "QQQ",
+      "metric": "pe",
+      "op": "below",
+      "threshold": 20,
+      "note": "纳指100 估值回到近十年最便宜的两成"
+    },
+    {
+      "ticker": "VOO",
+      "metric": "pe",
+      "op": "below",
+      "threshold": 20,
+      "note": "标普500 估值回到近十年最便宜的两成"
+    },
+    {
+      "ticker": "QQQ",
+      "metric": "pe",
+      "op": "above",
+      "threshold": 90,
+      "note": "纳指100 估值进入近十年最贵的一成"
+    },
+    {
+      "ticker": "NVDA",
+      "metric": "pe",
+      "op": "below",
+      "threshold": 10,
+      "note": "英伟达 PE 分位进入近十年最低一成"
+    },
+    {
+      "ticker": "SMH",
+      "metric": "pe",
+      "op": "above",
+      "threshold": 90,
+      "note": "半导体板块估值进入近十年最贵一成"
+    },
+    {
+      "kind": "sigma",
+      "op": "below",
+      "threshold": 1.0,
+      "note": "回到 +1.00σ：历史上这一档往左，持有15年最坏十分之一还守得住实际3%"
+    },
+    {
+      "kind": "sigma",
+      "op": "below",
+      "threshold": 0.5,
+      "note": "回到 +0.50σ：同档买点持有15年的中位数回到实际5%附近"
+    },
+    {
+      "kind": "sigma",
+      "op": "below",
+      "threshold": 0.0,
+      "note": "回到趋势线：同档买点持有15年的中位数回到实际7%一带，155年的常态水平"
+    }
+  ]
+}

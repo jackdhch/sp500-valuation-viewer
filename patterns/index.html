@@ -1,0 +1,814 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>日历规律存活名单</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Libre+Franklin:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#f5f6f7; --surface:#ffffff; --surface-2:#edeff1; --sunken:#e6e9eb;
+  --ink:#111417; --ink-2:#565e66; --ink-3:#868e97; --line:#e0e3e7; --line-2:#c9ced4;
+  --live:#12876a; --decay:#c2531f; --dead:#7d858e;
+  --live-bg:#e3f4ee; --decay-bg:#fbeee6; --dead-bg:#eef0f2;
+  --accent:#4a3aa7; --accent-soft:#eceafa;
+  --pos:#2a78d6; --neg:#c53b3a;
+  --fs:"Libre Franklin","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --fm:"JetBrains Mono","SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1113; --surface:#171b1e; --surface-2:#1f2428; --sunken:#121619;
+  --ink:#e9edf0; --ink-2:#9aa3ab; --ink-3:#6b737b; --line:#262c31; --line-2:#39424a;
+  --live:#199e70; --decay:#d95926; --dead:#6b737b;
+  --live-bg:#102c23; --decay-bg:#2e1b11; --dead-bg:#1d2226;
+  --accent:#9085e9; --accent-soft:#1d1a34;
+  --pos:#3987e5; --neg:#e66767;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1113; --surface:#171b1e; --surface-2:#1f2428; --sunken:#121619;
+  --ink:#e9edf0; --ink-2:#9aa3ab; --ink-3:#6b737b; --line:#262c31; --line-2:#39424a;
+  --live:#199e70; --decay:#d95926; --dead:#6b737b;
+  --live-bg:#102c23; --decay-bg:#2e1b11; --dead-bg:#1d2226;
+  --accent:#9085e9; --accent-soft:#1d1a34;
+  --pos:#3987e5; --neg:#e66767;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--fs);line-height:1.72;margin:0;font-size:15px;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:0 76px}
+h1,h2,h3{text-wrap:balance;margin:0}
+.eyebrow{font-family:var(--fm);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);font-weight:500}
+header{padding-block:46px 26px;border-bottom:3px solid var(--ink)}
+h1{font-size:clamp(30px,5.6vw,50px);line-height:1.08;font-weight:800;letter-spacing:-.025em;margin-block:12px 14px}
+.sub{color:var(--ink-2);max-width:60ch;font-size:16px}
+.meta{font-family:var(--fm);font-size:11px;color:var(--ink-3);margin-top:18px;display:flex;flex-wrap:wrap;gap:5px 16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);margin-top:26px}
+.stat{background:var(--surface);padding:15px 16px}
+.stat .k{font-family:var(--fm);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.stat .v{font-size:32px;font-weight:800;line-height:1.08;margin-top:6px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat .d{font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.45}
+.stat .v.live{color:var(--live)} .stat .v.dead{color:var(--dead)} .stat .v.decay{color:var(--decay)}
+section{padding-block:50px 0}
+.shead{display:flex;gap:13px;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:9px;margin-bottom:22px}
+.snum{font-family:var(--fm);font-size:11.5px;font-weight:600;color:var(--accent);letter-spacing:.05em}
+.shead h2{font-size:clamp(19px,3.1vw,26px);font-weight:700;letter-spacing:-.015em}
+p{margin:0 0 15px;max-width:68ch}
+.lead{font-size:16.5px}
+strong{font-weight:650}
+em{font-style:normal;background:var(--accent-soft);padding:1px 5px;border-radius:2px;font-weight:500}
+.num{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:.93em}
+figure{margin:24px 0;background:var(--surface);border:1px solid var(--line);padding:17px 17px 13px}
+figcaption{font-size:12.5px;color:var(--ink-2);margin-top:11px;padding-top:10px;border-top:1px solid var(--line);line-height:1.6}
+.figtitle{font-size:15px;font-weight:650;margin-bottom:2px}
+.figsub{font-size:12.5px;color:var(--ink-2);margin-bottom:13px}
+.chartbox{position:relative;width:100%}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--fm);font-variant-numeric:tabular-nums}
+.ax{fill:var(--ink-3);font-size:10.5px}
+.axb{fill:var(--ink-2);font-size:11px}
+.vl{fill:var(--ink-2);font-size:10px}
+.gl{stroke:var(--line);stroke-width:1}
+.zl{stroke:var(--line-2);stroke-width:1.5}
+.hit{fill:transparent;cursor:crosshair}
+.tt{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-family:var(--fm);font-size:11.5px;
+  padding:7px 9px;line-height:1.55;border-radius:3px;white-space:nowrap;z-index:9;opacity:0;transition:opacity .09s;
+  box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 17px;font-size:12.5px;color:var(--ink-2);margin-bottom:11px;align-items:center}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.sw{width:11px;height:11px;border-radius:2px;flex:none}
+.tabs{display:flex;margin-bottom:13px;border:1px solid var(--line-2);width:fit-content;max-width:100%;flex-wrap:wrap}
+.tabs button{font-family:var(--fm);font-size:11.5px;padding:6px 12px;background:transparent;border:0;
+  border-right:1px solid var(--line-2);color:var(--ink-2);cursor:pointer}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:500}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tablewrap{overflow-x:auto;margin:20px 0;border:1px solid var(--line);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:620px}
+th,td{padding:7px 11px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--fm);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:500;text-align:right;background:var(--surface-2)}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--fm);font-variant-numeric:tabular-nums}
+td.t{font-family:var(--fs);white-space:normal;min-width:190px}
+tbody tr:hover{background:var(--surface-2)}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+/* 状态标签：颜色 + 文字 + 符号，不依赖单一通道 */
+.tag{display:inline-flex;align-items:center;gap:4px;font-family:var(--fm);font-size:10.5px;font-weight:600;
+  padding:2px 7px;border-radius:2px;letter-spacing:.03em;white-space:nowrap}
+.tag.live{background:var(--live-bg);color:var(--live)}
+.tag.decay{background:var(--decay-bg);color:var(--decay)}
+.tag.dead{background:var(--dead-bg);color:var(--dead)}
+.note{border-left:3px solid var(--accent);background:var(--surface);padding:14px 17px;margin:20px 0}
+.note.warn{border-left-color:var(--decay)}
+.note.kill{border-left-color:var(--dead)}
+.note .nt{font-family:var(--fm);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.note p:last-child{margin-bottom:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:13px;margin:22px 0}
+.card{background:var(--surface);border:1px solid var(--line);padding:15px 16px}
+.card .ct{font-family:var(--fm);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:7px}
+.card .cv{font-size:24px;font-weight:750;letter-spacing:-.015em;line-height:1.2;margin-bottom:6px}
+.card p{font-size:12.5px;color:var(--ink-2);margin:0;line-height:1.58}
+.src{font-size:13px;color:var(--ink-2);border-top:1px solid var(--line);padding-top:15px;margin-top:8px}
+.src ol{padding-left:20px;margin:0} .src li{margin-bottom:6px}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+.foot{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3);line-height:1.7}
+@media (max-width:600px){
+  body{font-size:14.5px} .stat .v{font-size:26px} figure{padding:13px 11px 11px} .wrap{padding-inline:16px}
+  td.t{min-width:150px}
+}
+</style>
+<div class="wrap">
+<header>
+  <div class="eyebrow">标普500 与 18 个市场 · 1928–2026 · 六个方向的独立检验</div>
+  <h1>日历规律存活名单</h1>
+  <p class="sub">市场上流传着几十条"几月该买、几号该卖"的规律。这一页把其中 28 条拿来，
+  用同一把尺子逐条量：先算出纯靠运气能挖出多大的"规律"，再看每条能不能跑赢那条线，
+  然后追问它背后的机制有没有一手证据。<strong>结果是倒下的远多于站住的。</strong></p>
+  <div class="meta">
+    <span>逾 550 次统计检验</span><span>6 个独立调研方向</span>
+    <span>数据截至 2026-09-11</span><span>全部结论自算，脚本留档</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="k">被检验的流行规律</div><div class="v">28</div>
+    <div class="d">涵盖月份、月内、事件日、跨国</div></div>
+  <div class="stat"><div class="k">现在还站得住</div><div class="v live">3</div>
+    <div class="d">过挖掘门槛且未衰减</div></div>
+  <div class="stat"><div class="k">历史真实、现已消失</div><div class="v decay">7</div>
+    <div class="d">全都死在被公开之后</div></div>
+  <div class="stat"><div class="k">机制假说被否定</div><div class="v dead">14</div>
+    <div class="d">含回购静默期、基金财年、日照</div></div>
+</div>
+
+<section>
+<div class="shead"><span class="snum">01</span><h2>先立规矩：纯靠运气能挖出多大的"规律"</h2></div>
+<p class="lead">检验任何日历规律之前，必须先知道一件事：如果数据里<strong>什么规律都没有</strong>，
+光靠在 12 个月里挑最极端的那个，能挑出多"显著"的结果？</p>
+<p>做法很直接：把标普500 的月度收益<strong>随机打乱 3000 次</strong>——打乱之后，月份标签和收益的对应关系纯属偶然，
+里面确定没有任何真实的季节性。每打乱一次，就从 12 个月里挑出最极端的那个，记下它的 t 值。</p>
+<figure>
+  <div class="figtitle">纯噪声挖掘出的"最显著月份"分布</div>
+  <div class="figsub">标普500 月度收益随机重排 3000 次，每次取 12 个月中 |t| 最大者</div>
+  <div class="chartbox" id="cMining"></div>
+  <figcaption>这条分布就是本页所有月度级结论的验收线。真实数据里最极端的月份（9 月，|t|=3.24）确实越过了 95% 分位，
+  但只超出一点点，而且没到 99% 分位。</figcaption>
+</figure>
+<div class="note">
+<div class="nt">本页的五条验收标准</div>
+<p><strong>① 月度级规律 |t| 必须 ≥ 2.87</strong>（跑赢挖掘基准的 95% 分位）。
+<strong>② 必须做多重检验校正</strong>，并声明一共测了多少个假设。
+<strong>③ 必须分"学界公开之前 / 之后"两段</strong>——这一条淘汰的规律最多。
+<strong>④ 必须有独立于均值的第二个统计量佐证</strong>（胜率、中位数、连胜）。
+<strong>⑤ 机制必须有一手证据</strong>：法条原文、监管备案、官方统计，而不是媒体互相转述。
+五条全过才算"站得住"。</p>
+</div>
+<p>还有一个更宽松的搜索能说明问题的严重性：如果允许在一年里<strong>任选起点和长度</strong>的窗口（几百个候选），
+纯噪声挖出的最好窗口，日均超额收益的 95% 分位是 <em>0.154%</em>。
+<strong>也就是说，光靠运气就能找到一个"日均多赚 0.15%"的漂亮买入窗口。</strong>
+任何没跑过这条基准线的"我发现了一个黄金买点"，都不值得相信。</p>
+</section>
+
+<section>
+<div class="shead"><span class="snum">02</span><h2>存活名单</h2></div>
+<p class="lead">28 条规律按 |t| 值排开，竖线是 2.87 的挖掘门槛。
+注意：过了门槛只代表"不像是随机挖出来的"，不代表它现在还有效——那要看第 03 节。</p>
+<figure>
+  <div class="figtitle">28 条日历规律的检验强度</div>
+  <div class="figsub">横轴为 |t| 值（取各自最有利的样本口径），竖线为挖掘门槛 2.87</div>
+  <div class="legend">
+    <span class="lg"><span class="sw" style="background:var(--live)"></span>✓ 现在仍站得住</span>
+    <span class="lg"><span class="sw" style="background:var(--decay)"></span>~ 历史真实，现已消失</span>
+    <span class="lg"><span class="sw" style="background:var(--dead)"></span>✕ 不成立</span>
+  </div>
+  <div class="chartbox" id="cSurvive"></div>
+  <figcaption>橙色那一组的位置最值得玩味：它们的历史 |t| 普遍很高（TOM 是 6.22、一月效应是 7.32），
+  远远超过门槛——<strong>但那是它们死之前的数字</strong>。只看全样本 t 值会把已经消失的规律误判为最强的规律。</figcaption>
+</figure>
+<div class="tablewrap">
+<table>
+<thead><tr><th>规律</th><th>最有利口径的 |t|</th><th>现状</th><th>判定</th><th>关键证据</th></tr></thead>
+<tbody id="tbSurvive"></tbody>
+</table>
+</div>
+</section>
+<section>
+<div class="shead"><span class="snum">03</span><h2>异象会死，而且死在被公开之后</h2></div>
+<p class="lead">这是本次检验最一致、最反复出现的发现。七条规律在历史上都真实存在、统计上都极强，
+而它们全都在被学术界公开、被媒体广泛传播之后失效了。</p>
+<figure>
+  <div class="figtitle">五条规律的死亡时间线</div>
+  <div class="figsub">各时代的效应强度（归一化为各自历史峰值的百分比），标注学术公开时点</div>
+  <div class="chartbox" id="cDeath"></div>
+  <figcaption>形状惊人地一致：在被写成论文之前维持高位，论文发表后开始下滑，十到二十年内归零。
+  唯一的例外是月末效应——它在论文发表后又强了十年，直到 2008 年前后才崩掉，
+  更可能是被结算周期改革（T+3→T+2→T+1）拆掉了物理基础。</figcaption>
+</figure>
+<div class="tablewrap">
+<table>
+<thead><tr><th>规律</th><th>鼎盛期</th><th>公开时点</th><th>现在</th></tr></thead>
+<tbody>
+<tr><td class="t">月末效应（TOM）<br><span style="font-size:11.5px;color:var(--ink-2)">月末最后 1 天 + 次月前 3 天</span></td>
+  <td>1928–2005<br>差 <span class="pos">+0.146%/天</span>，t=6.22</td><td>McConnell &amp; Xu 2008</td>
+  <td><span class="tag dead">✕ 归零</span><br>2013–2026 差 −0.001%，t=−0.02</td></tr>
+<tr><td class="t">一月效应<br><span style="font-size:11.5px;color:var(--ink-2)">小盘减大盘</span></td>
+  <td>1926–1979<br><span class="pos">+9.03%</span>，胜率 88.7%</td><td>Rozeff &amp; Kinney 1976<br>Keim 1983</td>
+  <td><span class="tag dead">✕ 归零</span><br>2010–2026 +0.95%，胜率 47.1%，p=0.34</td></tr>
+<tr><td class="t">周一效应</td>
+  <td>1950–1979<br><span class="neg">−0.135%</span>/天</td><td>1970 年代末大量论文</td>
+  <td><span class="tag dead">✕ 归零</span><br>2000–2026 <span class="pos">+0.022%</span>（变正）</td></tr>
+<tr><td class="t">节前效应<br><span style="font-size:11.5px;color:var(--ink-2)">假日前最后一个交易日</span></td>
+  <td>1950–1979<br>差 <span class="pos">+0.374pp</span>，p=2e−17</td><td>1980 年代初</td>
+  <td><span class="tag dead">✕ 归零</span><br>1980–2001 差 +0.041pp，p=0.53</td></tr>
+<tr><td class="t">FOMC 公告前漂移</td>
+  <td>1994–2011<br><span class="pos">+33.05 bp</span>/次，t=3.20</td><td>Lucca &amp; Moench 2015</td>
+  <td><span class="tag dead">✕ 归零</span><br>2012–2026 +10.03 bp，t=0.53，中位数为负</td></tr>
+<tr><td class="t">Halloween 效应<br><span style="font-size:11.5px;color:var(--ink-2)">11 月–次年 4 月 vs 5–10 月</span></td>
+  <td>全历史 6 个市场 <strong>6/6 显著</strong></td><td>Bouman &amp; Jacobsen 2002</td>
+  <td><span class="tag decay">~ 方向仍在</span><br>2003–2012 <strong>6/6 全部不显著</strong></td></tr>
+<tr><td class="t">FOMC 周期偶数周</td>
+  <td>1994–2011 p=0.022</td><td>Cieslak 等 2019</td>
+  <td><span class="tag dead">✕ 归零</span><br>2012–2026 4.18 vs 4.40 bp，p=0.95</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>FOMC 那条最完整，因为它连机制一起死了。</strong>公告日的 VIX 压缩幅度从 −0.56 点 →
+−0.28 → −0.01 逐期消失：<em>先是不确定性溢价没了，收益溢价跟着没</em>。
+而"只在 FOMC 前一日持仓"这个策略，占买入持有收益的比例从 26.6% 掉到 3.0%——
+2020 年后的 6.7 年累计只赚 <span class="num">+2.6%</span>，同期买入持有 <span class="num pos">+137%</span>，扣掉成本是净负的。</p>
+<div class="note warn">
+<div class="nt">别把"论文一发表就被套利掉"讲成一个顺口的故事</div>
+<p>月末效应的衰减<strong>不是单调的</strong>：1988–1997 年的滚动 t 值还有 3.28，比 1973–1982 年的 1.33 更强，
+真正不再反弹的死亡发生在 2008 年前后。而 Etula 等人（2020, RFS）指出的 T+3 结算机制
+<strong>事先指定</strong>了 T−4 是机构被迫卖股筹现金的日子——全样本里 T−4 恰好是整条月内曲线上
+唯一显著为负的一天（−0.070%，t=−2.09），而这个价格压力随着结算周期 T+3→T+2→T+1 一路缩短而消失。
+<strong>更可能的解释是制度变了，而不是聪明钱把它吃掉了。</strong></p>
+</div>
+</section>
+
+<section>
+<div class="shead"><span class="snum">04</span><h2>制度真实 ≠ 行为真实 ≠ 价格可预测</h2></div>
+<p class="lead">这是本次检验在方法上最重要的一个教训，用一个完整的案例来讲：
+一条制度可以白纸黑字写在法典里，基金确实照着做，而价格上仍然什么都没有。</p>
+<p>流传的说法是"大量美国共同基金财年在 10 月 31 日结束，所以 9–10 月有税务抛压"。
+这次没有采信任何转述，而是直接下载了 <strong>SEC 的 Form N-CEN 原始备案数据</strong>自己算——
+<span class="num">11 796</span> 只基金、<span class="num">32.46 万亿美元</span>：</p>
+<div class="cards">
+  <div class="card"><div class="ct">财年末在 10 月</div><div class="cv">20.0%</div>
+  <p>只数占比，资产占比 16.9%。均匀分布应该是 8.3%，所以确实扎堆（2.4 倍），而且全部集中在 10 月 31 日。</p></div>
+  <div class="card"><div class="ct">财年末在 12 月</div><div class="cv">28.4%</div>
+  <p>资产占比 33.2%。<strong>12 月才是最大的一档</strong>——所以"大量基金在 10/31"方向对，但被夸大了，它不是多数。</p></div>
+  <div class="card"><div class="ct">真正的硬机制</div><div class="cv">IRC §4982</div>
+  <p>美国法典 26 U.S.C. §4982(b)(1)(B) 要求基金分配掉「截至 10 月 31 日的一年期资本利得净收入」的 98.2%，
+  否则缴 4% 消费税。<strong>不管财年末是哪天，资本利得在税务上都按 10/31 截止。</strong></p></div>
+</div>
+<p>所以制度这一层不但是真的，还比传说更硬。行为那一层也是真的：
+Gibson、Safieddine 与 Titman（2000, <em>JFQA</em> 35(3)）实证发现，1986 年税改用统一的 10 月 31 日年末
+替代了各基金非同步的税年末之后，应税基金「<strong>systematically accelerated the sale of losers prior to October 31</strong>」
+——基金确实在 10 月 31 日之前加速抛售亏损股。</p>
+<p>然后看价格。用 Fama-French 按过去 12 个月收益排序的最低十分位（覆盖全 CRSP 股票池、每月重构、无幸存偏差）
+当作"税损抛售候选池"，市值加权，1927–2026，n≈99：</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>买入时点</th><th>持有 1 个月</th><th>持有 2 个月</th><th>持有 3 个月</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td class="t"><strong>10 月末买入</strong>（基金财年末假说）</td>
+  <td class="neg">−0.78pp<br>p=0.13</td><td class="neg"><strong>−2.39pp</strong><br>t=−3.698，p=0.00036</td>
+  <td class="neg">−0.93pp<br>p=0.14</td><td><span class="tag dead">✕ 方向相反</span></td></tr>
+<tr><td class="t"><strong>12 月末买入</strong>（个人税年末）</td>
+  <td class="pos"><strong>+1.87pp</strong><br>t=3.465，p=0.00079<br>胜率 58.6%</td>
+  <td class="pos">+1.32pp<br>p=0.083</td><td class="pos">+0.41pp<br>p=0.61</td>
+  <td><span class="tag decay">~ 2010 后失效</span></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>10 月末不是抛压的终点，是抛压的中点</strong>——那时买入输家，接下来两个月还要继续挨打。
+价格上的拐点在 12 月 31 日，指向的是个人投资者的税务截止日，不是基金的 10/31。
+而且连这条也在 2010 年之后失效了（2010–2026 超额 +0.75pp，p=0.65）。</p>
+<div class="note kill">
+<div class="nt">把这三层记牢</div>
+<p>制度真实（法条原文）→ 行为真实（基金确实那么做）→ <strong>价格可预测（不成立）</strong>。
+这三层完全可以只满足前两层。一个听起来天衣无缝的资金流故事，
+讲的每个环节都可能是真的，而最后那一步——"所以价格会这样走"——依然是错的。
+Gibson 那篇自己也说，基金后来学会把抛售摊到更长的窗口以降低冲击，而且他们只在 1990 一个年份找到显著的价格效应。</p>
+</div>
+</section>
+<section>
+<div class="shead"><span class="snum">05</span><h2>九月重新审判：规律是真的，六个解释全是假的</h2></div>
+<p class="lead">9 月是这次检验里唯一一条在统计上稳稳站住的月度规律，
+也是被解释得最多的一条。统计部分先说清楚，然后逐条拆解释。</p>
+<p><strong>站得住的部分：</strong>标普500 的 9 月是 12 个月里唯一长期平均为负的月份，1928 年起月均
+<span class="num neg">−1.11%</span>、胜率 44%。在 12 个月同时检验的 Bonferroni 校正下 p=<span class="num">0.019</span>，
+是<strong>唯一存活的月份</strong>；|t|=3.24 也越过了挖掘门槛。
+在跨国的 20 项月度检验里，<em>它同样是唯一过门槛的那一个</em>（德国 DAX 2.74、澳洲 2.15、英国 1.91 全都不过）。</p>
+<div class="note warn">
+<div class="nt">这里有一处对本项目早前结论的修正</div>
+<p>本项目第一版报告曾把 9 月效应写成 p=0.0046（1950 年起样本）。那是<strong>单独检验</strong>的 p 值，
+没有计入"我们是从 12 个月里挑出最差那个"的代价。校正后：1928 年起的长样本 Bonferroni p=0.019 通过；
+<strong>而 1950 年起的样本 p=0.055，严格说已不再显著。</strong>
+准确的表述是：9 月效应靠 1928 年以来的长样本才站得稳，任何只看近几十年的版本都属于边缘证据。</p>
+</div>
+<p>下面是解释部分。最流行的说法是"9 月的弱势集中在下半月，因为回购静默期从 9 月中旬开始"。
+这个假说有明确的可检验预测，逐条查：</p>
+<figure>
+  <div class="figtitle">9 月弱势在月内的精确位置</div>
+  <div class="figsub">9 月各段相对其他月份同位置的日均差异，1928–2026，单位：基点/天</div>
+  <div class="chartbox" id="cSepPos"></div>
+  <figcaption>如果回购静默期（9 月中旬开启）是原因，弱势应该从 16 日之后才出现。
+  实际最弱的两段是 <strong>6–10 日</strong>（−17.03 bp，p=0.013）和<strong>月末 26–31 日</strong>（−16.35 bp，p=0.024）；
+  而静默期刚开始的 16–20 日几乎没有弱势（−1.34 bp，p=0.851）。</figcaption>
+</figure>
+<figure>
+  <div class="figtitle">安慰剂检验：9 月内所有可能的分界点</div>
+  <div class="figsub">以每一天为界，"之后"减"之前"的日均差异与 t 值。假说指定的分界是 15 日</div>
+  <div class="chartbox" id="cCut"></div>
+  <figcaption>假说预测 15 日应该是最特殊的断点。实际 15 日的 t 值只有 −0.98（p=0.328），
+  在 22 个候选分界日里排不上号，而且<strong>没有任何一个分界点达到显著</strong>。</figcaption>
+</figure>
+<p>最后做一个直接的回归：控制住"月内第几天"这个所有月份共有的一般形状之后，9 月还剩什么
+（HC1 稳健标准误，1928–2026）：</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>变量</th><th>系数</th><th>t</th><th>p</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td class="t">9 月整体</td><td class="neg">−8.45 bp/天</td><td>−1.97</td><td>0.049</td>
+  <td><span class="tag live">✓ 成立</span></td></tr>
+<tr><td class="t"><strong>9 月下半月额外更弱</strong></td><td class="neg">−1.45 bp/天</td><td>−0.24</td><td><strong>0.811</strong></td>
+  <td><span class="tag dead">✕ 不成立</span></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>"九月魔咒其实是九月下旬魔咒"——这个说法不成立。9 月是整月偏弱，下半月并没有额外更弱。</strong>
+早前看到的上下半月落差，主要来自所有月份共有的"月内前高后低"形状，而不是 9 月特有的。
+至于"劣势随回购时代扩大"这条旁证，按年自助重抽样 5000 次后，90% 置信区间是 [−23.63, +2.62]，
+<em>跨越 0，不能作为证据</em>。</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>对 9 月弱势的解释</th><th>关键检验</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td class="t">回购静默期（9 月中旬开启）</td><td>三个预测全部落空：断点不在 15 日、下半月无额外弱势（p=0.81）、时代趋势置信区间跨 0</td><td><span class="tag dead">✕ 不成立</span></td></tr>
+<tr><td class="t">共同基金 10/31 财年末抛压</td><td>10 月末买入输家持有 2 个月 −2.39pp（p=0.00036），方向相反</td><td><span class="tag dead">✕ 不成立</span></td></tr>
+<tr><td class="t">四重巫日后的做市商对冲流</td><td>期权时代之前同一窗口更弱（−106.3 vs −89.3 bp）；安慰剂锚点"第三个周三"比真到期日还显著</td><td><span class="tag dead">✕ 不成立</span></td></tr>
+<tr><td class="t">季节性情绪失调（SAD）／日照</td><td>按当地季节对齐时南北半球反相；澳洲 9 月（当地早春）是全年最差月</td><td><span class="tag dead">✕ 不成立</span></td></tr>
+<tr><td class="t">夏季流动性低</td><td>7–8 月成交量确实低 9.44%，但收益反而更高（+1.19% vs +0.55%），方向相反</td><td><span class="tag dead">✕ 不成立</span></td></tr>
+<tr><td class="t">货币紧缩周期的影响</td><td>紧缩期 9 月 −0.93% vs 宽松期 −0.70%，p=0.845</td><td><span class="tag dead">✕ 不成立</span></td></tr>
+<tr><td class="t">风险溢价季节性（VIX 抬升）</td><td>VIX 从 7 月低点 17.74 升到 10 月高点 21.64（+22%），但 9 月 |t|=2.23 未过挖掘门槛</td><td><span class="tag decay">~ 相关，非解释</span></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>9 月确实弱，而且是这次检验里统计上最硬的一条。但目前没有任何一个流行机制经得起检验。</strong>
+这个结论不好看，但它比一个讲得通却经不起查的故事诚实。</p>
+</section>
+
+<section>
+<div class="shead"><span class="snum">06</span><h2>跨国判别：是日历月份，不是当地季节</h2></div>
+<p class="lead">要区分"制度和资金流"与"天气和心理"，只有一个干净的办法：看南半球。
+那里 9 月是日照正在变长的早春，季节体验与北半球完全相反。</p>
+<figure>
+  <div class="figtitle">18 个市场的 9 月表现</div>
+  <div class="figsub">各市场 9 月平均月度收益（本币或美元，见标注）与其在全年 12 个月中的排名</div>
+  <div class="chartbox" id="cGlobalSep"></div>
+  <figcaption>12 个北半球口径里，9 个把 9 月排在全年最差，10 个 9 月为负。
+  日经（1965起）、FTSE（1984起）、DAX（1988起）这些完全不受美国税制与回购规则约束的市场，
+  9 月同样垫底。</figcaption>
+</figure>
+<p>但这不等于各国各自都在 9 月变差。把每个非美市场的月度收益<strong>对同月的美国标普500 做回归、取残差</strong>之后：
+<em>8 个非美市场里 7 个的 9 月弱势完全消失</em>（4 个残差反而转正），只剩德国 DAX 还显著（−1.64pp，p=0.040）。
+<strong>9 月弱势是一次全球共振的单一冲击，不是各国独立产生的。</strong></p>
+<figure>
+  <div class="figtitle">关键判别：按日历月份对齐 vs 按当地季节对齐</div>
+  <div class="figsub">上：11–4 月减 5–10 月（日历对齐）。下：当地冬半年减当地夏半年（季节对齐）</div>
+  <div class="chartbox" id="cPhase"></div>
+  <figcaption>按<strong>日历月份</strong>对齐，18 个市场全部同相（11–4 月更强）。
+  按<strong>当地季节</strong>对齐则南北反相：北半球的美国是 +0.41pp，而南半球 6 个市场的当地冬半年
+  <strong>全部为负</strong>（−0.15 到 −1.78pp）。</figcaption>
+</figure>
+<div class="note kill">
+<div class="nt">SAD／日照假说：证伪</div>
+<p>任何以当地季节体验为核心的机制——季节性情绪失调、日照长度、气温、夏季度假——
+都要求按当地季节对齐时南北同相。数据给的是<strong>反相</strong>。
+再加两条独立证据：澳大利亚 All Ordinaries 的 9 月（当地早春、日照正在变长）是<strong>全年最差月</strong>（−0.60%，42 个样本）；
+以及 Kamstra、Kramer 与 Levi（2003）自己表里，澳大利亚的 SAD 项本来就不显著。</p>
+<p><strong>但要说清界限：被证伪的是"当地季节／日照／气温／度假"这一整类解释，不等于证实了任何一条具体制度。</strong>
+本次检验没有任何证据能把"回购静默期"从"基金财年"或"税务年度"里分开，
+也无法区分"美国制度向全球传导"与"各国制度都挂在同一套日历上"。这是排除性结论。</p>
+</div>
+<p>顺带一个干净的交叉验证：新西兰在本次自算里的 Halloween 效应只有 +0.93pp（p=0.698），几乎为零——
+而 Bouman &amp; Jacobsen（2002）原文记载<strong>新西兰正是 37 国中唯一没有该效应的国家</strong>。
+两个独立来源对上了。</p>
+</section>
+<section>
+<div class="shead"><span class="snum">07</span><h2>两件比所有季节性都重要的事</h2></div>
+<p class="lead">整页测下来，最有实用价值的两个数字，都不是季节性规律本身，
+而是在检验过程中顺带量出来的"参照物"。它们说明这类择时讨论的性价比到底有多低。</p>
+<figure>
+  <div class="figtitle">量级对比：你在纠结的事和真正重要的事</div>
+  <div class="figsub">各项因素对收益的影响幅度，统一换算为百分点/月</div>
+  <div class="chartbox" id="cScale"></div>
+  <figcaption>挑对定投日的价值是每月 0.002 个百分点，9 月效应满打满算每年 −1.1%（约每月 −0.09），
+  而货币环境的差别是<strong>每月 1.05 个百分点</strong>。这不是同一个数量级的问题。</figcaption>
+</figure>
+<div class="cards">
+  <div class="card"><div class="ct">定投挑日子</div><div class="cv">38 年差 0.91%</div>
+  <p>标普500 总收益 1988–2026，14 个候选买入日全测一遍：最好的（月初第 7 个交易日）与最差的（月末最后 1 天），
+  <strong>38 年累计只差 0.91%</strong>，约每年 2.4 个基点。
+  而"晚投一个月"的机会成本是月均 +0.999%——<strong>约为挑对日子的 500 倍</strong>。</p></div>
+  <div class="card"><div class="ct">货币环境</div><div class="cv">每月差 1.05pp</div>
+  <p>宽松期的非 9 月月均 <span class="pos">+1.38%</span>，紧缩期只有 <span class="pos">+0.33%</span>。
+  这个差距比本页任何一条日历规律都大一个量级。而且 9 月弱势在两种环境下没有区别（p=0.845）——
+  <strong>季节性是个平移的小修正，货币环境才是那条基线。</strong></p></div>
+  <div class="card"><div class="ct">所以怎么做</div><div class="cv">钱到账就投</div>
+  <p>本页没有任何一条规律，强到值得为它推迟投入或空仓等待。
+  真正值得花精力的是：判断所处的货币与估值环境、控制成本、以及不要因为等一个"更好的日子"而踏空。</p></div>
+</div>
+<div class="note">
+<div class="nt">那中期选举年那条呢</div>
+<p>本项目另一份报告发现：1950 年以来 19 个中期选举年，选举日收盘买入持有 12 个月<strong>19 战 19 胜</strong>、
+均值 +15.3%、最差 +1.1%。这条经受住了置换检验（从 4 个周期位置里挑最好，p=0.045），
+而"从 75 年里随机抽 19 年全部为正"的概率只有 <span class="num">0.32%</span>。
+但它同样只是勉强过线，且只有 19 个样本。<strong>它可以作为"在计划投入的时间窗内偏向某一侧"的依据，
+不能作为"空仓等待"的依据</strong>——这个区别贯穿本页所有结论。
+详见<a href="https://claude.ai/artifact/ReRfe1W6osB28gBTNwWzhq">《中期选举年的十月低点》</a>。</p>
+</div>
+</section>
+
+<section>
+<div class="shead"><span class="snum">08</span><h2>方法、局限与六份原始报告</h2></div>
+<p><strong>数据。</strong>美国部分为 Yahoo Finance 的 ^GSPC 日线（1927-12-30 ~ 2026-09-11，24 791 个交易日，
+<strong>价格指数不含股息</strong>）与 ^SP500TR 总收益（1988 起）；因子与组合数据为 Ken French 数据库
+（规模十分位、动量 prior 12-2 十分位、三因子与五因子、国际因子）；跨国部分为 DAX／FTSE／日经本币指数
+与 EFA／EEM／VWO／VT 等美元计价 ETF；南半球部分为 2026-09-17 经 yfinance 抓取的
+^AORD／^AXJO／^NZ50／^J203.JO／EZA／^BVSP。FOMC 日期逐年抓自 federalreserve.gov 官方历史日历（261 个公告日）；
+CPI 与就业报告日期抓自 bls.gov 官方发布日历（320 + 316 个）；基金财年末分布来自 SEC Form N-CEN 原始备案。</p>
+<p><strong>检验规模与多重比较。</strong>六个方向合计逾 550 次显式登记的显著性检验，
+另有数百个作为背景的描述性格子。各方向分别报告了 Bonferroni 与 BH-FDR 校正结果。
+需要强调：<strong>在 5% 水平下，纯随机也会产生约 28 个"显著"结果。</strong>
+本页的做法是先用置换检验定出挖掘门槛（|t| ≥ 2.87），再要求时代分段与一手机制证据。</p>
+<p><strong>"没有证据"不等于"有反证"。</strong>多处结论受样本量限制：月末效应 2013–2026 的可检测最小效应量是 0.125，
+能排除历史量级（0.158）但排除不掉半身位（约 0.05）；2000–2012 那段的"不显著"确实可能只是样本不够。
+南非序列只有 15 个 9 月，是全部跨国证据里最薄的一环。这些都在各报告中逐条标注。</p>
+<p><strong>学界对"日历效应是否等于数据挖掘"没有共识。</strong>Sullivan、Timmermann 与 White（2001）
+用 9452 条日历规则做 Reality Check，校正后 p=0.24，认为日历效应全部不显著；
+而 Hansen 与 Lunde（2003）用 χ² 方法得出相反结论，并批评前者功效不足。
+本页采用的是保守一侧。</p>
+<p><strong>不构成投资建议。</strong>本页是对公开历史数据的统计描述，不预测未来。
+季节性模式一旦被广泛交易就可能自我消解——这正是第 03 节的主题。</p>
+<div class="src">
+<div class="eyebrow" style="margin-bottom:9px">六份原始报告（含全部脚本与结果 JSON）</div>
+<ol>
+<li><strong>月内资金流</strong>（月末效应、季末再平衡、结算周期）—— <span class="num">analysis/patterns/a1_turn_of_month/</span></li>
+<li><strong>宏观事件日</strong>（FOMC 前漂移、CPI、非农、利率周期、VIX 季节性）—— <span class="num">analysis/patterns/a2_macro_events/</span></li>
+<li><strong>期权市场结构</strong>（月度到期、四重巫日、gamma 对冲、0DTE）—— <span class="num">analysis/patterns/a3_options_structure/</span></li>
+<li><strong>税制与基金机制</strong>（一月效应、税损抛售、圣诞行情、4 月税季、IRC §4982）—— <span class="num">analysis/patterns/a4_tax_fund/</span></li>
+<li><strong>跨国与半年度</strong>（Halloween 效应、节前效应、夏季流动性、南半球判别）—— <span class="num">analysis/patterns/a5_global_seasonal/</span></li>
+<li><strong>元分析</strong>（挖掘基准、多重检验校正、星期效应、回购假说复核）—— <span class="num">analysis/patterns/z_meta/</span></li>
+</ol>
+</div>
+<div class="src" style="margin-top:14px">
+<div class="eyebrow" style="margin-bottom:9px">三处常见的文献引用错误（本次核实后更正）</div>
+<ol>
+<li><strong>Schwert (2003) 说消失的是"规模效应"，不是一月效应。</strong>他的 Table 2 显示 1990–2001 年一月系数仍有
+0.565%/日、t=5.37，原文写的是 "still reliably positive"。拿他当"一月效应已死"的引用是错的。</li>
+<li><strong>Gultekin &amp; Gultekin (1983) 不能整篇当作税收假说的反方。</strong>原文说英国的四月效应对应英国 4/5 税年末，
+「除澳大利亚外，这些月份都与税年更替重合」——这是<strong>支持</strong>税收假说的。能当反例的只有澳大利亚。</li>
+<li><strong>Bouman &amp; Jacobsen (2002) 的"20 国显著"须补"在 10% 显著性水平"</strong>，略去这个限定属于失真引用。
+另：Maberly &amp; Pierce 的日本篇在 <em>Asia-Pacific Financial Markets</em> 10(4), 2003；
+Kelly &amp; Meschke (2010) 在 <em>JBF</em> 34(6)，不是 <em>JFE</em>。</li>
+</ol>
+</div>
+<p class="foot">全部统计由本项目独立计算，脚本与中间结果留档于 <span class="num">analysis/patterns/</span>。
+生成于 2026-09-17，美国数据截至 2026-09-11 收盘。</p>
+</section>
+</div>
+<script>
+(function(){
+var D={"mining":{"real":3.241412663198853,"hist":[0,0,8,19,64,76,147,196,268,309,305,308,252,246,213,161,116,89,80,47,33,25,15,9,5,6,0,3,0,0,0,0,0,0,0,0],"edges":[0.5,0.625,0.75,0.875,1.0,1.125,1.25,1.375,1.5,1.625,1.75,1.875,2.0,2.125,2.25,2.375,2.5,2.625,2.75,2.875,3.0,3.125,3.25,3.375,3.5,3.625,3.75,3.875,4.0,4.125,4.25,4.375,4.5,4.625,4.75,4.875,5.0],"n":3000,"p50":1.9149043870883866,"p95":2.865672264338804,"p99":3.2990761557514956,"pval":0.013},"sepPos":[{"lab":"1-5日","sep_mean_bp":5.833389677193581,"other_mean_bp":12.815445349544024,"diff_bp":-6.982055672350443,"t":-0.79066441755851,"p":0.4297420370006556,"n":284},{"lab":"6-10日","sep_mean_bp":-13.64791135274216,"other_mean_bp":3.3787871969458294,"diff_bp":-17.02669854968799,"t":-2.5035887801504924,"p":0.012706896823005711,"n":324},{"lab":"11-15日","sep_mean_bp":0.9785529323967007,"other_mean_bp":2.573859524287448,"diff_bp":-1.595306591890747,"t":-0.23321993356762674,"p":0.815707980359346,"n":346},{"lab":"16-20日","sep_mean_bp":-1.832500796434226,"other_mean_bp":-0.48804722666744,"diff_bp":-1.3444535697667859,"t":-0.18831061576676286,"p":0.850725591259052,"n":351},{"lab":"21-25日","sep_mean_bp":-11.82276572975813,"other_mean_bp":0.22284023375453796,"diff_bp":-12.045605963512667,"t":-1.5478024530987988,"p":0.12248139261316254,"n":348},{"lab":"26-31日","sep_mean_bp":-11.186964145783094,"other_mean_bp":5.159851322708185,"diff_bp":-16.34681546849128,"t":-2.2740037796300268,"p":0.02350206537136532,"n":348}],"cutSearch":[{"cut":5,"after_bp":-7.416387734371554,"before_bp":5.833389677193581,"gap_bp":-13.249777411565136,"t":-1.4464265218690022,"p":0.1489291470354411},{"cut":6,"after_bp":-7.7442367479344325,"before_bp":5.214598035126603,"gap_bp":-12.958834783061036,"t":-1.5886131290273937,"p":0.11282304430285081},{"cut":7,"after_bp":-7.92281950687214,"before_bp":4.138561204385867,"gap_bp":-12.061380711258007,"t":-1.5909828089112994,"p":0.11215678607913351},{"cut":8,"after_bp":-7.921914109790105,"before_bp":2.3237834483580015,"gap_bp":-10.245697558148107,"t":-1.4535186034569187,"p":0.1465002937664039},{"cut":9,"after_bp":-6.873577835912928,"before_bp":-1.8888959400678966,"gap_bp":-4.984681895845031,"t":-0.7443589870512264,"p":0.45684795275160456},{"cut":10,"after_bp":-5.966988127514358,"before_bp":-4.54809310849586,"gap_bp":-1.4188950190184983,"t":-0.22275102147932768,"p":0.8237688495402269},{"cut":11,"after_bp":-7.801799285164165,"before_bp":-1.1142693470808172,"gap_bp":-6.687529938083349,"t":-1.085822855780404,"p":0.2777479186923132},{"cut":12,"after_bp":-7.775084533543583,"before_bp":-1.7848584907257683,"gap_bp":-5.990226042817815,"t":-0.9972857594840251,"p":0.3187768420027911},{"cut":13,"after_bp":-7.774512884831497,"before_bp":-2.291593409978571,"gap_bp":-5.482919474852927,"t":-0.9260813843714131,"p":0.3545292971103675},{"cut":14,"after_bp":-7.8789255564002625,"before_bp":-2.581213729548354,"gap_bp":-5.297711826851908,"t":-0.9032049109406317,"p":0.3665306268004626},{"cut":15,"after_bp":-8.262267217036067,"before_bp":-2.5436701209184736,"gap_bp":-5.718597096117593,"t":-0.9793493834662316,"p":0.3275262293591222},{"cut":16,"after_bp":-10.110751847132498,"before_bp":-1.170947770453649,"gap_bp":-8.939804076678847,"t":-1.5279327619358951,"p":0.12668915020715865},{"cut":17,"after_bp":-10.370372581244578,"before_bp":-1.5277213349215297,"gap_bp":-8.842651246323047,"t":-1.4999419460871133,"p":0.13379632994346743},{"cut":18,"after_bp":-11.064518552122262,"before_bp":-1.560354848339049,"gap_bp":-9.504163703783213,"t":-1.5912321768145778,"p":0.11173874879195358},{"cut":19,"after_bp":-12.281597525284626,"before_bp":-1.3518634552428834,"gap_bp":-10.929734070041743,"t":-1.79660064568751,"p":0.07259300889004033},{"cut":20,"after_bp":-11.504864937770613,"before_bp":-2.3523900957123653,"gap_bp":-9.152474842058247,"t":-1.4670999517144483,"p":0.1425814988533188},{"cut":21,"after_bp":-11.78055220619226,"before_bp":-2.6862073059027916,"gap_bp":-9.09434490028947,"t":-1.4644777778863345,"p":0.1433139639779244},{"cut":22,"after_bp":-11.618099824446835,"before_bp":-3.1838914549907478,"gap_bp":-8.434208369456089,"t":-1.301890437186252,"p":0.1932466208446565},{"cut":23,"after_bp":-12.141179941758603,"before_bp":-3.4053927693422246,"gap_bp":-8.735787172416378,"t":-1.3018367691756845,"p":0.19332767783941043},{"cut":24,"after_bp":-9.980197317213877,"before_bp":-4.3623073866061794,"gap_bp":-5.617889930607697,"t":-0.8041797919162333,"p":0.4215741763766892},{"cut":25,"after_bp":-11.186964145783094,"before_bp":-4.346153387090421,"gap_bp":-6.8408107586926725,"t":-0.892033878198466,"p":0.37279838830576373},{"cut":26,"after_bp":-6.277548246286376,"before_bp":-5.416690375505603,"gap_bp":-0.8608578707807728,"t":-0.10163743981873828,"p":0.9190995112160645}],"feReg":{"sep":{"coef_bp":-8.453058827232859,"se_bp":4.291150941374208,"t":-1.9698814939671712,"p":0.04885195383528784},"sep_h2":{"coef_bp":-1.447440445185089,"se_bp":6.043588798928093,"t":-0.23950015352497359,"p":0.8107177774293812}},"eraTrend":{"gaps_bp":[-6.606682940084794,-9.970849268845994,-17.015268477704993],"trend_bp":-10.408585537620198,"boot_ci90":[-23.625363879840982,2.621047220235806],"boot_p_trend_ge0":0.0936,"n_boot":5000},"monthMC":{"y1928":[{"m":1,"mean":1.213040455642418,"t":1.2169090423729756,"p":0.22597454030815067,"n":99,"p_bonf":1.0,"p_fdr":0.45341100386817085},{"m":2,"mean":-0.10751290675700156,"t":-1.841990785641554,"p":0.06775886971229904,"n":99,"p_bonf":0.8131064365475884,"p_fdr":0.27103547884919615},{"m":3,"mean":0.4224609494778863,"t":-0.4777754953912874,"p":0.6336868108636693,"n":99,"p_bonf":1.0,"p_fdr":0.8449157478182258},{"m":4,"mean":1.357240308291662,"t":1.2155773351138532,"p":0.2267055019340854,"n":99,"p_bonf":1.0,"p_fdr":0.45341100386817085},{"m":5,"mean":0.12751463018872206,"t":-0.9630810697407491,"p":0.3375507833506533,"n":99,"p_bonf":1.0,"p_fdr":0.5786584857439772},{"m":6,"mean":0.78577844133296,"t":0.26095917743614094,"p":0.7945786176063444,"n":99,"p_bonf":1.0,"p_fdr":0.9274345676500434},{"m":7,"mean":1.674139793234401,"t":1.881309924574706,"p":0.06247635897024667,"n":99,"p_bonf":0.74971630764296,"p_fdr":0.27103547884919615},{"m":8,"mean":0.6976382065091078,"t":0.07327923639144807,"p":0.9417141540360963,"n":99,"p_bonf":1.0,"p_fdr":0.9417141540360964},{"m":9,"mean":-1.1097769128686097,"t":-3.241412663198853,"p":0.0015603793143694174,"n":99,"p_bonf":0.01872455177243301,"p_fdr":0.01872455177243301},{"m":10,"mean":0.5471769832240119,"t":-0.18937078170064656,"p":0.8501483536792064,"n":98,"p_bonf":1.0,"p_fdr":0.9274345676500434},{"m":11,"mean":1.0073243840418922,"t":0.7076597566184266,"p":0.48056404722020185,"n":98,"p_bonf":1.0,"p_fdr":0.7208460708303028},{"m":12,"mean":1.265557369725037,"t":1.623196870402874,"p":0.10683021917162641,"n":98,"p_bonf":1.0,"p_fdr":0.32049065751487926}],"y1950":[{"m":1,"mean":1.08210089919161,"t":0.6425714923668965,"p":0.5221930991538576,"n":77,"p_bonf":1.0,"p_fdr":0.6266317189846291},{"m":2,"mean":-0.037605669899378316,"t":-1.9944800648864802,"p":0.04892646945664442,"n":77,"p_bonf":0.587117633479733,"p_fdr":0.19570587782657767},{"m":3,"mean":0.9588977913705073,"t":0.4948897137949405,"p":0.6218262340298865,"n":77,"p_bonf":1.0,"p_fdr":0.678355891668967},{"m":4,"mean":1.54304659004467,"t":1.7528313711474006,"p":0.08300375692711674,"n":77,"p_bonf":0.9960450831254009,"p_fdr":0.20036182355800963},{"m":5,"mean":0.4372596560811638,"t":-0.7788213047900873,"p":0.43801891020276923,"n":77,"p_bonf":1.0,"p_fdr":0.5840252136036923},{"m":6,"mean":0.18583361705971735,"t":-1.4219132999984374,"p":0.15829279061999285,"n":77,"p_bonf":1.0,"p_fdr":0.2777233597588597},{"m":7,"mean":1.2888123159811855,"t":1.2474526022371109,"p":0.21536870312812684,"n":77,"p_bonf":1.0,"p_fdr":0.32305305469219026},{"m":8,"mean":0.074163073404305,"t":-1.410135463308701,"p":0.16200529319266815,"n":77,"p_bonf":1.0,"p_fdr":0.2777233597588597},{"m":9,"mean":-0.6222058564301658,"t":-2.906607695987893,"p":0.004611059299874032,"n":77,"p_bonf":0.05533271159848838,"p_fdr":0.05533271159848838},{"m":10,"mean":0.8953520168367151,"t":0.24008230832709299,"p":0.8108607817935259,"n":76,"p_bonf":1.0,"p_fdr":0.8108607817935259},{"m":11,"mean":1.8614917245029223,"t":2.361204494282108,"p":0.020417741710383828,"n":76,"p_bonf":0.24501290052460595,"p_fdr":0.12250645026230297},{"m":12,"mean":1.414754200683251,"t":1.7486557362452146,"p":0.08348409314917067,"n":76,"p_bonf":1.0,"p_fdr":0.20036182355800963}]},"weekday":{"1928-1949":[{"wd":0,"mean":-0.1210499495667104,"t":-2.5595709536317757,"p":0.01058077872781323,"n":1076,"win":48.234200743494426},{"wd":1,"mean":0.05104825720469096,"t":0.8371076799099687,"p":0.40264447435537964,"n":1101,"win":53.04268846503179},{"wd":2,"mean":0.07586008303908817,"t":1.3235600581514004,"p":0.18582886459068848,"n":1120,"win":49.910714285714285},{"wd":3,"mean":0.05266838290691293,"t":0.9087216369220766,"p":0.3636136835164558,"n":1098,"win":50.18214936247723},{"wd":4,"mean":0.00634913810385062,"t":-0.1683078996201555,"p":0.8663599922721462,"n":1100,"win":48.81818181818181}],"1950-1979":[{"wd":0,"mean":-0.1353190258525999,"t":-8.383102223644952,"p":9.629117679485154e-17,"n":1467,"win":43.149284253578735},{"wd":1,"mean":0.00010929600250944069,"t":-1.6060902491387559,"p":0.10838815508847123,"n":1522,"win":50.26281208935611},{"wd":2,"mean":0.09192674629972478,"t":3.7351304099319127,"p":0.00019213923055843885,"n":1521,"win":56.541748849441156},{"wd":3,"mean":0.06178719873912011,"t":2.139147937459798,"p":0.03251831836796377,"n":1512,"win":54.298941798941804},{"wd":4,"mean":0.11447133649651293,"t":5.5446650667579505,"p":3.239501253866001e-08,"n":1504,"win":58.444148936170215}],"1980-1999":[{"wd":0,"mean":0.0054436229575855295,"t":-1.5013485771776436,"p":0.13352173308827492,"n":965,"win":53.8860103626943},{"wd":1,"mean":0.08755995640813787,"t":1.1670286888310175,"p":0.24336455387312333,"n":1036,"win":50.48262548262549},{"wd":2,"mean":0.11287983331701487,"t":2.248874801310621,"p":0.02463919834528968,"n":1035,"win":56.135265700483096},{"wd":3,"mean":-0.0014522383827970564,"t":-2.188103357723654,"p":0.028801532097049793,"n":1015,"win":50.24630541871922},{"wd":4,"mean":0.07450736154352454,"t":0.6682366349303708,"p":0.50407756866866,"n":1005,"win":55.223880597014926}],"2000-2026":[{"wd":0,"mean":0.021881277573184064,"t":-0.3064569542335367,"p":0.7592930017663436,"n":1259,"win":54.011119936457504},{"wd":1,"mean":0.059383251013666,"t":0.9442160208877991,"p":0.3451655354665023,"n":1378,"win":52.03193033381712},{"wd":2,"mean":0.03714167166635344,"t":0.18105373141509298,"p":0.856342223165496,"n":1378,"win":54.28156748911466},{"wd":3,"mean":0.033076608975868,"t":0.038257719705538595,"p":0.9694858870204026,"n":1352,"win":54.36390532544378},{"wd":4,"mean":0.006807019482577397,"t":-0.9001329927782298,"p":0.3681466889132484,"n":1346,"win":53.86329866270431}]},"globalSep":[{"m":"美国 S&P500","mean":-1.11,"t":-3.24,"p":0.0016,"rank":1,"n":99,"cur":"USD"},{"m":"美国(总收益)","mean":-0.42,"t":-2.01,"p":0.0508,"rank":1,"n":39,"cur":"USD"},{"m":"德国 DAX","mean":-2.04,"t":-2.74,"p":0.0089,"rank":1,"n":39,"cur":"EUR/DEM"},{"m":"英国 FTSE","mean":-0.82,"t":-1.91,"p":0.0626,"rank":1,"n":43,"cur":"GBP"},{"m":"日本 日经225","mean":-0.38,"t":-1.66,"p":0.1011,"rank":1,"n":62,"cur":"JPY"},{"m":"发达除美(FF)","mean":-0.94,"t":-1.67,"p":0.1021,"rank":1,"n":36,"cur":"USD"},{"m":"新兴市场(FF)","mean":-0.24,"t":-0.97,"p":0.3392,"rank":2,"n":37,"cur":"USD"},{"m":"发达除美 EFA","mean":-0.73,"t":-1.3,"p":0.2045,"rank":1,"n":26,"cur":"USD"},{"m":"新兴 EEM","mean":0.67,"t":-0.2,"p":0.8453,"rank":4,"n":24,"cur":"USD"},{"m":"新兴 VWO","mean":0.33,"t":-0.27,"p":0.7871,"rank":4,"n":22,"cur":"USD"},{"m":"全球 VT","mean":-0.67,"t":-1.26,"p":0.2229,"rank":1,"n":19,"cur":"USD"},{"m":"除美全球 VXUS","mean":-0.99,"t":-1.32,"p":0.2039,"rank":1,"n":16,"cur":"USD"}],"globalHal":[{"m":"美国 S&P500","w":5.21,"s":2.46,"d":2.74,"t":1.57,"p":0.1184,"cur":"USD"},{"m":"美国(总收益)","w":7.73,"s":4.37,"d":3.35,"t":1.47,"p":0.1459,"cur":"USD"},{"m":"德国 DAX","w":10.03,"s":0.53,"d":9.5,"t":2.99,"p":0.0038,"cur":"EUR/DEM"},{"m":"英国 FTSE","w":6.35,"s":-0.07,"d":6.42,"t":3.19,"p":0.002,"cur":"GBP"},{"m":"日本 日经225","w":7.82,"s":0.85,"d":6.98,"t":2.62,"p":0.0098,"cur":"JPY"},{"m":"发达除美(FF)","w":7.13,"s":0.82,"d":6.31,"t":2.19,"p":0.0319,"cur":"USD"},{"m":"新兴市场(FF)","w":9.46,"s":1.96,"d":7.5,"t":1.91,"p":0.0616,"cur":"USD"},{"m":"发达除美 EFA","w":7.11,"s":1.31,"d":5.79,"t":1.58,"p":0.1221,"cur":"USD"},{"m":"新兴 EEM","w":7.78,"s":4.59,"d":3.19,"t":0.64,"p":0.5251,"cur":"USD"},{"m":"新兴 VWO","w":7.45,"s":2.81,"d":4.64,"t":0.89,"p":0.3819,"cur":"USD"},{"m":"全球 VT","w":7.06,"s":4.8,"d":2.27,"t":0.67,"p":0.5106,"cur":"USD"},{"m":"除美全球 VXUS","w":6.88,"s":0.35,"d":6.53,"t":1.65,"p":0.1105,"cur":"USD"}],"monthProfileKeys":["美国 S&P500 价格指数 (^GSPC)","美国 S&P500 总收益 (SP500TR)","德国 DAX","英国 FTSE 100","日本 日经225","发达市场除美国 (FF Developed ex US)","新兴市场 (FF Emerging)","发达除美国 ETF (EFA)","新兴市场 ETF (EEM)","新兴市场 ETF (VWO)","全球 ETF (VT)","美国以外全球 ETF (VXUS)"],"monthProfile":{"美国 S&P500":[1.21,-0.11,0.42,1.36,0.13,0.79,1.67,0.7,-1.11,0.55,1.01,1.27],"美国(总收益)":[0.71,0.31,0.91,1.92,1.55,0.34,1.68,-0.21,-0.42,1.51,2.3,1.44],"德国 DAX":[0.85,1.06,0.4,2.65,1.03,-0.04,1.6,-1.84,-2.04,1.99,2.61,2.21],"英国 FTSE":[0.49,0.8,0.12,1.91,0.05,-0.75,1.21,-0.02,-0.82,0.51,0.89,2.15],"日本 日经225":[1.35,0.76,1.08,1.36,0.64,0.66,-0.07,-0.35,-0.38,0.4,1.29,1.49],"发达除美(FF)":[0.23,0.71,0.54,2.82,0.51,-0.3,1.18,-0.73,-0.94,0.76,0.6,2.11],"新兴市场(FF)":[1.09,1.51,0.15,2.39,0.62,0.23,1.33,-1.04,-0.24,0.61,1.1,3.13],"发达除美 EFA":[-0.14,0.27,0.72,2.52,0.4,-0.27,1.21,-0.28,-0.73,0.58,1.78,1.86],"新兴 EEM":[0.86,0.2,0.96,2.15,0.11,0.92,1.64,-0.52,0.67,0.96,1.32,2.47],"新兴 VWO":[0.61,-0.02,1.05,2.81,-0.51,0.76,2.04,-1.1,0.33,0.35,1.02,1.8],"全球 VT":[0.38,0.35,0.76,2.3,0.53,0.59,2.52,-0.27,-0.67,0.22,2.09,1.21],"除美全球 VXUS":[1.77,0.68,-0.33,2.13,-0.16,0.44,1.28,-0.67,-0.99,0.91,1.96,0.86]},"southMonths":{"澳洲 AORD":[0.77,0.36,0.31,2.29,0.15,-0.38,2.32,0.46,-0.6,-0.17,0.08,1.67],"澳洲 ASX200":[0.42,0.36,-0.34,2.14,-0.42,-0.03,1.71,0.21,-0.93,0.78,0.47,1.84],"新西兰 NZX50":[0.23,-0.6,1.27,1.63,-0.03,0.3,2.26,0.45,0.8,0.19,0.79,1.58],"南非 JSE":[1.67,0.54,-1.36,2.58,-0.28,-0.08,2.35,0.0,-1.01,1.2,2.09,1.67],"南非 MSCI South Africa E":[-0.21,0.29,1.39,2.22,-1.42,-0.98,2.99,-0.48,-0.11,1.05,3.01,1.07],"巴西 Bovespa":[2.26,0.96,1.02,2.67,-0.68,0.28,1.76,-0.28,0.51,0.97,3.5,2.87],"阿根廷 Merval (^MERV)":[7.98,-1.76,2.06,3.04,2.54,1.46,4.43,-0.0,3.24,6.05,3.59,5.4],"美国 S&P500 (^GSPC, 北半球对":[1.21,-0.11,0.42,1.36,0.13,0.79,1.67,0.7,-1.11,0.55,1.01,1.27]},"southMeta":[{"m":"澳洲 AORD","lat":"33.9°S","cur":"AUD","n":505,"period":"1984-09 ~ 2026-09"},{"m":"澳洲 ASX200","lat":"33.9°S","cur":"AUD","n":406,"period":"1992-12 ~ 2026-09"},{"m":"新西兰 NZX50","lat":"36.8°S","cur":"NZD","n":284,"period":"2003-02 ~ 2026-09"},{"m":"南非 JSE","lat":"26.2°S","cur":"ZAR","n":175,"period":"2012-03 ~ 2026-09"},{"m":"南非 MSCI South Africa E","lat":"26.2°S","cur":"USD","n":283,"period":"2003-03 ~ 2026-09"},{"m":"巴西 Bovespa","lat":"23.5°S","cur":"BRL","n":381,"period":"1995-01 ~ 2026-09"},{"m":"阿根廷 Merval (^MERV)","lat":"34.6°S","cur":"ARS","n":359,"period":"1996-11 ~ 2026-09"},{"m":"美国 S&P500 (^GSPC, 北半球对","lat":"40.7°N","cur":"USD","n":1185,"period":"1928-01 ~ 2026-09"}],"localSeason":[{"m":"澳洲 AORD","lw":0.29,"ls":0.91,"d":-0.62,"t":-1.58,"p":0.1143},{"m":"澳洲 ASX200","lw":0.22,"ls":0.82,"d":-0.6,"t":-1.58,"p":0.1145},{"m":"新西兰 NZX50","lw":0.66,"ls":0.82,"d":-0.15,"t":-0.39,"p":0.6954},{"m":"南非 JSE","lw":0.36,"ls":1.18,"d":-0.83,"t":-1.4,"p":0.1643},{"m":"南非 MSCI South Africa E","lw":0.17,"ls":1.3,"d":-1.13,"t":-1.28,"p":0.2029},{"m":"巴西 Bovespa","lw":0.42,"ls":2.2,"d":-1.78,"t":-2.21,"p":0.0279},{"m":"阿根廷 Merval (^MERV)","lw":2.93,"ls":3.39,"d":-0.45,"t":-0.34,"p":0.7321},{"m":"美国 ^GSPC（北半球对照）","lw":0.86,"ls":0.45,"d":0.41,"t":1.31,"p":0.1906}],"permCheck":[{"c":"美国 S&P500 价格指数 (^GSPC)","t":3.24,"pass":true,"scope":"单市场月度"},{"c":"美国 S&P500 总收益 (SP500TR)","t":2.01,"pass":false,"scope":"单市场月度"},{"c":"德国 DAX","t":2.74,"pass":false,"scope":"单市场月度"},{"c":"英国 FTSE 100","t":1.91,"pass":false,"scope":"单市场月度"},{"c":"日本 日经225","t":1.66,"pass":false,"scope":"单市场月度"},{"c":"发达市场除美国 (FF Developed ex US)","t":1.67,"pass":false,"scope":"单市场月度"},{"c":"新兴市场 (FF Emerging)","t":0.97,"pass":false,"scope":"单市场月度"},{"c":"发达除美国 ETF (EFA)","t":1.3,"pass":false,"scope":"单市场月度"},{"c":"新兴市场 ETF (EEM)","t":0.2,"pass":false,"scope":"单市场月度"},{"c":"新兴市场 ETF (VWO)","t":0.27,"pass":false,"scope":"单市场月度"},{"c":"全球 ETF (VT)","t":1.26,"pass":false,"scope":"单市场月度"},{"c":"美国以外全球 ETF (VXUS)","t":1.32,"pass":false,"scope":"单市场月度"},{"c":"Halloween · 美国 S&P500 价格指数 (^GSPC) (NW-t)","t":1.46,"pass":false,"scope":"单市场半年段"},{"c":"Halloween · 美国 S&P500 总收益 (SP500TR) (NW-t)","t":1.44,"pass":false,"scope":"单市场半年段"},{"c":"Halloween · 德国 DAX (NW-t)","t":2.92,"pass":true,"scope":"单市场半年段"},{"c":"Halloween · 英国 FTSE 100 (NW-t)","t":2.87,"pass":false,"scope":"单市场半年段"},{"c":"Halloween · 日本 日经225 (NW-t)","t":2.64,"pass":false,"scope":"单市场半年段"},{"c":"Halloween · 发达市场除美国 (FF Developed ex US) (NW-t)","t":2.42,"pass":false,"scope":"单市场半年段"},{"c":"Halloween · 新兴市场 (FF Emerging) (NW-t)","t":2.23,"pass":false,"scope":"单市场半年段"},{"c":"Halloween · 发达除美国 ETF (EFA) (NW-t)","t":1.83,"pass":false,"scope":"单市场半年段"},{"c":"Halloween · 新兴市场 ETF (EEM) (NW-t)","t":0.94,"pass":false,"scope":"单市场半年段"},{"c":"Halloween · 新兴市场 ETF (VWO) (NW-t)","t":1.18,"pass":false,"scope":"单市场半年段"},{"c":"Halloween · 全球 ETF (VT) (NW-t)","t":1.15,"pass":false,"scope":"单市场半年段"},{"c":"Halloween · 美国以外全球 ETF (VXUS) (NW-t)","t":1.68,"pass":false,"scope":"单市场半年段"},{"c":"澳大利亚 All Ordinaries (^AORD)（南半球新增）","t":1.95,"pass":false,"scope":"单市场月度"},{"c":"Halloween · 澳大利亚 All Ordinaries (^AORD)（南半球新增, NW-t）","t":1.62,"pass":false,"scope":"单市场半年段"},{"c":"澳大利亚 ASX 200 (^AXJO)（南半球新增）","t":2.15,"pass":false,"scope":"单市场月度"},{"c":"Halloween · 澳大利亚 ASX 200 (^AXJO)（南半球新增, NW-t）","t":1.62,"pass":false,"scope":"单市场半年段"},{"c":"新西兰 S&P/NZX 50 (^NZ50)（南半球新增）","t":0.1,"pass":false,"scope":"单市场月度"},{"c":"Halloween · 新西兰 S&P/NZX 50 (^NZ50)（南半球新增, NW-t）","t":0.37,"pass":false,"scope":"单市场半年段"},{"c":"南非 JSE All Share (^J203.JO)（南半球新增）","t":2.07,"pass":false,"scope":"单市场月度"},{"c":"Halloween · 南非 JSE All Share (^J203.JO)（南半球新增, NW-t）","t":1.44,"pass":false,"scope":"单市场半年段"},{"c":"南非 MSCI South Africa ETF (EZA)（南半球新增）","t":0.53,"pass":false,"scope":"单市场月度"},{"c":"Halloween · 南非 MSCI South Africa ETF (EZA)（南半球新增, NW-t）","t":1.27,"pass":false,"scope":"单市场半年段"},{"c":"巴西 Bovespa (^BVSP)（南半球新增）","t":0.61,"pass":false,"scope":"单市场月度"},{"c":"Halloween · 巴西 Bovespa (^BVSP)（南半球新增, NW-t）","t":2.24,"pass":false,"scope":"单市场半年段"},{"c":"阿根廷 Merval (^MERV)（南半球新增）","t":0.03,"pass":false,"scope":"单市场月度"},{"c":"Halloween · 阿根廷 Merval (^MERV)（南半球新增, NW-t）","t":0.35,"pass":false,"scope":"单市场半年段"},{"c":"美国 S&P500 (^GSPC, 北半球对照)（南半球新增）","t":3.24,"pass":true,"scope":"单市场月度"},{"c":"Halloween · 美国 S&P500 (^GSPC, 北半球对照)（南半球新增, NW-t）","t":1.46,"pass":false,"scope":"单市场半年段"}],"resid":[{"m":"德国 DAX","sep":-1.64,"t":-2.12,"p":0.0402,"hal":0.98,"halp":0.0072},{"m":"英国 FTSE","sep":-0.12,"t":-0.23,"p":0.8158,"hal":0.56,"halp":0.0245},{"m":"日本 日经225","sep":-0.32,"t":-0.51,"p":0.614,"hal":0.66,"halp":0.0629},{"m":"发达除美(FF)","sep":-0.32,"t":-0.51,"p":0.6114,"hal":0.55,"halp":0.0621},{"m":"新兴市场(FF)","sep":0.31,"t":0.37,"p":0.7101,"hal":0.8,"halp":0.0531},{"m":"发达除美 EFA","sep":0.41,"t":0.93,"p":0.3592,"hal":0.62,"halp":0.0313},{"m":"新兴 EEM","sep":1.14,"t":1.23,"p":0.2308,"hal":0.41,"halp":0.39},{"m":"全球 VT","sep":0.37,"t":1.2,"p":0.2434,"hal":0.27,"halp":0.1318}],"sepSummary":{"n_markets":12,"sep_worst":9,"sep_in_worst2":10,"sep_negative":10}};
+var MN=["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+/* 28 条规律：hist=历史峰值|t|，now=最近样本|t|（null=无对应期），st=状态
+   p2t 标记的条目由报告给出的 p 值按双尾正态反推 |t|，已在图注说明 */
+var RULES=[
+ {n:"月末效应（TOM）",hist:6.22,now:0.02,st:"decay",d:"1928-2005 差 +0.146%/天；2013-2026 差 −0.001%"},
+ {n:"一月效应（小盘减大盘）",hist:7.32,now:0.96,st:"decay",p2t:1,d:"1926-1979 +9.03%、胜率 88.7%；2010-2026 +0.95%、胜率 47.1%"},
+ {n:"节前效应（假日前一日）",hist:6.18,now:0.63,st:"decay",p2t:1,d:"1950-1979 差 +0.374pp；1980-2001 差 +0.041pp"},
+ {n:"圣诞 7 天窗口",hist:6.03,now:1.89,st:"decay",d:"1928-2025 +1.60%；1994-2025 +0.76%，已不显著"},
+ {n:"输家在 12 月被砸",hist:4.81,now:null,st:"decay",d:"输家减赢家 12 月 −3.30%，全年最差；2010 后失效"},
+ {n:"12 月下半月强势",hist:5.42,now:3.46,st:"live",d:"1950 起 +1.34%，全年 24 个半月最强；总收益口径 t=3.46"},
+ {n:"12 月末买入输家",hist:3.47,now:0.45,st:"decay",p2t:1,d:"+1.87pp、胜率 58.6%；2010-2026 +0.75pp，p=0.65"},
+ {n:"美国 9 月整月偏弱",hist:3.24,now:3.24,st:"live",d:"1928 起 −1.11%、胜率 44%；Bonferroni 校正后唯一存活的月份"},
+ {n:"FOMC 公告前漂移",hist:3.20,now:0.53,st:"decay",d:"1994-2011 +33.05bp；2012-2026 +10.03bp，中位数为负"},
+ {n:"中期选举年后 12 个月",hist:2.69,now:2.69,st:"live",d:"19 战 19 胜；置换检验 p=0.045；随机抽中概率 0.32%"},
+ {n:"FOMC 周期偶数周",hist:2.29,now:0.06,st:"decay",p2t:1,d:"1994-2011 p=0.022；2012-2026 4.18 vs 4.40bp"},
+ {n:"Halloween 效应（美国）",hist:1.46,now:0.91,st:"decay",p2t:1,d:"美国是主要市场里最弱的；剔除两个离群值后 t=1.24"},
+ {n:"10 月末买输家（基金财年末）",hist:3.70,now:null,st:"dead",rev:1,d:"−2.39pp，p=0.00036 —— t 值很大但方向与假说相反"},
+ {n:"新兴市场 TOM（VWO）",hist:3.49,now:1.42,st:"dead",d:"同指数的 EEM 在同一批交易日上只有 2.59，差异来自跟踪误差"},
+ {n:"德国 DAX 的 9 月",hist:2.74,now:null,st:"dead",d:"未过 2.87 门槛；剔除美国共变后仅剩 −1.64pp"},
+ {n:"VIX 的 9 月抬升",hist:2.23,now:null,st:"dead",d:"7 月低点 17.74 → 10 月高点 21.64，但未过门槛"},
+ {n:"澳洲 ASX200 的 9 月",hist:2.15,now:null,st:"dead",d:"未过门槛；证伪 SAD 靠的是相位方向，不是这个 p 值"},
+ {n:"英国 FTSE 的 9 月",hist:1.91,now:null,st:"dead",d:"未过 2.87 门槛"},
+ {n:"TOM 迁移到小盘（IJS）",hist:1.62,now:null,st:"dead",rev:1,d:"四个小盘序列点估计全为负；MDE 足够小，属证伪"},
+ {n:"4 月上半月强于下半月",hist:1.27,now:null,st:"dead",rev:1,d:"p=0.206；1994 年后方向翻转为下半月更强"},
+ {n:"9 月以 15 日为分界",hist:0.98,now:null,st:"dead",d:"22 个候选分界日里排不上号，无一达到显著"},
+ {n:"季末 TOM 更强",hist:0.69,now:null,st:"dead",rev:1,d:"季末 +0.110% 反而低于普通月末 +0.135%"},
+ {n:"月中（第 10-15 交易日）偏弱",hist:0.55,now:null,st:"dead",d:"表面的弱只是对照组混入了 TOM"},
+ {n:"9 月下半月额外更弱",hist:0.24,now:null,st:"dead",d:"控制月内日历位置后 −1.45bp/天，p=0.811"},
+ {n:"CPI 发布日效应",hist:0.22,now:null,st:"dead",d:"320 个 BLS 官方日期，收益 p=0.829、波动 p=0.529"},
+ {n:"9 月 × 利率周期交互",hist:0.20,now:null,st:"dead",d:"紧缩期 −0.93% vs 宽松期 −0.70%，p=0.845"},
+ {n:"圣诞窗口预示次年",hist:0.09,now:null,st:"dead",rev:1,d:"窗口下跌后次年反而略好；p=0.929"},
+ {n:"四重巫月的到期周择时",hist:0.01,now:null,st:"dead",d:"成交量放大 1.41 倍，收益差 +0.01bp，p=0.999"}
+];
+var DEATH=[
+ {n:"月末效应",pub:"2008",v:[["1928-1986",100],["1987-2005",72],["2006-2012",18],["2013-2026",0]]},
+ {n:"一月效应",pub:"1983",v:[["1926-1979",100],["1980-1993",47],["1994-2009",37],["2010-2026",11]]},
+ {n:"周一效应",pub:"1970s末",v:[["1928-1949",90],["1950-1979",100],["1980-1999",0],["2000-2026",0]]},
+ {n:"节前效应",pub:"1980s初",v:[["1928-1949",78],["1950-1979",100],["1980-2001",11],["2002-2026",8]]},
+ {n:"FOMC 前漂移",pub:"2015",v:[["1994-2011",100],["2012-2019",42],["2020-2026",8],["",null]]}
+];
+var CUR={"USD":"美元","EUR/DEM":"欧元","GBP":"英镑","JPY":"日元","AUD":"澳元","NZD":"新西兰元","ZAR":"兰特","BRL":"雷亚尔","ARS":"比索"};
+function cv(n){return getComputedStyle(document.body).getPropertyValue(n).trim()}
+function el(t,a,c){var e=document.createElementNS("http://www.w3.org/2000/svg",t);
+  for(var k in a)e.setAttribute(k,a[k]); if(c!=null)e.textContent=c; return e}
+function fmt(v,d){d=d==null?1:d;return (v>0?"+":"")+v.toFixed(d)}
+function mount(id,draw){
+  var box=document.getElementById(id); if(!box)return;
+  var tip=document.createElement("div"); tip.className="tt"; box.appendChild(tip);
+  function show(x,y,html){tip.innerHTML=html;tip.style.opacity=1;
+    var w=tip.offsetWidth,bw=box.clientWidth,L=Math.max(4,Math.min(x-w/2,bw-w-4));
+    tip.style.left=L+"px";tip.style.top=Math.max(2,y-tip.offsetHeight-10)+"px"}
+  function hide(){tip.style.opacity=0}
+  function go(){var W=box.clientWidth||600; if(W<10)return;
+    var old=box.querySelector("svg"); if(old)old.remove();
+    box.insertBefore(draw(W,show,hide),tip)}
+  go();
+  if(window.ResizeObserver){var t;new ResizeObserver(function(){clearTimeout(t);t=setTimeout(go,80)}).observe(box)}
+  box.__redraw=go; return go}
+function svg(W,H){var s=el("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H,role:"img"});
+  s.style.width="100%";s.style.height="auto";return s}
+function ticks(lo,hi,n){var st=(hi-lo)/n,p=Math.pow(10,Math.floor(Math.log10(Math.abs(st)||1))),
+  c=[1,2,2.5,5,10],s=p;for(var i=0;i<c.length;i++){if(p*c[i]>=st){s=p*c[i];break}}
+  var a=[],v=Math.ceil(lo/s)*s;while(v<=hi+1e-9){a.push(+v.toFixed(6));v+=s}return a}
+function stColor(st){return st==="live"?cv("--live"):st==="decay"?cv("--decay"):cv("--dead")}
+
+/* ===== 图1 挖掘基准直方图 ===== */
+mount("cMining",function(W,show,hide){
+  var nar=W<520,H=nar?250:280,m={t:16,r:14,b:42,l:44},M=D.mining;
+  var iw=W-m.l-m.r,ih=H-m.t-m.b,eg=M.edges,hs=M.hist;
+  var mx=Math.max.apply(null,hs),lo=eg[0],hi=eg[eg.length-1];
+  var X=function(v){return m.l+(v-lo)/(hi-lo)*iw},Y=function(v){return m.t+ih-v/mx*ih};
+  var s=svg(W,H);
+  ticks(0,mx,4).forEach(function(t){
+    s.appendChild(el("line",{x1:m.l,x2:W-m.r,y1:Y(t),y2:Y(t),class:"gl"}));
+    s.appendChild(el("text",{x:m.l-6,y:Y(t)+3.5,class:"ax","text-anchor":"end"},t)); });
+  hs.forEach(function(c,i){
+    var x0=X(eg[i]),x1=X(eg[i+1]);
+    s.appendChild(el("rect",{x:x0+0.5,y:Y(c),width:Math.max(x1-x0-1,1),height:ih-(Y(c)-m.t),
+      fill:cv("--dead"),opacity:"0.55"}));
+    var hit=el("rect",{x:x0,y:m.t,width:Math.max(x1-x0,1),height:ih,class:"hit"});
+    hit.addEventListener("mouseenter",function(){show((x0+x1)/2,Y(c),
+      "|t| "+eg[i].toFixed(2)+"–"+eg[i+1].toFixed(2)+"<br><b>"+c+"</b> 次 / "+M.n+" 次重排")});
+    hit.addEventListener("mouseleave",hide); s.appendChild(hit); });
+  [[M.p95,"95% 分位 "+M.p95.toFixed(2),cv("--decay")],[M.real,"真实数据 9 月 "+M.real.toFixed(2),cv("--live")]]
+   .forEach(function(p,i){
+    s.appendChild(el("line",{x1:X(p[0]),x2:X(p[0]),y1:m.t-6,y2:m.t+ih,stroke:p[2],"stroke-width":2,
+      "stroke-dasharray":i?"":"4 3"}));
+    s.appendChild(el("text",{x:X(p[0])+(i?5:-5),y:m.t+(i?12:26),class:"vl",fill:p[2],
+      "text-anchor":i?"start":"end","font-weight":"600"},p[1])); });
+  [1,2,3,4,5].forEach(function(v){ if(v>=lo&&v<=hi)
+    s.appendChild(el("text",{x:X(v),y:H-m.b+16,class:"ax","text-anchor":"middle"},v)); });
+  s.appendChild(el("text",{x:m.l+iw/2,y:H-m.b+32,class:"axb","text-anchor":"middle"},"随机重排后「最显著月份」的 |t| 值"));
+  return s;});
+
+/* ===== 图2 存活名单哑铃图 ===== */
+mount("cSurvive",function(W,show,hide){
+  var nar=W<620,rh=nar?21:22,m={t:24,r:nar?14:16,b:26,l:nar?134:210};
+  var H=m.t+RULES.length*rh+m.b,iw=W-m.l-m.r;
+  var mx=8,X=function(v){return m.l+Math.min(v,mx)/mx*iw};
+  var s=svg(W,H);
+  ticks(0,mx,4).forEach(function(t){
+    s.appendChild(el("line",{x1:X(t),x2:X(t),y1:m.t-8,y2:H-m.b+2,class:"gl"}));
+    s.appendChild(el("text",{x:X(t),y:m.t-13,class:"ax","text-anchor":"middle"},t)); });
+  s.appendChild(el("line",{x1:X(2.87),x2:X(2.87),y1:m.t-8,y2:H-m.b+2,stroke:cv("--accent"),"stroke-width":2,"stroke-dasharray":"5 3"}));
+  s.appendChild(el("text",{x:X(2.87),y:H-m.b+16,class:"vl",fill:cv("--accent"),"text-anchor":"middle","font-weight":"600"},"挖掘门槛 2.87"));
+  RULES.forEach(function(r,i){
+    var y=m.t+i*rh+rh/2,c=stColor(r.st);
+    s.appendChild(el("line",{x1:m.l,x2:W-m.r,y1:y,y2:y,stroke:cv("--line"),"stroke-width":1}));
+    var nm=nar&&r.n.length>13?r.n.slice(0,12)+"…":r.n;
+    s.appendChild(el("text",{x:m.l-8,y:y+3.5,class:"axb","text-anchor":"end","font-size":nar?"9.5px":"10.5px"},nm));
+    if(r.now!=null&&Math.abs(r.now-r.hist)>0.15){
+      s.appendChild(el("line",{x1:X(r.now),x2:X(r.hist),y1:y,y2:y,stroke:c,"stroke-width":2.5,opacity:"0.42"}));
+      s.appendChild(el("circle",{cx:X(r.now),cy:y,r:4,fill:cv("--surface"),stroke:c,"stroke-width":2}));
+    }
+    s.appendChild(el("circle",{cx:X(r.hist),cy:y,r:4.6,fill:c,stroke:cv("--surface"),"stroke-width":1.4}));
+    if(r.rev) s.appendChild(el("text",{x:X(r.hist)+9,y:y+3.5,class:"vl",fill:cv("--dead"),"font-size":"9.5px"},"方向相反"));
+    var hit=el("rect",{x:m.l,y:m.t+i*rh,width:iw,height:rh,class:"hit"});
+    hit.addEventListener("mouseenter",function(){
+      var lab=r.st==="live"?"✓ 现在仍站得住":r.st==="decay"?"~ 历史真实，现已消失":"✕ 不成立";
+      var h="<b>"+r.n+"</b><br>"+lab+"<br>历史峰值 |t| = "+r.hist.toFixed(2);
+      if(r.now!=null)h+="<br>最近样本 |t| = "+r.now.toFixed(2);
+      h+="<br>"+r.d; show(X(r.hist),m.t+i*rh,h)});
+    hit.addEventListener("mouseleave",hide); s.appendChild(hit); });
+  return s;});
+
+/* ===== 图3 死亡时间线 ===== */
+mount("cDeath",function(W,show,hide){
+  var nar=W<620,H=nar?300:300,m={t:18,r:nar?10:96,b:52,l:40};
+  var iw=W-m.l-m.r,ih=H-m.t-m.b;
+  var X=function(i){return m.l+i/3*iw},Y=function(v){return m.t+ih-v/100*ih};
+  var s=svg(W,H);
+  ticks(0,100,4).forEach(function(t){
+    s.appendChild(el("line",{x1:m.l,x2:W-m.r,y1:Y(t),y2:Y(t),class:"gl"}));
+    s.appendChild(el("text",{x:m.l-6,y:Y(t)+3.5,class:"ax","text-anchor":"end"},t+"%")); });
+  ["早期","中期","公开后","最近"].forEach(function(l,i){
+    s.appendChild(el("text",{x:X(i),y:H-m.b+16,class:"ax","text-anchor":"middle"},l)); });
+  var cols=[cv("--decay"),cv("--live"),cv("--dead"),cv("--accent"),cv("--pos")];
+  DEATH.forEach(function(r,k){
+    var pts=[],c=cols[k%5];
+    r.v.forEach(function(p,i){ if(p[1]!=null)pts.push([X(i),Y(p[1]),p]); });
+    s.appendChild(el("polyline",{points:pts.map(function(p){return p[0]+","+p[1]}).join(" "),
+      fill:"none",stroke:c,"stroke-width":2,"stroke-linejoin":"round"}));
+    pts.forEach(function(p){
+      s.appendChild(el("circle",{cx:p[0],cy:p[1],r:3.4,fill:c,stroke:cv("--surface"),"stroke-width":1.4}));
+      var hit=el("circle",{cx:p[0],cy:p[1],r:11,class:"hit"});
+      hit.addEventListener("mouseenter",function(){show(p[0],p[1],
+        "<b>"+r.n+"</b><br>"+p[2][0]+"<br>效应强度 "+p[2][1]+"%（相对自身峰值）<br>学术公开："+r.pub)});
+      hit.addEventListener("mouseleave",hide); s.appendChild(hit); });
+    var last=pts[pts.length-1];
+    if(!nar)s.appendChild(el("text",{x:last[0]+8,y:last[1]+3.5,class:"vl",fill:c,"font-weight":"600"},r.n));
+  });
+  if(nar){ var lg=DEATH.map(function(r,k){return r.n});
+    lg.forEach(function(n,k){
+      s.appendChild(el("rect",{x:m.l+(k%3)*(iw/3),y:H-24+Math.floor(k/3)*14,width:8,height:8,fill:cols[k%5],rx:2}));
+      s.appendChild(el("text",{x:m.l+(k%3)*(iw/3)+12,y:H-16+Math.floor(k/3)*14,class:"ax","font-size":"9px"},n)); }); }
+  return s;});
+/* ===== 图4 9月月内位置 ===== */
+mount("cSepPos",function(W,show,hide){
+  var nar=W<520,H=nar?250:275,m={t:16,r:12,b:38,l:44},d=D.sepPos;
+  var iw=W-m.l-m.r,ih=H-m.t-m.b;
+  var vs=d.map(function(r){return r.diff_bp});
+  var lo=Math.min.apply(null,vs)*1.25,hi=Math.max(2,Math.max.apply(null,vs))*1.5;
+  var Y=function(v){return m.t+ih-(v-lo)/(hi-lo)*ih};
+  var s=svg(W,H),bw=iw/d.length,bar=Math.min(bw*0.6,48);
+  ticks(lo,hi,4).forEach(function(t){
+    s.appendChild(el("line",{x1:m.l,x2:W-m.r,y1:Y(t),y2:Y(t),class:t===0?"zl":"gl"}));
+    s.appendChild(el("text",{x:m.l-6,y:Y(t)+3.5,class:"ax","text-anchor":"end"},t)); });
+  d.forEach(function(r,i){
+    var cx=m.l+bw*i+bw/2,v=r.diff_bp,sig=r.p<0.05;
+    s.appendChild(el("rect",{x:cx-bar/2,y:v>=0?Y(v):Y(0),width:bar,
+      height:Math.max(Math.abs(Y(v)-Y(0)),1.5),fill:sig?cv("--neg"):cv("--dead"),
+      opacity:sig?"1":"0.5",rx:3}));
+    s.appendChild(el("text",{x:cx,y:H-m.b+15,class:"ax","text-anchor":"middle",
+      "font-size":nar?"9px":"10.5px"},r.lab.replace("日","")));
+    s.appendChild(el("text",{x:cx,y:Y(v)+13,class:"vl","text-anchor":"middle",
+      "font-weight":sig?"600":"400"},v.toFixed(1)));
+    var hit=el("rect",{x:m.l+bw*i,y:m.t,width:bw,height:ih,class:"hit"});
+    hit.addEventListener("mouseenter",function(){show(cx,Math.min(Y(v),Y(0)),
+      "<b>9 月 "+r.lab+"</b><br>9 月 "+r.sep_mean_bp.toFixed(2)+" bp/天<br>其他月同位置 "+
+      r.other_mean_bp.toFixed(2)+" bp/天<br>差 "+r.diff_bp.toFixed(2)+" bp　t="+r.t.toFixed(2)+
+      "<br>p="+r.p.toFixed(3)+"　n="+r.n+" 天")});
+    hit.addEventListener("mouseleave",hide); s.appendChild(hit); });
+  s.appendChild(el("text",{x:m.l+2,y:m.t+10,class:"vl",fill:cv("--neg")},"深色 = p<0.05"));
+  return s;});
+
+/* ===== 图5 分界点搜索 ===== */
+mount("cCut",function(W,show,hide){
+  var H=W<520?240:265,m={t:18,r:14,b:38,l:42},d=D.cutSearch;
+  var iw=W-m.l-m.r,ih=H-m.t-m.b;
+  var vs=d.map(function(r){return r.t});
+  var lo=Math.min(-2.2,Math.min.apply(null,vs)*1.15),hi=Math.max(0.6,Math.max.apply(null,vs)*1.3);
+  var X=function(c){return m.l+(c-d[0].cut)/(d[d.length-1].cut-d[0].cut)*iw},
+      Y=function(v){return m.t+ih-(v-lo)/(hi-lo)*ih};
+  var s=svg(W,H);
+  ticks(lo,hi,4).forEach(function(t){
+    s.appendChild(el("line",{x1:m.l,x2:W-m.r,y1:Y(t),y2:Y(t),class:Math.abs(t)<1e-9?"zl":"gl"}));
+    s.appendChild(el("text",{x:m.l-6,y:Y(t)+3.5,class:"ax","text-anchor":"end"},t)); });
+  [-1.96,1.96].forEach(function(v){ if(v>lo&&v<hi){
+    s.appendChild(el("line",{x1:m.l,x2:W-m.r,y1:Y(v),y2:Y(v),stroke:cv("--decay"),"stroke-width":1.2,"stroke-dasharray":"4 3"}));
+    s.appendChild(el("text",{x:W-m.r-2,y:Y(v)-4,class:"vl",fill:cv("--decay"),"text-anchor":"end"},"显著性边界 ±1.96")); }});
+  s.appendChild(el("polyline",{points:d.map(function(r){return X(r.cut)+","+Y(r.t)}).join(" "),
+    fill:"none",stroke:cv("--dead"),"stroke-width":2,"stroke-linejoin":"round"}));
+  d.forEach(function(r){
+    var hl=r.cut===15;
+    s.appendChild(el("circle",{cx:X(r.cut),cy:Y(r.t),r:hl?6:3,
+      fill:hl?cv("--accent"):cv("--dead"),stroke:cv("--surface"),"stroke-width":1.5}));
+    var hit=el("circle",{cx:X(r.cut),cy:Y(r.t),r:10,class:"hit"});
+    hit.addEventListener("mouseenter",function(){show(X(r.cut),Y(r.t),
+      "<b>以 9 月 "+r.cut+" 日为分界</b>"+(hl?"　← 假说指定":"")+"<br>之后 − 之前 = "+
+      r.gap_bp.toFixed(2)+" bp/天<br>t="+r.t.toFixed(2)+"　p="+r.p.toFixed(3))});
+    hit.addEventListener("mouseleave",hide); s.appendChild(hit); });
+  s.appendChild(el("text",{x:X(15),y:Y(d.filter(function(r){return r.cut===15})[0].t)-12,
+    class:"vl",fill:cv("--accent"),"text-anchor":"middle","font-weight":"600"},"假说指定的 15 日"));
+  [5,10,15,20,26].forEach(function(c){
+    s.appendChild(el("text",{x:X(c),y:H-m.b+16,class:"ax","text-anchor":"middle"},c+"日")); });
+  return s;});
+
+/* ===== 图6 跨国9月 ===== */
+mount("cGlobalSep",function(W,show,hide){
+  var nar=W<560,rh=nar?19:21,m={t:22,r:nar?12:60,b:26,l:nar?98:120},d=D.globalSep;
+  var H=m.t+d.length*rh+m.b,iw=W-m.l-m.r;
+  var vs=d.map(function(r){return r.mean});
+  var lo=Math.min.apply(null,vs)*1.15,hi=Math.max(0.9,Math.max.apply(null,vs)*1.4);
+  var X=function(v){return m.l+(v-lo)/(hi-lo)*iw};
+  var s=svg(W,H);
+  ticks(lo,hi,4).forEach(function(t){
+    s.appendChild(el("line",{x1:X(t),x2:X(t),y1:m.t-8,y2:H-m.b+2,class:Math.abs(t)<1e-9?"zl":"gl"}));
+    s.appendChild(el("text",{x:X(t),y:m.t-13,class:"ax","text-anchor":"middle"},t+"%")); });
+  d.forEach(function(r,i){
+    var y=m.t+i*rh+rh/2,bh=nar?11:12,pass=Math.abs(r.t)>=2.87;
+    s.appendChild(el("text",{x:m.l-7,y:y+3.5,class:"axb","text-anchor":"end",
+      "font-size":nar?"9.5px":"10.5px","font-weight":pass?"600":"400"},r.m));
+    s.appendChild(el("rect",{x:Math.min(X(0),X(r.mean)),y:y-bh/2,
+      width:Math.max(Math.abs(X(r.mean)-X(0)),2),height:bh,
+      fill:r.mean<0?cv("--neg"):cv("--pos"),opacity:pass?"1":"0.55",rx:2}));
+    if(!nar)s.appendChild(el("text",{x:W-m.r+6,y:y+3.5,class:"vl"},"第"+r.rank+"差"));
+    if(pass)s.appendChild(el("text",{x:X(r.mean)-6,y:y+3.5,class:"vl",fill:cv("--surface"),
+      "text-anchor":"end","font-weight":"700"},"过门槛"));
+    var hit=el("rect",{x:m.l,y:m.t+i*rh,width:iw,height:rh,class:"hit"});
+    hit.addEventListener("mouseenter",function(){show(X(r.mean),m.t+i*rh,
+      "<b>"+r.m+"</b>（"+(CUR[r.cur]||r.cur)+"计价）<br>9 月均值 "+fmt(r.mean,2)+"%<br>|t| = "+
+      Math.abs(r.t).toFixed(2)+(pass?"　✓ 过 2.87 门槛":"　✕ 未过门槛")+
+      "<br>全年排名：第 "+r.rank+" 差<br>样本 "+r.n+" 个 9 月")});
+    hit.addEventListener("mouseleave",hide); s.appendChild(hit); });
+  return s;});
+
+/* ===== 图7 南北半球相位 ===== */
+mount("cPhase",function(W,show,hide){
+  var nar=W<560,d=D.localSeason.filter(function(r){return r.m.indexOf("阿根廷")<0});
+  var rh=nar?19:21,m={t:30,r:nar?12:14,b:30,l:nar?104:132};
+  var H=m.t+d.length*rh+m.b+34,iw=W-m.l-m.r;
+  var vs=d.map(function(r){return r.d});
+  var lo=Math.min.apply(null,vs)*1.2,hi=Math.max(0.8,Math.max.apply(null,vs)*1.6);
+  var X=function(v){return m.l+(v-lo)/(hi-lo)*iw};
+  var s=svg(W,H);
+  s.appendChild(el("text",{x:m.l,y:14,class:"axb","font-weight":"600",fill:cv("--ink")},
+    "当地冬半年 − 当地夏半年（若是日照/季节机制，应全部为负且南北同号）"));
+  ticks(lo,hi,4).forEach(function(t){
+    s.appendChild(el("line",{x1:X(t),x2:X(t),y1:m.t-8,y2:m.t+d.length*rh+2,class:Math.abs(t)<1e-9?"zl":"gl"}));
+    s.appendChild(el("text",{x:X(t),y:m.t-13,class:"ax","text-anchor":"middle"},t+"pp")); });
+  d.forEach(function(r,i){
+    var y=m.t+i*rh+rh/2,north=r.m.indexOf("美国")>=0,bh=nar?11:12;
+    s.appendChild(el("text",{x:m.l-7,y:y+3.5,class:"axb","text-anchor":"end",
+      "font-size":nar?"9.5px":"10.5px","font-weight":north?"700":"400"},r.m));
+    s.appendChild(el("rect",{x:Math.min(X(0),X(r.d)),y:y-bh/2,width:Math.max(Math.abs(X(r.d)-X(0)),2),
+      height:bh,fill:north?cv("--pos"):cv("--decay"),rx:2}));
+    s.appendChild(el("text",{x:X(r.d)+(r.d<0?-6:6),y:y+3.5,class:"vl",
+      "text-anchor":r.d<0?"end":"start"},fmt(r.d,2)));
+    var hit=el("rect",{x:m.l,y:m.t+i*rh,width:iw,height:rh,class:"hit"});
+    hit.addEventListener("mouseenter",function(){show(X(r.d),m.t+i*rh,
+      "<b>"+r.m+"</b><br>当地冬半年 "+fmt(r.lw,2)+"%/月<br>当地夏半年 "+fmt(r.ls,2)+
+      "%/月<br>差 "+fmt(r.d,2)+"pp　t="+r.t.toFixed(2)+"　p="+r.p.toFixed(3))});
+    hit.addEventListener("mouseleave",hide); s.appendChild(hit); });
+  var yb=m.t+d.length*rh+22;
+  s.appendChild(el("text",{x:m.l,y:yb,class:"vl",fill:cv("--pos"),"font-weight":"600"},"■ 北半球（美国）为正"));
+  s.appendChild(el("text",{x:m.l,y:yb+15,class:"vl",fill:cv("--decay"),"font-weight":"600"},
+    "■ 南半球 6 个市场全部为负 → 按当地季节对齐时南北反相，日照机制被证伪"));
+  return s;});
+
+/* ===== 图8 量级对比 ===== */
+mount("cScale",function(W,show,hide){
+  var nar=W<520,items=[
+    {n:"挑对定投日",v:0.002,d:"标普500 总收益 1988-2026，14 个候选买入日中最好减最差，38 年累计 0.91%"},
+    {n:"9 月效应",v:0.093,d:"1928 年起 9 月月均 −1.11%，摊到每月约 0.09 个百分点"},
+    {n:"中期选举年加成",v:0.68,d:"选举日起 12 个月，中期年 +15.3% vs 其他年 +7.1%，差 8.14pp / 12 个月"},
+    {n:"货币环境",v:1.05,d:"宽松期非 9 月月均 +1.38% vs 紧缩期 +0.33%"}];
+  var rh=nar?46:42,m={t:16,r:14,b:28,l:nar?12:14};
+  var H=m.t+items.length*rh+m.b,iw=W-m.l-m.r;
+  var mx=1.15,X=function(v){return m.l+v/mx*iw};
+  var s=svg(W,H);
+  ticks(0,mx,4).forEach(function(t){
+    s.appendChild(el("line",{x1:X(t),x2:X(t),y1:m.t,y2:H-m.b+2,class:"gl"}));
+    s.appendChild(el("text",{x:X(t),y:H-m.b+16,class:"ax","text-anchor":"middle"},t.toFixed(2))); });
+  items.forEach(function(r,i){
+    var top=m.t+i*rh,bh=15;
+    s.appendChild(el("text",{x:m.l,y:top+12,class:"axb","font-weight":"600",fill:cv("--ink")},r.n));
+    var c=i===3?cv("--live"):i===0?cv("--dead"):cv("--decay");
+    s.appendChild(el("rect",{x:m.l,y:top+18,width:Math.max(X(r.v)-m.l,2),height:bh,fill:c,rx:2}));
+    s.appendChild(el("text",{x:X(r.v)+7,y:top+18+bh-3,class:"vl",fill:cv("--ink"),"font-weight":"600"},
+      r.v.toFixed(3)+" pp/月"));
+    var hit=el("rect",{x:m.l,y:top,width:iw,height:rh,class:"hit"});
+    hit.addEventListener("mouseenter",function(){show(X(r.v),top,"<b>"+r.n+"</b><br>"+r.v.toFixed(3)+
+      " 个百分点/月<br>"+r.d)});
+    hit.addEventListener("mouseleave",hide); s.appendChild(hit); });
+  s.appendChild(el("text",{x:m.l+iw/2,y:H-m.b+30,class:"ax","text-anchor":"middle"},"影响幅度（百分点/月）"));
+  return s;});
+
+/* ===== 表格 ===== */
+(function(){
+  var b=document.getElementById("tbSurvive"); if(!b)return;
+  var lab={live:['<span class="tag live">✓ 站得住</span>',"现在仍有效"],
+           decay:['<span class="tag decay">~ 已衰减</span>',"历史真实，现已消失"],
+           dead:['<span class="tag dead">✕ 不成立</span>',"从未成立或方向相反"]};
+  b.innerHTML=RULES.map(function(r){
+    var now=r.now!=null?r.now.toFixed(2):"—";
+    return "<tr><td class='t'>"+r.n+"</td>"+
+      "<td>"+r.hist.toFixed(2)+(r.hist>=2.87?"":" <span style='color:var(--dead)'>未过线</span>")+"</td>"+
+      "<td>"+(r.now!=null?"最近 "+now:"—")+"</td>"+
+      "<td>"+lab[r.st][0]+"</td>"+
+      "<td class='t' style='font-size:12px;color:var(--ink-2)'>"+r.d+"</td></tr>"}).join("");
+})();
+/* 主题切换重绘 */
+if(window.matchMedia){var mq=window.matchMedia("(prefers-color-scheme: dark)");
+  var re=function(){document.querySelectorAll(".chartbox").forEach(function(b){if(b.__redraw)b.__redraw()})};
+  if(mq.addEventListener)mq.addEventListener("change",re);}
+new MutationObserver(function(){document.querySelectorAll(".chartbox").forEach(function(b){if(b.__redraw)b.__redraw()})})
+  .observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+})();
+</script>

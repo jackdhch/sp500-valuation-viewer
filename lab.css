@@ -1,0 +1,137 @@
+/* 研究页共用样式。配色与排版对齐 BiangBiangChi 视频里的图表：
+   深蓝黑底、等宽标注、一条主色一条强调色，其余一律压成灰阶。 */
+:root{
+  --bg:#0c1319; --bg2:#111a22; --line:#1d2b36; --line2:#2b3d4a;
+  --ink:#e8eef4; --ink2:#93a3b0; --ink3:#5e6e7a;
+  --teal:#2ec4b6;            /* 回撤标注、强调数字 */
+  --gold:#e0a33e;            /* 复利曲线 */
+  --blue:#4a90e2;            /* 标普500 净值 */
+  --red:#e05a5a;             /* 亏损 */
+  --violet:#8b7ff0;          /* 趋势中枢 */
+  --shade:rgba(255,255,255,.045);   /* 熊市阴影带 */
+  --fs:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --fm:"JetBrains Mono","SFMono-Regular",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--fs);margin:0;font-size:15px;line-height:1.8;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1000px;margin:0 auto;padding:0 20px 90px}
+
+/* 顶部：两个研究之间切换 */
+.topnav{position:sticky;top:0;z-index:20;background:rgba(12,19,25,.92);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);padding:0 20px}
+.topnav .in{max-width:1000px;margin:0 auto;display:flex;align-items:center;gap:18px;height:46px}
+.topnav .lab{font-family:var(--fm);font-size:11px;letter-spacing:.18em;color:var(--ink3);text-transform:uppercase}
+.topnav a{font-size:13.5px;color:var(--ink2);text-decoration:none;padding:4px 0;border-bottom:1.5px solid transparent}
+.topnav a:hover{color:var(--ink)}
+.topnav a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--teal)}
+.topnav .sp{flex:1}
+.topnav .home{font-family:var(--fm);font-size:11.5px;color:var(--ink3)}
+
+header{padding:64px 0 30px}
+.eyebrow{font-family:var(--fm);font-size:11px;letter-spacing:.2em;color:var(--ink3);text-transform:uppercase}
+h1{font-size:clamp(32px,6vw,52px);font-weight:500;letter-spacing:.06em;margin:16px 0 14px;line-height:1.14}
+.sub{color:var(--ink2);max-width:62ch;font-size:16px;margin:0}
+.meta{font-family:var(--fm);font-size:11.5px;color:var(--ink3);margin-top:20px;display:flex;flex-wrap:wrap;gap:4px 18px}
+
+section{padding-top:64px}
+.shead{display:flex;gap:14px;align-items:baseline;margin-bottom:20px}
+.snum{font-family:var(--fm);font-size:11.5px;color:var(--teal);letter-spacing:.06em}
+.shead h2{font-size:clamp(20px,3.4vw,28px);font-weight:500;letter-spacing:.04em;margin:0}
+p{margin:0 0 16px;max-width:70ch;color:var(--ink2)}
+p strong{color:var(--ink);font-weight:600}
+em{font-style:normal;color:var(--teal)}
+.lead{font-size:16.5px;color:var(--ink)}
+.num{font-family:var(--fm);font-variant-numeric:tabular-nums}
+a{color:var(--teal)}
+
+/* 图表卡：标题 + 等宽副标题 + 图 + 右下角来源，和视频里的版式一致 */
+figure{margin:26px 0;background:var(--bg2);border:1px solid var(--line);padding:22px 22px 14px}
+.figtitle{font-size:17px;font-weight:500;letter-spacing:.04em;margin-bottom:6px}
+.figsub{font-family:var(--fm);font-size:11.5px;color:var(--ink3);margin-bottom:18px;letter-spacing:.04em}
+figcaption{font-size:13px;color:var(--ink2);margin-top:14px;padding-top:12px;border-top:1px solid var(--line);line-height:1.7}
+.srcline{font-family:var(--fm);font-size:10px;color:var(--ink3);text-align:right;margin-top:8px;letter-spacing:.03em}
+.chartbox{position:relative;width:100%}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--fm);font-variant-numeric:tabular-nums}
+.ax{fill:var(--ink3);font-size:10.5px}
+.axb{fill:var(--ink2);font-size:11px}
+.vl{font-size:10.5px}
+.gl{stroke:var(--line);stroke-width:1}
+.zl{stroke:var(--line2);stroke-width:1.4}
+.shadeband{fill:var(--shade)}
+.shadeedge{stroke:var(--line2);stroke-width:1;stroke-dasharray:2 3}
+
+/* 大数字读数条 */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);margin-top:30px}
+.stat{background:var(--bg2);padding:16px 18px}
+.stat .k{font-family:var(--fm);font-size:10.5px;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase}
+.stat .v{font-size:31px;font-weight:600;line-height:1.15;margin-top:8px;letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.stat .d{font-size:12.5px;color:var(--ink2);margin-top:5px;line-height:1.55}
+.v.teal{color:var(--teal)} .v.gold{color:var(--gold)} .v.blue{color:var(--blue)} .v.red{color:var(--red)}
+
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);margin:24px 0}
+.kv div{background:var(--bg2);padding:14px 16px}
+.kv .k{font-family:var(--fm);font-size:10.5px;letter-spacing:.11em;color:var(--ink3);text-transform:uppercase}
+.kv .v{font-size:20px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums}
+.note{border-left:2px solid var(--teal);background:var(--bg2);padding:16px 20px;margin:24px 0}
+.note.warn{border-left-color:var(--gold)}
+.note .nt{font-family:var(--fm);font-size:10.5px;letter-spacing:.14em;color:var(--ink3);text-transform:uppercase;margin-bottom:8px}
+.note p:last-child{margin-bottom:0}
+
+.tablewrap{overflow-x:auto;margin:22px 0;border:1px solid var(--line);background:var(--bg2)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:600px}
+th,td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--fm);font-size:10px;letter-spacing:.09em;color:var(--ink3);font-weight:400;text-transform:uppercase;
+  background:#0f1922}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--fm);font-variant-numeric:tabular-nums;color:var(--ink2)}
+td.t{font-family:var(--fs);color:var(--ink);white-space:normal}
+tbody tr:hover td{background:#14202a}
+tr.hl td{background:#15242e;color:var(--ink)}
+.pos{color:var(--teal)} .neg{color:var(--red)}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12.5px;color:var(--ink2);margin-bottom:14px;align-items:center}
+.lg{display:inline-flex;align-items:center;gap:7px}
+.sw{width:11px;height:11px;flex:none}
+
+.tabs{display:flex;margin-bottom:14px;border:1px solid var(--line2);width:fit-content;max-width:100%;flex-wrap:wrap}
+.tabs button{font-family:var(--fm);font-size:11.5px;padding:7px 14px;background:transparent;border:0;
+  border-right:1px solid var(--line2);color:var(--ink2);cursor:pointer}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-pressed="true"]{background:var(--teal);color:#06121a}
+.tabs button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+
+/* 计算器 */
+.calc{display:grid;grid-template-columns:260px 1fr;gap:20px;margin:24px 0}
+.panel{background:var(--bg2);border:1px solid var(--line);padding:18px}
+.fld{margin-bottom:15px}
+.fld label{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--ink2);margin-bottom:6px}
+.fld label b{font-family:var(--fm);color:var(--ink);font-weight:500;font-size:13px}
+.fld input{width:100%;background:#0a1117;border:1px solid var(--line2);color:var(--ink);
+  font-family:var(--fm);font-size:14px;padding:8px 10px;border-radius:2px}
+.fld input:focus{outline:none;border-color:var(--teal)}
+.fld .hint{font-size:11px;color:var(--ink3)}
+.btn{width:100%;background:transparent;border:1px solid var(--teal);color:var(--teal);
+  font-family:var(--fm);font-size:12.5px;padding:9px;cursor:pointer;border-radius:2px}
+.btn:hover{background:var(--teal);color:#06121a}
+.dotc{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px;vertical-align:1px}
+.xbtn{background:none;border:0;color:var(--ink3);cursor:pointer;font-family:var(--fm);font-size:13px;padding:0 4px}
+.xbtn:hover{color:var(--red)}
+
+.foot{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;color:var(--ink3);line-height:1.8}
+.src{font-size:12.5px;color:var(--ink2);border-top:1px solid var(--line);padding-top:16px;margin-top:10px}
+.src ol{padding-left:20px;margin:0} .src li{margin-bottom:7px}
+
+@media (max-width:760px){
+  .calc{grid-template-columns:1fr}
+}
+@media (max-width:600px){
+  body{font-size:14.5px} .wrap{padding-inline:16px}
+  .stat .v{font-size:25px} figure{padding:16px 13px 11px} header{padding-top:40px}
+  .topnav{padding-inline:16px}
+  .topnav .in{gap:13px} .topnav a{font-size:12.5px}
+}
