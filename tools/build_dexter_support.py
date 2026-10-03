@@ -15,7 +15,7 @@ D = Path(os.environ.get("DEXTER_DIR") or Path(__file__).resolve().parent.parent 
 DERIVED = {
     "^GSPC": ("SPY", "SPX", "标普500指数"), "VOO": ("SPY", "VOO", "标普500ETF-先锋"),
     "^NDX": ("QQQ", "NDX", "纳斯达克100指数"), "QQQM": ("QQQ", "QQQM", "纳指100ETF-景顺"), "QNDX": ("QQQ", "QNDX", "纳指100ETF-道富"),
-    "IAU": ("GLD", "IAU", "黄金ETF-iShares"), "GC=F": ("GLD", "GC", "纽约黄金期货"),
+    "IAU": ("GLD", "IAU", "黄金ETF-iShares"), "GLDM": ("GLD", "GLDM", "黄金ETF-道富迷你"), "GC=F": ("GLD", "GC", "纽约黄金期货"),
 }
 
 def build(sup, px, now):
